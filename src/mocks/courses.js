@@ -20,6 +20,7 @@ export const mockCourses = [
         date_updated: '2024-01-20T15:30:00Z',
         enrollments_count: 45,
         modules_count: 3,
+        instructor_id: 'ins2',
     },
     {
         id: '2',
@@ -39,6 +40,7 @@ export const mockCourses = [
         date_updated: '2024-01-25T10:00:00Z',
         enrollments_count: 120,
         modules_count: 4,
+        instructor_id: 'ins2',
     },
     {
         id: '3',
@@ -58,6 +60,7 @@ export const mockCourses = [
         date_updated: null,
         enrollments_count: 0,
         modules_count: 2,
+        instructor_id: 'ins2',
     },
     {
         id: '4',
@@ -77,6 +80,7 @@ export const mockCourses = [
         date_updated: '2024-02-15T14:20:00Z',
         enrollments_count: 23,
         modules_count: 5,
+        instructor_id: 'ins3',
     },
     {
         id: '5',
@@ -96,6 +100,7 @@ export const mockCourses = [
         date_updated: null,
         enrollments_count: 67,
         modules_count: 3,
+        instructor_id: 'ins2',
     },
     {
         id: '6',
@@ -114,5 +119,6 @@ export const mockCourses = [
         date_updated: '2024-03-01T10:00:00Z',
         enrollments_count: 15,
         modules_count: 4,
+        instructor_id: 'ins1',
     },
 ];

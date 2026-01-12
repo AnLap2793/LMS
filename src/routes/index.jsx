@@ -16,12 +16,31 @@ const CourseContentPage = lazy(() => import('../pages/private/admin/courses/Cour
 const LearningPathListPage = lazy(() => import('../pages/private/admin/learning-paths/LearningPathListPage'));
 const ReportsPage = lazy(() => import('../pages/private/admin/reports/ReportsPage'));
 const EmployeeProgressPage = lazy(() => import('../pages/private/admin/reports/EmployeeProgressPage'));
+const DepartmentReportPage = lazy(() => import('../pages/private/admin/reports/DepartmentReportPage'));
 const CertificateTemplatesPage = lazy(() => import('../pages/private/admin/certificates/CertificateTemplatesPage'));
 const SettingsPage = lazy(() => import('../pages/private/admin/settings/SettingsPage'));
 
-// Quiz Pages
+// User Management
+const UserListPage = lazy(() => import('../pages/private/admin/users/UserListPage'));
+
+// Enrollment Management
+const EnrollmentListPage = lazy(() => import('../pages/private/admin/enrollments/EnrollmentListPage'));
+
+// Quiz Pages (Admin)
 const QuizListPage = lazy(() => import('../pages/private/admin/quizzes/QuizListPage'));
 const QuizQuestionsPage = lazy(() => import('../pages/private/admin/quizzes/QuizQuestionsPage'));
+
+// Learner pages
+const MyCoursesPage = lazy(() => import('../pages/private/learner/MyCoursesPage'));
+const CourseLearningPage = lazy(() => import('../pages/private/learner/CourseLearningPage'));
+const QuizTakingPage = lazy(() => import('../pages/private/learner/QuizTakingPage'));
+const QuizResultPage = lazy(() => import('../pages/private/learner/QuizResultPage'));
+const MyCertificatesPage = lazy(() => import('../pages/private/learner/MyCertificatesPage'));
+const CourseCatalogPage = lazy(() => import('../pages/private/learner/CourseCatalogPage'));
+const CourseDetailPage = lazy(() => import('../pages/private/learner/CourseDetailPage'));
+const LearningPathDetailPage = lazy(() => import('../pages/private/learner/LearningPathDetailPage'));
+const ProfilePage = lazy(() => import('../pages/private/learner/ProfilePage'));
+const NotificationsPage = lazy(() => import('../pages/private/learner/NotificationsPage'));
 
 /**
  * Cấu hình Routes của ứng dụng
@@ -42,6 +61,90 @@ export const router = createBrowserRouter([
         ),
     },
 
+    // Learner routes
+    {
+        path: '/my-courses',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <MyCoursesPage />,
+            },
+        ],
+    },
+    {
+        path: '/courses',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <CourseCatalogPage />,
+            },
+            {
+                path: ':courseId',
+                element: <CourseDetailPage />,
+            },
+        ],
+    },
+    {
+        path: '/learning-paths/:pathId',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <LearningPathDetailPage />,
+            },
+        ],
+    },
+    {
+        path: '/my-certificates',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <MyCertificatesPage />,
+            },
+        ],
+    },
+    {
+        path: '/profile',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <ProfilePage />,
+            },
+        ],
+    },
+    {
+        path: '/notifications',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <NotificationsPage />,
+            },
+        ],
+    },
+    // Course Learning (full screen, no LearnerLayout)
+    {
+        path: '/learn/:courseId',
+        element: <CourseLearningPage />,
+    },
+    {
+        path: '/learn/:courseId/:lessonId',
+        element: <CourseLearningPage />,
+    },
+    // Quiz routes (full screen)
+    {
+        path: '/quiz/:quizId',
+        element: <QuizTakingPage />,
+    },
+    {
+        path: '/quiz/:quizId/result',
+        element: <QuizResultPage />,
+    },
+
     // Admin routes
     {
         path: '/admin',
@@ -55,6 +158,16 @@ export const router = createBrowserRouter([
             {
                 path: 'tags',
                 element: <TagListPage />,
+            },
+            // Users
+            {
+                path: 'users',
+                element: <UserListPage />,
+            },
+            // Enrollments
+            {
+                path: 'enrollments',
+                element: <EnrollmentListPage />,
             },
             // Courses
             {
@@ -90,6 +203,10 @@ export const router = createBrowserRouter([
             {
                 path: 'reports/employees',
                 element: <EmployeeProgressPage />,
+            },
+            {
+                path: 'reports/departments',
+                element: <DepartmentReportPage />,
             },
             // Certificates
             {

@@ -1,0 +1,10 @@
+export { default as MyCoursesPage } from './MyCoursesPage';
+export { default as CourseLearningPage } from './CourseLearningPage';
+export { default as QuizTakingPage } from './QuizTakingPage';
+export { default as QuizResultPage } from './QuizResultPage';
+export { default as MyCertificatesPage } from './MyCertificatesPage';
+export { default as CourseCatalogPage } from './CourseCatalogPage';
+export { default as CourseDetailPage } from './CourseDetailPage';
+export { default as LearningPathDetailPage } from './LearningPathDetailPage';
+export { default as ProfilePage } from './ProfilePage';
+export { default as NotificationsPage } from './NotificationsPage';

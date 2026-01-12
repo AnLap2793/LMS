@@ -1,5 +1,19 @@
 import { useState, useMemo } from 'react';
-import { Button, Table, Space, Tag, Popconfirm, Input, Switch, message, Tooltip, Avatar } from 'antd';
+import {
+    Button,
+    Table,
+    Space,
+    Tag,
+    Popconfirm,
+    Input,
+    message,
+    Tooltip,
+    Avatar,
+    Card,
+    Row,
+    Col,
+    Statistic,
+} from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
@@ -7,9 +21,14 @@ import {
     SearchOutlined,
     NodeIndexOutlined,
     BookOutlined,
+    ReloadOutlined,
+    CheckCircleOutlined,
+    TeamOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
 import { PageHeader, EmptyState } from '../../../../components/common';
-import { mockLearningPaths } from '../../../../mocks';
+import { mockLearningPaths, mockPositions, mockDepartments } from '../../../../mocks';
+import LearningPathFormModal from '../../../../components/admin/learning-paths/LearningPathFormModal';
 
 /**
  * Learning Path List Page
@@ -19,6 +38,67 @@ function LearningPathListPage() {
     const [paths, setPaths] = useState(mockLearningPaths);
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [editingPath, setEditingPath] = useState(null);
+
+    // Statistics
+    const stats = useMemo(() => {
+        const total = paths.length;
+        const published = paths.filter(p => p.status === 'published').length;
+        const mandatory = paths.filter(p => p.is_mandatory).length;
+        const totalCourses = paths.reduce((sum, p) => sum + (p.courses?.length || 0), 0);
+        return { total, published, mandatory, totalCourses };
+    }, [paths]);
+
+    // Handle add
+    const handleAdd = () => {
+        setEditingPath(null);
+        setModalVisible(true);
+    };
+
+    // Handle edit
+    const handleEdit = path => {
+        setEditingPath(path);
+        setModalVisible(true);
+    };
+
+    // Handle modal save
+    const handleModalSave = values => {
+        setLoading(true);
+        setTimeout(() => {
+            if (editingPath) {
+                // Update
+                setPaths(prev =>
+                    prev.map(p =>
+                        p.id === editingPath.id ? { ...p, ...values, date_updated: new Date().toISOString() } : p
+                    )
+                );
+                message.success('Đã cập nhật lộ trình');
+            } else {
+                // Create
+                const newPath = {
+                    id: `lp${Date.now()}`,
+                    ...values,
+                    enrollments_count: 0,
+                    date_created: new Date().toISOString(),
+                };
+                setPaths(prev => [newPath, ...prev]);
+                message.success('Đã tạo lộ trình mới');
+            }
+            setModalVisible(false);
+            setLoading(false);
+        }, 500);
+    };
+
+    // Handle refresh
+    const handleRefresh = () => {
+        setLoading(true);
+        setTimeout(() => {
+            setPaths(mockLearningPaths);
+            message.success('Đã làm mới danh sách');
+            setLoading(false);
+        }, 500);
+    };
 
     // Filtered paths based on search
     const filteredPaths = useMemo(() => {
@@ -95,6 +175,48 @@ function LearningPathListPage() {
             ),
         },
         {
+            title: 'Đối tượng áp dụng',
+            key: 'target',
+            width: 200,
+            render: (_, record) => {
+                const departments = record.department_filter || [];
+                const positions = record.position_filter || [];
+                const hasDept = departments.length > 0;
+                const hasPos = positions.length > 0;
+
+                if (!hasDept && !hasPos) {
+                    return <Tag color="green">Tất cả</Tag>;
+                }
+
+                return (
+                    <Space size={[0, 4]} wrap>
+                        {hasDept && (
+                            <Tooltip
+                                title={departments
+                                    .map(code => mockDepartments.find(d => d.code === code)?.name || code)
+                                    .join(', ')}
+                            >
+                                <Tag icon={<TeamOutlined />} color="blue">
+                                    {departments.length} phòng ban
+                                </Tag>
+                            </Tooltip>
+                        )}
+                        {hasPos && (
+                            <Tooltip
+                                title={positions
+                                    .map(code => mockPositions.find(p => p.code === code)?.name || code)
+                                    .join(', ')}
+                            >
+                                <Tag icon={<UserOutlined />} color="purple">
+                                    {positions.length} vị trí
+                                </Tag>
+                            </Tooltip>
+                        )}
+                    </Space>
+                );
+            },
+        },
+        {
             title: 'Khóa học',
             key: 'courses',
             width: 250,
@@ -132,11 +254,7 @@ function LearningPathListPage() {
             render: (_, record) => (
                 <Space size="small">
                     <Tooltip title="Chỉnh sửa">
-                        <Button
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={() => message.info('Chức năng đang phát triển')}
-                        />
+                        <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
                     </Tooltip>
                     <Popconfirm
                         title="Xóa lộ trình này?"
@@ -162,15 +280,53 @@ function LearningPathListPage() {
                 subtitle="Tạo và quản lý các lộ trình đào tạo gồm nhiều khóa học"
                 breadcrumbs={[{ title: 'Lộ trình học tập' }]}
                 actions={
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => message.info('Chức năng đang phát triển')}
-                    >
-                        Thêm Lộ trình
-                    </Button>
+                    <Space>
+                        <Tooltip title="Làm mới">
+                            <Button icon={<ReloadOutlined />} onClick={handleRefresh} />
+                        </Tooltip>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                            Thêm Lộ trình
+                        </Button>
+                    </Space>
                 }
             />
+
+            {/* Statistics */}
+            <Row gutter={16} style={{ marginBottom: 24 }}>
+                <Col xs={12} sm={6}>
+                    <Card size="small">
+                        <Statistic
+                            title="Tổng lộ trình"
+                            value={stats.total}
+                            prefix={<NodeIndexOutlined style={{ color: '#1890ff' }} />}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Card size="small">
+                        <Statistic
+                            title="Đã xuất bản"
+                            value={stats.published}
+                            valueStyle={{ color: '#52c41a' }}
+                            prefix={<CheckCircleOutlined />}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Card size="small">
+                        <Statistic title="Bắt buộc" value={stats.mandatory} valueStyle={{ color: '#ea4544' }} />
+                    </Card>
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Card size="small">
+                        <Statistic
+                            title="Tổng khóa học"
+                            value={stats.totalCourses}
+                            prefix={<BookOutlined style={{ color: '#722ed1' }} />}
+                        />
+                    </Card>
+                </Col>
+            </Row>
 
             {/* Search */}
             <div style={{ marginBottom: 16 }}>
@@ -195,16 +351,25 @@ function LearningPathListPage() {
                         pageSize: 10,
                         showTotal: total => `Tổng ${total} lộ trình`,
                     }}
-                    scroll={{ x: 1200 }}
+                    scroll={{ x: 1400 }}
                 />
             ) : (
                 <EmptyState
                     title="Chưa có lộ trình nào"
                     description="Tạo lộ trình đầu tiên để gom nhóm các khóa học"
                     actionText="Thêm Lộ trình"
-                    onAction={() => message.info('Chức năng đang phát triển')}
+                    onAction={handleAdd}
                 />
             )}
+
+            {/* Modal */}
+            <LearningPathFormModal
+                open={modalVisible}
+                onCancel={() => setModalVisible(false)}
+                onSave={handleModalSave}
+                initialValues={editingPath}
+                loading={loading}
+            />
         </div>
     );
 }

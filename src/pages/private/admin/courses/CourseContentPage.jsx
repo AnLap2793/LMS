@@ -100,20 +100,44 @@ function SortableLessonItem({ lesson, onEdit, onDelete }) {
 
     return (
         <div ref={setNodeRef} style={style}>
-            <List.Item
+            <div
                 style={{
                     padding: '12px 16px',
                     background: '#fafafa',
                     marginBottom: 8,
                     borderRadius: 6,
                     border: '1px solid #f0f0f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
                 }}
-                actions={[
-                    <Tooltip title="Chỉnh sửa" key="edit">
+            >
+                {/* Drag handle and icon */}
+                <Space>
+                    <span {...attributes} {...listeners} style={{ cursor: 'grab' }}>
+                        <HolderOutlined style={{ color: '#999' }} />
+                    </span>
+                    {lessonIcons[lesson.type]}
+                </Space>
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ marginBottom: 4 }}>
+                        <Text strong>{lesson.title}</Text>
+                    </div>
+                    <Space size="small">
+                        <Tag>{typeConfig.label}</Tag>
+                        {lesson.duration && <Text type="secondary">{lesson.duration} phút</Text>}
+                        {lesson.is_required && <Tag color="red">Bắt buộc</Tag>}
+                    </Space>
+                </div>
+
+                {/* Actions */}
+                <Space size="small">
+                    <Tooltip title="Chỉnh sửa">
                         <Button type="text" size="small" icon={<EditOutlined />} onClick={() => onEdit(lesson)} />
-                    </Tooltip>,
+                    </Tooltip>
                     <Popconfirm
-                        key="delete"
                         title="Xóa bài học này?"
                         onConfirm={() => onDelete(lesson.id)}
                         okText="Xóa"
@@ -123,28 +147,9 @@ function SortableLessonItem({ lesson, onEdit, onDelete }) {
                         <Tooltip title="Xóa">
                             <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                         </Tooltip>
-                    </Popconfirm>,
-                ]}
-            >
-                <List.Item.Meta
-                    avatar={
-                        <Space>
-                            <span {...attributes} {...listeners} style={{ cursor: 'grab' }}>
-                                <HolderOutlined style={{ color: '#999' }} />
-                            </span>
-                            {lessonIcons[lesson.type]}
-                        </Space>
-                    }
-                    title={lesson.title}
-                    description={
-                        <Space size="small">
-                            <Tag>{typeConfig.label}</Tag>
-                            {lesson.duration && <Text type="secondary">{lesson.duration} phút</Text>}
-                            {lesson.is_required && <Tag color="red">Bắt buộc</Tag>}
-                        </Space>
-                    }
-                />
-            </List.Item>
+                    </Popconfirm>
+                </Space>
+            </div>
         </div>
     );
 }
@@ -252,7 +257,7 @@ function CourseContentPage() {
                 date_created: new Date().toISOString(),
             };
             setModules(prev => [...prev, newModule]);
-            setActiveModuleKeys(prev => [...prev, newModule.id]);
+            setActiveModuleId(newModule.id);
             message.success('Đã thêm module mới');
         }
         setModuleModalOpen(false);

@@ -19,5 +19,8 @@ export * from './quizzes';
 // Certificates
 export * from './certificates';
 
+// Social Features
+export * from './social';
+
 // Dashboard & Statistics
 export * from './dashboardStats';

@@ -1,5 +1,22 @@
 import { useState } from 'react';
-import { Card, Row, Col, Button, Tag, Space, Typography, Switch, Popconfirm, message, Upload, Empty } from 'antd';
+import {
+    Card,
+    Row,
+    Col,
+    Button,
+    Tag,
+    Space,
+    Typography,
+    Popconfirm,
+    message,
+    Upload,
+    Empty,
+    Modal,
+    Form,
+    Input,
+    Image,
+    Statistic,
+} from 'antd';
 import {
     PlusOutlined,
     FileProtectOutlined,
@@ -8,11 +25,13 @@ import {
     DeleteOutlined,
     UploadOutlined,
     EyeOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '../../../../components/common';
 import { mockCertificateTemplates } from '../../../../mocks';
 
 const { Text, Title } = Typography;
+const { TextArea } = Input;
 
 /**
  * Certificate Templates Page
@@ -20,6 +39,12 @@ const { Text, Title } = Typography;
  */
 function CertificateTemplatesPage() {
     const [templates, setTemplates] = useState(mockCertificateTemplates);
+    const [loading, setLoading] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const [previewTemplate, setPreviewTemplate] = useState(null);
+    const [editingTemplate, setEditingTemplate] = useState(null);
+    const [form] = Form.useForm();
 
     // Handle set active template
     const handleSetActive = templateId => {
@@ -43,6 +68,99 @@ function CertificateTemplatesPage() {
         message.success('Đã xóa template');
     };
 
+    // Handle preview
+    const handlePreview = template => {
+        setPreviewTemplate(template);
+        setPreviewVisible(true);
+    };
+
+    // Handle add new template
+    const handleAdd = () => {
+        setEditingTemplate(null);
+        form.resetFields();
+        setModalVisible(true);
+    };
+
+    // Handle edit template
+    const handleEdit = template => {
+        setEditingTemplate(template);
+        form.setFieldsValue({
+            name: template.name,
+            description: template.description,
+        });
+        setModalVisible(true);
+    };
+
+    // Handle modal save
+    const handleModalSave = async () => {
+        try {
+            const values = await form.validateFields();
+            setLoading(true);
+
+            setTimeout(() => {
+                if (editingTemplate) {
+                    // Update
+                    setTemplates(prev =>
+                        prev.map(t =>
+                            t.id === editingTemplate.id
+                                ? { ...t, name: values.name, description: values.description }
+                                : t
+                        )
+                    );
+                    message.success('Đã cập nhật template');
+                } else {
+                    // Create
+                    const newTemplate = {
+                        id: `tpl${Date.now()}`,
+                        name: values.name,
+                        description: values.description,
+                        file: { id: 'new-file', filename_download: 'new-template.pdf', type: 'application/pdf' },
+                        is_active: false,
+                        preview_url: null,
+                        date_created: new Date().toISOString(),
+                    };
+                    setTemplates(prev => [...prev, newTemplate]);
+                    message.success('Đã thêm template mới');
+                }
+                setModalVisible(false);
+                setLoading(false);
+            }, 500);
+        } catch (error) {
+            console.error('Validation failed:', error);
+        }
+    };
+
+    // Handle refresh
+    const handleRefresh = () => {
+        setLoading(true);
+        setTimeout(() => {
+            setTemplates(mockCertificateTemplates);
+            message.success('Đã làm mới danh sách');
+            setLoading(false);
+        }, 500);
+    };
+
+    // Upload props
+    const uploadProps = {
+        accept: '.pdf',
+        showUploadList: false,
+        beforeUpload: file => {
+            const isPDF = file.type === 'application/pdf';
+            if (!isPDF) {
+                message.error('Chỉ chấp nhận file PDF!');
+                return false;
+            }
+            const isLt10M = file.size / 1024 / 1024 < 10;
+            if (!isLt10M) {
+                message.error('File phải nhỏ hơn 10MB!');
+                return false;
+            }
+            // For demo, just show success message
+            message.success(`Đã upload file: ${file.name}`);
+            return false; // Prevent actual upload
+        },
+    };
+
     return (
         <div>
             <PageHeader
@@ -50,20 +168,39 @@ function CertificateTemplatesPage() {
                 subtitle="Quản lý các template PDF cho chứng chỉ hoàn thành khóa học"
                 breadcrumbs={[{ title: 'Hệ thống' }, { title: 'Mẫu chứng chỉ' }]}
                 actions={
-                    <Upload
-                        accept=".pdf"
-                        showUploadList={false}
-                        beforeUpload={() => {
-                            message.info('Chức năng upload đang phát triển');
-                            return false;
-                        }}
-                    >
-                        <Button type="primary" icon={<UploadOutlined />}>
-                            Upload Template mới
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
+                            Làm mới
                         </Button>
-                    </Upload>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                            Thêm Template
+                        </Button>
+                    </Space>
                 }
             />
+
+            {/* Statistics */}
+            <Row gutter={16} style={{ marginBottom: 24 }}>
+                <Col xs={12} sm={8}>
+                    <Card size="small">
+                        <Statistic
+                            title="Tổng template"
+                            value={templates.length}
+                            prefix={<FileProtectOutlined style={{ color: '#1890ff' }} />}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={12} sm={8}>
+                    <Card size="small">
+                        <Statistic
+                            title="Đang sử dụng"
+                            value={templates.filter(t => t.is_active).length}
+                            valueStyle={{ color: '#52c41a' }}
+                            prefix={<CheckCircleOutlined />}
+                        />
+                    </Card>
+                </Col>
+            </Row>
 
             {/* Template Cards */}
             {templates.length > 0 ? (
@@ -79,12 +216,14 @@ function CertificateTemplatesPage() {
                                     <div
                                         style={{
                                             height: 200,
-                                            background: '#f5f5f5',
+                                            background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             position: 'relative',
+                                            cursor: 'pointer',
                                         }}
+                                        onClick={() => handlePreview(template)}
                                     >
                                         <FileProtectOutlined style={{ fontSize: 64, color: '#999' }} />
                                         {template.is_active && (
@@ -96,21 +235,27 @@ function CertificateTemplatesPage() {
                                                 Đang sử dụng
                                             </Tag>
                                         )}
+                                        <div
+                                            style={{
+                                                position: 'absolute',
+                                                bottom: 0,
+                                                left: 0,
+                                                right: 0,
+                                                background: 'rgba(0,0,0,0.5)',
+                                                color: '#fff',
+                                                padding: '8px 12px',
+                                                textAlign: 'center',
+                                            }}
+                                        >
+                                            <EyeOutlined /> Click để xem preview
+                                        </div>
                                     </div>
                                 }
                                 actions={[
-                                    <Button
-                                        type="text"
-                                        icon={<EyeOutlined />}
-                                        onClick={() => message.info('Xem preview template')}
-                                    >
+                                    <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(template)}>
                                         Xem
                                     </Button>,
-                                    <Button
-                                        type="text"
-                                        icon={<EditOutlined />}
-                                        onClick={() => message.info('Chỉnh sửa template')}
-                                    >
+                                    <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(template)}>
                                         Sửa
                                     </Button>,
                                     template.is_active ? (
@@ -172,18 +317,9 @@ function CertificateTemplatesPage() {
                 </Row>
             ) : (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có template nào">
-                    <Upload
-                        accept=".pdf"
-                        showUploadList={false}
-                        beforeUpload={() => {
-                            message.info('Chức năng upload đang phát triển');
-                            return false;
-                        }}
-                    >
-                        <Button type="primary" icon={<UploadOutlined />}>
-                            Upload Template đầu tiên
-                        </Button>
-                    </Upload>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                        Thêm Template đầu tiên
+                    </Button>
                 </Empty>
             )}
 
@@ -210,6 +346,87 @@ function CertificateTemplatesPage() {
                     <li>Kích thước khuyến nghị: A4 landscape (297 x 210 mm)</li>
                 </ul>
             </Card>
+
+            {/* Add/Edit Modal */}
+            <Modal
+                title={editingTemplate ? 'Chỉnh sửa Template' : 'Thêm Template mới'}
+                open={modalVisible}
+                onCancel={() => setModalVisible(false)}
+                onOk={handleModalSave}
+                okText={editingTemplate ? 'Cập nhật' : 'Thêm mới'}
+                cancelText="Hủy"
+                confirmLoading={loading}
+            >
+                <Form form={form} layout="vertical">
+                    <Form.Item
+                        name="name"
+                        label="Tên template"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập tên template' },
+                            { min: 3, message: 'Tên phải có ít nhất 3 ký tự' },
+                        ]}
+                    >
+                        <Input placeholder="VD: Template Chuẩn" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="description"
+                        label="Mô tả"
+                        rules={[{ max: 500, message: 'Mô tả tối đa 500 ký tự' }]}
+                    >
+                        <TextArea placeholder="Mô tả ngắn về template..." rows={3} showCount maxLength={500} />
+                    </Form.Item>
+
+                    <Form.Item label="File PDF" extra="Chọn file PDF template (tối đa 10MB)">
+                        <Upload {...uploadProps}>
+                            <Button icon={<UploadOutlined />}>Chọn file PDF</Button>
+                        </Upload>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Preview Modal */}
+            <Modal
+                title={`Preview: ${previewTemplate?.name || ''}`}
+                open={previewVisible}
+                onCancel={() => setPreviewVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setPreviewVisible(false)}>
+                        Đóng
+                    </Button>,
+                    <Button key="download" type="primary" onClick={() => message.info('Tải xuống template PDF')}>
+                        Tải xuống
+                    </Button>,
+                ]}
+                width={800}
+            >
+                <div
+                    style={{
+                        height: 500,
+                        background: '#f5f5f5',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 8,
+                    }}
+                >
+                    <div style={{ textAlign: 'center' }}>
+                        <FileProtectOutlined style={{ fontSize: 80, color: '#999', marginBottom: 16 }} />
+                        <div>
+                            <Text type="secondary">
+                                Preview chứng chỉ sẽ hiển thị ở đây
+                                <br />
+                                (Tích hợp PDF viewer khi kết nối Directus)
+                            </Text>
+                        </div>
+                        {previewTemplate && (
+                            <div style={{ marginTop: 16 }}>
+                                <Tag color="blue">{previewTemplate.file?.filename_download}</Tag>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

@@ -14,9 +14,14 @@ import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     FormOutlined,
+    IdcardOutlined,
+    ScheduleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { NotificationPopover } from '../common';
+import logoVuong from '../../assets/logo-vuong.svg';
+import logoNgang from '../../assets/logo-ngang.svg';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -37,6 +42,23 @@ function AdminLayout() {
             key: '/admin',
             icon: <DashboardOutlined />,
             label: 'Dashboard',
+        },
+        {
+            key: 'users',
+            icon: <TeamOutlined />,
+            label: 'Quản lý Người dùng',
+            children: [
+                {
+                    key: '/admin/users',
+                    icon: <UserOutlined />,
+                    label: 'Người dùng',
+                },
+                {
+                    key: '/admin/enrollments',
+                    icon: <ScheduleOutlined />,
+                    label: 'Đăng ký khóa học',
+                },
+            ],
         },
         {
             key: 'training',
@@ -79,6 +101,11 @@ function AdminLayout() {
                     key: '/admin/reports/employees',
                     icon: <TeamOutlined />,
                     label: 'Tiến độ nhân viên',
+                },
+                {
+                    key: '/admin/reports/departments',
+                    icon: <TeamOutlined />,
+                    label: 'Theo phòng ban',
                 },
             ],
         },
@@ -138,11 +165,14 @@ function AdminLayout() {
     const getSelectedKeys = () => {
         const path = location.pathname;
         // Handle nested routes
+        if (path.startsWith('/admin/users')) return ['/admin/users'];
+        if (path.startsWith('/admin/enrollments')) return ['/admin/enrollments'];
         if (path.startsWith('/admin/courses')) return ['/admin/courses'];
         if (path.startsWith('/admin/quizzes')) return ['/admin/quizzes'];
         if (path.startsWith('/admin/tags')) return ['/admin/tags'];
         if (path.startsWith('/admin/learning-paths')) return ['/admin/learning-paths'];
         if (path.startsWith('/admin/reports/employees')) return ['/admin/reports/employees'];
+        if (path.startsWith('/admin/reports/departments')) return ['/admin/reports/departments'];
         if (path.startsWith('/admin/reports')) return ['/admin/reports'];
         if (path.startsWith('/admin/certificates')) return ['/admin/certificates/templates'];
         if (path.startsWith('/admin/settings')) return ['/admin/settings'];
@@ -152,6 +182,9 @@ function AdminLayout() {
     // Get open keys for submenus
     const getOpenKeys = () => {
         const path = location.pathname;
+        if (path.includes('/users') || path.includes('/enrollments')) {
+            return ['users'];
+        }
         if (
             path.includes('/courses') ||
             path.includes('/quizzes') ||
@@ -200,12 +233,7 @@ function AdminLayout() {
                         padding: '0 16px',
                     }}
                 >
-                    <BookOutlined style={{ fontSize: 24, color: '#ea4544' }} />
-                    {!collapsed && (
-                        <Text strong style={{ marginLeft: 12, fontSize: 18, color: '#ea4544' }}>
-                            LMS Admin
-                        </Text>
-                    )}
+                    {collapsed ? <img src={logoVuong} alt="LMS Logo" /> : <img src={logoNgang} alt="LMS Logo" />}
                 </div>
 
                 {/* Menu */}
@@ -249,20 +277,26 @@ function AdminLayout() {
                         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                     </div>
 
-                    {/* User dropdown */}
-                    <Dropdown
-                        menu={{
-                            items: userMenuItems,
-                            onClick: handleUserMenuClick,
-                        }}
-                        placement="bottomRight"
-                        arrow
-                    >
-                        <Space style={{ cursor: 'pointer' }}>
-                            <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#ea4544' }} />
-                            <Text>{user?.first_name || 'Admin'}</Text>
-                        </Space>
-                    </Dropdown>
+                    {/* Right Side */}
+                    <Space size={24}>
+                        {/* Notifications */}
+                        <NotificationPopover />
+
+                        {/* User dropdown */}
+                        <Dropdown
+                            menu={{
+                                items: userMenuItems,
+                                onClick: handleUserMenuClick,
+                            }}
+                            placement="bottomRight"
+                            arrow
+                        >
+                            <Space style={{ cursor: 'pointer' }}>
+                                <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#ea4544' }} />
+                                <Text>{user?.first_name || 'Admin'}</Text>
+                            </Space>
+                        </Dropdown>
+                    </Space>
                 </Header>
 
                 {/* Content */}
