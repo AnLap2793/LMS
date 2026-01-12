@@ -1,0 +1,72 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage
+.nyc_output
+__tests__
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+
+# Development
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+README.md
+*.md
+documentation
+.agent
+
+# Build artifacts (will be generated in container)
+dist
+build
+.next
+out
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+.cache
+.temp
+.tmp
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Linting and formatting
+.eslintcache
+.prettierignore
+.prettierrc
+eslint.config.js
+
+# Config files that aren't needed in container
+vitest.config.js
+vite.config.js
+

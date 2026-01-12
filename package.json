@@ -1,0 +1,45 @@
+{
+  "name": "package.json",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:prod": "VITE_APP_ENV=production vite build",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,json,css,md}\"",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@directus/sdk": "^20.3.0",
+    "@tanstack/react-query": "^5.62.0",
+    "antd": "^6.1.3",
+    "prop-types": "^15.8.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.10.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.4.2",
+    "vite": "^7.2.4",
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0"
+  }
+}

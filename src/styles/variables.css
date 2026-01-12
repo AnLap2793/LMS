@@ -1,0 +1,89 @@
+:root {
+  /* Brand Colors - HVN Red #ea4544 */
+  --primary-hue: 359;
+  --primary-sat: 79%;
+  --primary-light: 59%;
+  --color-primary: hsl(var(--primary-hue), var(--primary-sat), var(--primary-light));
+  --color-primary-dark: hsl(var(--primary-hue), var(--primary-sat), 45%);
+  --color-primary-light: hsl(var(--primary-hue), var(--primary-sat), 75%);
+  --color-primary-subtle: hsl(var(--primary-hue), var(--primary-sat), 95%);
+
+  /* Neutral Colors (Slate/Inter) */
+  --color-bg: 0 0% 100%;
+  --color-surface: 210 20% 98%;
+  --color-surface-hover: 210 20% 95%;
+  --color-border: 220 13% 91%;
+  --color-text: 222 47% 11%;
+  --color-text-muted: 215 16% 47%;
+  --color-text-subtle: 215 16% 70%;
+
+  /* Functional Colors */
+  --color-success: 142 76% 36%;
+  --color-warning: 38 92% 50%;
+  --color-error: 345 80% 50%;
+  --color-info: 217 91% 60%;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --space-0_5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-primary: 0 4px 14px 0 hsl(var(--primary-hue) var(--primary-sat) var(--primary-light) / 0.39);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-backdrop: blur(10px);
+
+  /* Transitions */
+  --transition-all: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  --color-bg: 222 47% 11%;
+  --color-surface: 217 33% 17%;
+  --color-surface-hover: 217 33% 20%;
+  --color-border: 217 33% 25%;
+  --color-text: 210 40% 98%;
+  --color-text-muted: 215 20% 65%;
+  --color-text-subtle: 215 20% 45%;
+  
+  --color-primary-subtle: hsl(var(--primary-hue), var(--primary-sat), 20%);
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
