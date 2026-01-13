@@ -19,11 +19,10 @@ import {
     Spin,
 } from 'antd';
 import { PlusOutlined, SaveOutlined, ArrowLeftOutlined, InboxOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { PageHeader } from '../../../../components/common';
+import { PageHeader, LexicalEditor } from '../../../../components/common';
 import { mockTags, mockCourses } from '../../../../mocks';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
 
-const { TextArea } = Input;
 const { Dragger } = Upload;
 
 /**
@@ -38,6 +37,10 @@ function CourseFormPage({ isEdit = false }) {
     const [fetching, setFetching] = useState(false);
     const [autoCalculateDuration, setAutoCalculateDuration] = useState(true);
     const [courseData, setCourseData] = useState(null);
+
+    // State for Lexical editors (since Lexical doesn't work directly with Form.Item)
+    const [description, setDescription] = useState('');
+    const [learningObjectives, setLearningObjectives] = useState('');
 
     // Load course data if editing
     useEffect(() => {
@@ -56,6 +59,10 @@ function CourseFormPage({ isEdit = false }) {
                         tags: tagIds,
                     });
 
+                    // Set Lexical editor values
+                    setDescription(foundCourse.description || '');
+                    setLearningObjectives(foundCourse.learning_objectives || '');
+
                     // Check if duration is auto calculated (mock logic)
                     // In real app, this might be a flag from DB
                     if (foundCourse.duration && foundCourse.duration > 0) {
@@ -73,6 +80,11 @@ function CourseFormPage({ isEdit = false }) {
     const handleSubmit = async () => {
         setLoading(true);
         try {
+            const values = await form.validateFields();
+            // Add Lexical editor values
+            values.description = description;
+            values.learning_objectives = learningObjectives;
+
             // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -91,6 +103,8 @@ function CourseFormPage({ isEdit = false }) {
         try {
             const values = await form.validateFields();
             values.status = 'draft';
+            values.description = description;
+            values.learning_objectives = learningObjectives;
             // In real app, we would call API here directly
             // For now, we reuse handleSubmit which simulates API
             setLoading(true);
@@ -109,6 +123,8 @@ function CourseFormPage({ isEdit = false }) {
         try {
             const values = await form.validateFields();
             values.status = 'published';
+            values.description = description;
+            values.learning_objectives = learningObjectives;
             // In real app, we would call API here directly
             setLoading(true);
             setTimeout(() => {
@@ -168,22 +184,27 @@ function CourseFormPage({ isEdit = false }) {
                             <Input placeholder="VD: Onboarding cho Nhân viên mới" size="large" />
                         </Form.Item>
 
-                        {/* Description */}
-                        <Form.Item
-                            name="description"
-                            label="Mô tả"
-                            rules={[{ max: 2000, message: 'Mô tả tối đa 2000 ký tự' }]}
-                        >
-                            <TextArea placeholder="Mô tả ngắn gọn về khóa học..." rows={4} showCount maxLength={2000} />
+                        {/* Description - Using LexicalEditor */}
+                        <Form.Item label="Mô tả khóa học" help="Sử dụng toolbar để định dạng văn bản">
+                            <LexicalEditor
+                                value={description}
+                                onChange={setDescription}
+                                placeholder="Mô tả ngắn gọn về khóa học..."
+                                size="default"
+                            />
                         </Form.Item>
 
-                        {/* Learning Objectives */}
+                        {/* Learning Objectives - Using LexicalEditor */}
                         <Form.Item
-                            name="learning_objectives"
                             label="Mục tiêu học tập"
-                            extra="Sử dụng Markdown format. VD: - Mục tiêu 1\n- Mục tiêu 2"
+                            help="Liệt kê những gì học viên sẽ đạt được sau khi hoàn thành khóa học"
                         >
-                            <TextArea placeholder="- Hiểu về...\n- Biết cách...\n- Có thể..." rows={4} />
+                            <LexicalEditor
+                                value={learningObjectives}
+                                onChange={setLearningObjectives}
+                                placeholder="- Hiểu về...&#10;- Biết cách...&#10;- Có thể..."
+                                size="default"
+                            />
                         </Form.Item>
                     </Col>
 

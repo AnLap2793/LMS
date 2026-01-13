@@ -98,7 +98,9 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
             okText={isEdit ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
             confirmLoading={loading}
-            width={700}
+            width="90%"
+            style={{ maxWidth: 700 }}
+            centered
             destroyOnClose
         >
             <Form

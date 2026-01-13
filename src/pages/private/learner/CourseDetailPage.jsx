@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Card,
@@ -12,17 +12,16 @@ import {
     List,
     Divider,
     Result,
-    message,
     Statistic,
     Avatar,
     Tabs,
     Rate,
-    Tooltip,
+    Skeleton,
+    Spin,
 } from 'antd';
 import {
     BookOutlined,
     ClockCircleOutlined,
-    UserOutlined,
     PlayCircleOutlined,
     FileTextOutlined,
     FileOutlined,
@@ -31,11 +30,13 @@ import {
     ArrowLeftOutlined,
     TeamOutlined,
     StarFilled,
-    LikeOutlined,
     MessageOutlined,
+    LoadingOutlined,
 } from '@ant-design/icons';
-import { mockCourses, mockEnrollments, mockInstructors, mockReviews, getModulesWithLessons } from '../../../mocks';
+import { useCourseDetail } from '../../../hooks/useCourses';
+import { useEnrollmentByCourse, useEnrollCourse } from '../../../hooks/useEnrollments';
 import { COURSE_DIFFICULTY_MAP, LESSON_TYPE_MAP } from '../../../constants/lms';
+import { getAssetUrl, formatDuration } from '../../../utils/directusHelpers';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -46,42 +47,28 @@ const { Title, Text, Paragraph } = Typography;
 function CourseDetailPage() {
     const { courseId } = useParams();
     const navigate = useNavigate();
-    const [enrolling, setEnrolling] = useState(false);
 
-    // Get course data
-    const course = useMemo(() => {
-        return mockCourses.find(c => c.id === courseId);
-    }, [courseId]);
+    // Fetch course detail
+    const { data: course, isLoading: courseLoading, error: courseError } = useCourseDetail(courseId);
 
-    // Get instructor
-    const instructor = useMemo(() => {
-        if (!course?.instructor_id) return null;
-        return mockInstructors.find(i => i.id === course.instructor_id);
+    // Check enrollment status
+    const { data: enrollment, isLoading: enrollmentLoading } = useEnrollmentByCourse(courseId);
+
+    // Enroll mutation
+    const enrollMutation = useEnrollCourse();
+
+    const isEnrolled = !!enrollment;
+
+    // Process modules from course data
+    const modules = useMemo(() => {
+        if (!course?.modules) return [];
+        return [...course.modules].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     }, [course]);
 
-    // Get reviews
-    const reviews = useMemo(() => {
-        return mockReviews.filter(r => r.course_id === courseId);
-    }, [courseId]);
-
-    // Get modules for this course (with lessons nested)
-    const modules = useMemo(() => {
-        return getModulesWithLessons(courseId);
-    }, [courseId]);
-
-    // Get related courses
-    const relatedCourses = useMemo(() => {
-        if (!course) return [];
-        // Simple logic: same tags or difficulty, exclude current
-        return mockCourses
-            .filter(c => c.id !== courseId && c.tags?.some(t => course.tags?.some(ct => ct.id === t.id)))
-            .slice(0, 3);
-    }, [course, courseId]);
-
-    // Check if user is already enrolled (mock - user u1)
-    const currentUserId = 'u1';
-    const existingEnrollment = mockEnrollments.find(e => e.user_id === currentUserId && e.course_id === courseId);
-    const isEnrolled = !!existingEnrollment;
+    // Flatten tags từ M2M relation
+    const courseTags = useMemo(() => {
+        return course?.tags?.map(t => t.tags_id).filter(Boolean) || [];
+    }, [course]);
 
     // Calculate totals
     const stats = useMemo(() => {
@@ -90,9 +77,10 @@ function CourseDetailPage() {
         let totalQuizzes = 0;
 
         modules.forEach(module => {
-            module.lessons?.forEach(lesson => {
+            const lessons = module.lessons || [];
+            lessons.forEach(lesson => {
                 totalLessons++;
-                totalDuration += lesson.duration || 0;
+                totalDuration += lesson.duration_minutes || 0;
                 if (lesson.type === 'quiz') totalQuizzes++;
             });
         });
@@ -104,17 +92,6 @@ function CourseDetailPage() {
             quizzes: totalQuizzes,
         };
     }, [modules]);
-
-    // Format duration
-    const formatDuration = minutes => {
-        if (!minutes) return '';
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours > 0) {
-            return mins > 0 ? `${hours} giờ ${mins} phút` : `${hours} giờ`;
-        }
-        return `${mins} phút`;
-    };
 
     // Get lesson icon
     const getLessonIcon = type => {
@@ -129,13 +106,13 @@ function CourseDetailPage() {
     };
 
     // Handle enroll
-    const handleEnroll = () => {
-        setEnrolling(true);
-        setTimeout(() => {
-            message.success('Đăng ký khóa học thành công!');
-            setEnrolling(false);
+    const handleEnroll = async () => {
+        try {
+            await enrollMutation.mutateAsync(courseId);
             navigate('/my-courses');
-        }, 1000);
+        } catch {
+            // Error handled by global handler
+        }
     };
 
     // Handle continue learning
@@ -143,7 +120,36 @@ function CourseDetailPage() {
         navigate(`/learn/${courseId}`);
     };
 
-    if (!course) {
+    // Loading state
+    if (courseLoading) {
+        return (
+            <div style={{ padding: 24 }}>
+                <Button
+                    type="text"
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => navigate('/courses')}
+                    style={{ marginBottom: 16 }}
+                >
+                    Quay lại
+                </Button>
+                <Row gutter={24}>
+                    <Col xs={24} lg={16}>
+                        <Card>
+                            <Skeleton active paragraph={{ rows: 6 }} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} lg={8}>
+                        <Card>
+                            <Skeleton active paragraph={{ rows: 4 }} />
+                        </Card>
+                    </Col>
+                </Row>
+            </div>
+        );
+    }
+
+    // Error or not found
+    if (courseError || !course) {
         return (
             <Result
                 status="404"
@@ -159,6 +165,7 @@ function CourseDetailPage() {
     }
 
     const difficultyConfig = COURSE_DIFFICULTY_MAP[course.difficulty] || {};
+    const thumbnailUrl = getAssetUrl(course.thumbnail);
 
     const items = [
         {
@@ -168,39 +175,48 @@ function CourseDetailPage() {
                 <div style={{ marginTop: 16 }}>
                     {modules.length > 0 ? (
                         <Collapse accordion defaultActiveKey={modules[0]?.id} expandIconPlacement="end">
-                            {modules.map((module, index) => (
-                                <Collapse.Panel
-                                    key={module.id}
-                                    header={
-                                        <Space>
-                                            <Avatar size="small" style={{ backgroundColor: '#ea4544' }}>
-                                                {index + 1}
-                                            </Avatar>
-                                            <Text strong>{module.title}</Text>
-                                            <Tag>{module.lessons?.length || 0} bài</Tag>
-                                        </Space>
-                                    }
-                                >
-                                    <List
-                                        dataSource={module.lessons || []}
-                                        renderItem={lesson => (
-                                            <List.Item style={{ padding: '12px 0' }}>
-                                                <Space style={{ width: '100%' }}>
-                                                    {getLessonIcon(lesson.type)}
-                                                    <div style={{ flex: 1 }}>
-                                                        <Text>{lesson.title}</Text>
-                                                        <br />
-                                                        <Text type="secondary" style={{ fontSize: 12 }}>
-                                                            {LESSON_TYPE_MAP[lesson.type]?.label}
-                                                            {lesson.duration && ` • ${lesson.duration} phút`}
-                                                        </Text>
-                                                    </div>
-                                                </Space>
-                                            </List.Item>
-                                        )}
-                                    />
-                                </Collapse.Panel>
-                            ))}
+                            {modules.map((module, index) => {
+                                const lessons = module.lessons || [];
+                                return (
+                                    <Collapse.Panel
+                                        key={module.id}
+                                        header={
+                                            <Space>
+                                                <Avatar size="small" style={{ backgroundColor: '#ea4544' }}>
+                                                    {index + 1}
+                                                </Avatar>
+                                                <Text strong>{module.title}</Text>
+                                                <Tag>{lessons.length} bài</Tag>
+                                            </Space>
+                                        }
+                                    >
+                                        <List
+                                            dataSource={lessons}
+                                            renderItem={lesson => (
+                                                <List.Item style={{ padding: '12px 0' }}>
+                                                    <Space style={{ width: '100%' }}>
+                                                        {getLessonIcon(lesson.type)}
+                                                        <div style={{ flex: 1 }}>
+                                                            <Text>{lesson.title}</Text>
+                                                            <br />
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                                {LESSON_TYPE_MAP[lesson.type]?.label}
+                                                                {lesson.duration_minutes &&
+                                                                    ` • ${lesson.duration_minutes} phút`}
+                                                            </Text>
+                                                        </div>
+                                                        {lesson.is_preview && (
+                                                            <Tag color="blue" style={{ fontSize: 11 }}>
+                                                                Xem trước
+                                                            </Tag>
+                                                        )}
+                                                    </Space>
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </Collapse.Panel>
+                                );
+                            })}
                         </Collapse>
                     ) : (
                         <Text type="secondary">Chưa có nội dung</Text>
@@ -210,36 +226,14 @@ function CourseDetailPage() {
         },
         {
             key: 'reviews',
-            label: `Đánh giá (${reviews.length})`,
+            label: 'Đánh giá',
             children: (
                 <div style={{ marginTop: 16 }}>
-                    {reviews.length > 0 ? (
-                        <List
-                            itemLayout="vertical"
-                            dataSource={reviews}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        avatar={<Avatar src={item.user_avatar}>{item.user_name[0]}</Avatar>}
-                                        title={
-                                            <Space>
-                                                <Text strong>{item.user_name}</Text>
-                                                <Rate disabled defaultValue={item.rating} style={{ fontSize: 14 }} />
-                                            </Space>
-                                        }
-                                        description={new Date(item.date).toLocaleDateString('vi-VN')}
-                                    />
-                                    <Paragraph>{item.content}</Paragraph>
-                                </List.Item>
-                            )}
-                        />
-                    ) : (
-                        <Result
-                            icon={<MessageOutlined />}
-                            title="Chưa có đánh giá nào"
-                            subTitle="Hãy là người đầu tiên đánh giá khóa học này!"
-                        />
-                    )}
+                    <Result
+                        icon={<MessageOutlined />}
+                        title="Chưa có đánh giá nào"
+                        subTitle="Hãy là người đầu tiên đánh giá khóa học này!"
+                    />
                 </div>
             ),
         },
@@ -265,7 +259,7 @@ function CourseDetailPage() {
                         <Space direction="vertical" size={16} style={{ width: '100%' }}>
                             {/* Tags */}
                             <Space wrap>
-                                {course.tags?.map(tag => (
+                                {courseTags.map(tag => (
                                     <Tag key={tag.id} color={tag.color}>
                                         {tag.name}
                                     </Tag>
@@ -289,7 +283,7 @@ function CourseDetailPage() {
                             <Space split={<Divider type="vertical" />} wrap>
                                 <Space>
                                     <ClockCircleOutlined />
-                                    <Text>{formatDuration(stats.duration || course.duration)}</Text>
+                                    <Text>{formatDuration(stats.duration) || `${course.duration_hours || 0} giờ`}</Text>
                                 </Space>
                                 <Space>
                                     <BookOutlined />
@@ -298,10 +292,6 @@ function CourseDetailPage() {
                                 <Space>
                                     <TeamOutlined />
                                     <Text>{course.enrollments_count || 0} học viên</Text>
-                                </Space>
-                                <Space>
-                                    <StarFilled style={{ color: '#faad14' }} />
-                                    <Text>4.8 (120 đánh giá)</Text>
                                 </Space>
                             </Space>
                         </Space>
@@ -331,47 +321,6 @@ function CourseDetailPage() {
                     <Card style={{ marginBottom: 24 }}>
                         <Tabs defaultActiveKey="content" items={items} />
                     </Card>
-
-                    {/* Related Courses */}
-                    {relatedCourses.length > 0 && (
-                        <div style={{ marginTop: 40 }}>
-                            <Title level={4} style={{ marginBottom: 24 }}>
-                                Khóa học liên quan
-                            </Title>
-                            <Row gutter={[24, 24]}>
-                                {relatedCourses.map(rc => (
-                                    <Col xs={24} sm={12} md={8} key={rc.id}>
-                                        <Card
-                                            hoverable
-                                            cover={
-                                                <div
-                                                    style={{
-                                                        height: 140,
-                                                        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                    }}
-                                                >
-                                                    <BookOutlined style={{ fontSize: 40, color: '#888' }} />
-                                                </div>
-                                            }
-                                            onClick={() => navigate(`/course/${rc.id}`)}
-                                        >
-                                            <Card.Meta
-                                                title={rc.title}
-                                                description={
-                                                    <Space>
-                                                        <TeamOutlined /> {rc.enrollments_count}
-                                                    </Space>
-                                                }
-                                            />
-                                        </Card>
-                                    </Col>
-                                ))}
-                            </Row>
-                        </div>
-                    )}
                 </Col>
 
                 {/* Sidebar */}
@@ -382,7 +331,9 @@ function CourseDetailPage() {
                         <div
                             style={{
                                 height: 180,
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                background: thumbnailUrl
+                                    ? `url(${thumbnailUrl}) center/cover`
+                                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                 borderRadius: 8,
                                 display: 'flex',
                                 alignItems: 'center',
@@ -390,7 +341,7 @@ function CourseDetailPage() {
                                 marginBottom: 24,
                             }}
                         >
-                            <BookOutlined style={{ fontSize: 64, color: 'rgba(255,255,255,0.9)' }} />
+                            {!thumbnailUrl && <BookOutlined style={{ fontSize: 64, color: 'rgba(255,255,255,0.9)' }} />}
                         </div>
 
                         {/* Stats */}
@@ -404,7 +355,7 @@ function CourseDetailPage() {
                             <Col span={12}>
                                 <Statistic
                                     title="Thời lượng"
-                                    value={formatDuration(stats.duration || course.duration)}
+                                    value={formatDuration(stats.duration) || `${course.duration_hours || 0}h`}
                                     prefix={<ClockCircleOutlined />}
                                 />
                             </Col>
@@ -416,14 +367,18 @@ function CourseDetailPage() {
                         <Divider />
 
                         {/* Action button */}
-                        {isEnrolled ? (
+                        {enrollmentLoading ? (
+                            <div style={{ textAlign: 'center', padding: 16 }}>
+                                <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
+                            </div>
+                        ) : isEnrolled ? (
                             <Space direction="vertical" style={{ width: '100%' }}>
                                 <Tag
                                     color="success"
                                     icon={<CheckCircleOutlined />}
                                     style={{ width: '100%', textAlign: 'center', padding: '8px' }}
                                 >
-                                    Đã đăng ký • Tiến độ {existingEnrollment.progress_percentage}%
+                                    Đã đăng ký • Tiến độ {enrollment.progress_percentage || 0}%
                                 </Tag>
                                 <Button
                                     type="primary"
@@ -436,7 +391,13 @@ function CourseDetailPage() {
                                 </Button>
                             </Space>
                         ) : (
-                            <Button type="primary" size="large" block loading={enrolling} onClick={handleEnroll}>
+                            <Button
+                                type="primary"
+                                size="large"
+                                block
+                                loading={enrollMutation.isPending}
+                                onClick={handleEnroll}
+                            >
                                 Đăng ký khóa học
                             </Button>
                         )}
@@ -448,55 +409,6 @@ function CourseDetailPage() {
                             </Text>
                         </div>
                     </Card>
-
-                    {/* Instructor Info */}
-                    {instructor && courseId !== '1' && (
-                        <Card title="Giảng viên" style={{ marginBottom: 24 }}>
-                            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                                <Avatar
-                                    size={80}
-                                    src={instructor.avatar}
-                                    style={{ marginBottom: 12, border: '2px solid #f0f0f0' }}
-                                >
-                                    {instructor.name[0]}
-                                </Avatar>
-                                <Title level={4} style={{ margin: 0 }}>
-                                    {instructor.name}
-                                </Title>
-                                <Text type="secondary">{instructor.job_title}</Text>
-                            </div>
-
-                            <Paragraph ellipsis={{ rows: 3, expandable: true, symbol: 'Xem thêm' }}>
-                                {instructor.bio}
-                            </Paragraph>
-
-                            <Row gutter={16} style={{ textAlign: 'center', marginTop: 16 }}>
-                                <Col span={8}>
-                                    <Statistic
-                                        title="Khóa học"
-                                        value={instructor.course_count}
-                                        valueStyle={{ fontSize: 16 }}
-                                    />
-                                </Col>
-                                <Col span={8}>
-                                    <Statistic
-                                        title="Học viên"
-                                        value={instructor.student_count}
-                                        valueStyle={{ fontSize: 16 }}
-                                        formatter={value => `${value > 1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
-                                    />
-                                </Col>
-                                <Col span={8}>
-                                    <Statistic
-                                        title="Đánh giá"
-                                        value={instructor.rating}
-                                        valueStyle={{ fontSize: 16 }}
-                                        prefix={<StarFilled style={{ color: '#faad14', fontSize: 14 }} />}
-                                    />
-                                </Col>
-                            </Row>
-                        </Card>
-                    )}
                 </Col>
             </Row>
         </div>

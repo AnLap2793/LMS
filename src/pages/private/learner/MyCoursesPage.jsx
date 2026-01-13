@@ -1,6 +1,21 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Row, Col, Progress, Tag, Space, Typography, Tabs, Input, Empty, Button, Statistic, Divider } from 'antd';
+import {
+    Card,
+    Row,
+    Col,
+    Progress,
+    Tag,
+    Space,
+    Typography,
+    Tabs,
+    Input,
+    Empty,
+    Button,
+    Statistic,
+    Divider,
+    Skeleton,
+} from 'antd';
 import {
     BookOutlined,
     ClockCircleOutlined,
@@ -14,10 +29,11 @@ import {
     ArrowRightOutlined,
     FlagOutlined,
 } from '@ant-design/icons';
-import { mockEnrollments, mockLearningPaths } from '../../../mocks';
-import { ENROLLMENT_STATUS_OPTIONS } from '../../../constants/lms';
+import { useMyEnrollments, useMyEnrollmentStats } from '../../../hooks/useEnrollments';
+import { ENROLLMENT_STATUS_OPTIONS, COURSE_DIFFICULTY_MAP } from '../../../constants/lms';
+import { getAssetUrl, formatDate, formatDuration } from '../../../utils/directusHelpers';
 
-const { Text, Title } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 /**
  * My Courses Page
@@ -28,36 +44,21 @@ function MyCoursesPage() {
     const [activeTab, setActiveTab] = useState('all');
     const [searchText, setSearchText] = useState('');
 
-    // Simulate current user's enrollments (user u1)
-    const currentUserId = 'u1';
-    const userEnrollments = mockEnrollments.filter(e => e.user_id === currentUserId);
+    // Fetch enrollments từ API
+    const {
+        data: enrollments = [],
+        isLoading: enrollmentsLoading,
+        error: enrollmentsError,
+    } = useMyEnrollments({
+        status: activeTab !== 'all' ? activeTab : undefined,
+        search: searchText || undefined,
+    });
 
-    // Mock: User enrolled learning paths (first 2 for demo)
-    const userLearningPaths = mockLearningPaths.filter(p => p.status === 'published').slice(0, 2);
+    // Fetch stats
+    const { data: stats = {}, isLoading: statsLoading } = useMyEnrollmentStats();
 
-    // Statistics
-    const stats = useMemo(() => {
-        const total = userEnrollments.length;
-        const completed = userEnrollments.filter(e => e.status === 'completed').length;
-        const inProgress = userEnrollments.filter(e => e.status === 'in_progress').length;
-        const assigned = userEnrollments.filter(e => e.status === 'assigned').length;
-        return { total, completed, inProgress, assigned, paths: userLearningPaths.length };
-    }, [userEnrollments, userLearningPaths]);
-
-    // Filtered enrollments
-    const filteredEnrollments = useMemo(() => {
-        let filtered = userEnrollments;
-
-        if (activeTab !== 'all') {
-            filtered = filtered.filter(e => e.status === activeTab);
-        }
-
-        if (searchText.trim()) {
-            filtered = filtered.filter(e => e.course?.title?.toLowerCase().includes(searchText.toLowerCase()));
-        }
-
-        return filtered;
-    }, [userEnrollments, activeTab, searchText]);
+    // TODO: Fetch learning paths khi có service
+    const userLearningPaths = [];
 
     // Get days until deadline
     const getDaysUntilDeadline = dueDate => {
@@ -68,17 +69,6 @@ function MyCoursesPage() {
         return diff;
     };
 
-    // Format duration
-    const formatDuration = minutes => {
-        if (!minutes) return '';
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours > 0) {
-            return mins > 0 ? `${hours}h ${mins}p` : `${hours}h`;
-        }
-        return `${mins}p`;
-    };
-
     // Get status config
     const getStatusConfig = status => {
         return ENROLLMENT_STATUS_OPTIONS.find(s => s.value === status) || { label: status, color: 'default' };
@@ -86,7 +76,8 @@ function MyCoursesPage() {
 
     // Handle continue learning
     const handleContinueLearning = enrollment => {
-        navigate(`/learn/${enrollment.course_id}`);
+        const courseId = enrollment.course?.id || enrollment.course_id;
+        navigate(`/learn/${courseId}`);
     };
 
     // Handle path click
@@ -100,7 +91,7 @@ function MyCoursesPage() {
             key: 'all',
             label: (
                 <span>
-                    Tất cả <Tag>{stats.total}</Tag>
+                    Tất cả <Tag>{stats.total || 0}</Tag>
                 </span>
             ),
         },
@@ -108,7 +99,7 @@ function MyCoursesPage() {
             key: 'in_progress',
             label: (
                 <span>
-                    Đang học <Tag color="processing">{stats.inProgress}</Tag>
+                    Đang học <Tag color="processing">{stats.inProgress || 0}</Tag>
                 </span>
             ),
         },
@@ -116,7 +107,7 @@ function MyCoursesPage() {
             key: 'assigned',
             label: (
                 <span>
-                    Chưa bắt đầu <Tag>{stats.assigned}</Tag>
+                    Chưa bắt đầu <Tag>{stats.assigned || 0}</Tag>
                 </span>
             ),
         },
@@ -124,7 +115,7 @@ function MyCoursesPage() {
             key: 'completed',
             label: (
                 <span>
-                    Hoàn thành <Tag color="success">{stats.completed}</Tag>
+                    Hoàn thành <Tag color="success">{stats.completed || 0}</Tag>
                 </span>
             ),
         },
@@ -132,11 +123,17 @@ function MyCoursesPage() {
 
     // Render course card
     const renderCourseCard = enrollment => {
+        const course = enrollment.course;
         const days = getDaysUntilDeadline(enrollment.due_date);
         const statusConfig = getStatusConfig(enrollment.status);
         const isCompleted = enrollment.status === 'completed';
         const isUrgent = days !== null && days <= 3 && days >= 0 && !isCompleted;
         const isOverdue = days !== null && days < 0 && !isCompleted;
+        const thumbnailUrl = getAssetUrl(course?.thumbnail);
+        const difficultyConfig = COURSE_DIFFICULTY_MAP[course?.difficulty] || {};
+
+        // Flatten tags từ M2M relation
+        const courseTags = course?.tags?.map(t => t.tags_id).filter(Boolean) || [];
 
         return (
             <Col xs={24} sm={12} lg={8} key={enrollment.id}>
@@ -150,20 +147,34 @@ function MyCoursesPage() {
                     cover={
                         <div
                             style={{
-                                height: 140,
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                height: 160,
+                                background: thumbnailUrl
+                                    ? `url(${thumbnailUrl}) center/cover`
+                                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 position: 'relative',
                             }}
                         >
-                            <BookOutlined style={{ fontSize: 48, color: 'rgba(255,255,255,0.8)' }} />
+                            {!thumbnailUrl && <BookOutlined style={{ fontSize: 48, color: 'rgba(255,255,255,0.8)' }} />}
 
+                            {/* Status tag ở góc trên bên phải */}
                             <Tag color={statusConfig.color} style={{ position: 'absolute', top: 12, right: 12 }}>
                                 {statusConfig.label}
                             </Tag>
 
+                            {/* Difficulty tag ở góc trên bên trái (nếu có) */}
+                            {course?.difficulty && (
+                                <Tag
+                                    color={difficultyConfig.color}
+                                    style={{ position: 'absolute', top: 12, left: 12 }}
+                                >
+                                    {difficultyConfig.label}
+                                </Tag>
+                            )}
+
+                            {/* Completed banner */}
                             {isCompleted && (
                                 <div
                                     style={{
@@ -186,18 +197,6 @@ function MyCoursesPage() {
                             )}
                         </div>
                     }
-                    actions={[
-                        <Button
-                            type={isCompleted ? 'default' : 'primary'}
-                            icon={isCompleted ? <CheckCircleOutlined /> : <PlayCircleOutlined />}
-                            onClick={e => {
-                                e.stopPropagation();
-                                handleContinueLearning(enrollment);
-                            }}
-                        >
-                            {isCompleted ? 'Xem lại' : enrollment.status === 'assigned' ? 'Bắt đầu học' : 'Tiếp tục'}
-                        </Button>,
-                    ]}
                 >
                     <Card.Meta
                         title={
@@ -210,66 +209,113 @@ function MyCoursesPage() {
                                     overflow: 'hidden',
                                 }}
                             >
-                                {enrollment.course?.title}
+                                {course?.title}
                             </Text>
                         }
                         description={
-                            <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                                {!isCompleted && (
-                                    <div>
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                marginBottom: 4,
-                                            }}
-                                        >
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                Tiến độ
-                                            </Text>
-                                            <Text style={{ fontSize: 12 }}>{enrollment.progress_percentage}%</Text>
-                                        </div>
-                                        <Progress
-                                            percent={enrollment.progress_percentage}
-                                            showInfo={false}
-                                            strokeColor="#ea4544"
-                                            size="small"
-                                        />
-                                    </div>
-                                )}
+                            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                {/* Progress bar - luôn render để đảm bảo layout nhất quán */}
+                                <div style={{ minHeight: 32 }}>
+                                    {!isCompleted ? (
+                                        <>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    marginBottom: 4,
+                                                }}
+                                            >
+                                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                                    Tiến độ
+                                                </Text>
+                                                <Text style={{ fontSize: 12 }}>{enrollment.progress_percentage || 0}%</Text>
+                                            </div>
+                                            <Progress
+                                                percent={enrollment.progress_percentage || 0}
+                                                showInfo={false}
+                                                strokeColor="#ea4544"
+                                                size="small"
+                                            />
+                                        </>
+                                    ) : (
+                                        <div style={{ height: 32 }} />
+                                    )}
+                                </div>
 
+                                {/* Tags và Duration cùng hàng */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    {/* Tags bên trái */}
+                                    {courseTags.length > 0 ? (
+                                        <Space wrap size={[4, 4]}>
+                                            {courseTags.slice(0, 3).map(tag => (
+                                                <Tag key={tag.id} color={tag.color} style={{ fontSize: 11 }}>
+                                                    {tag.name}
+                                                </Tag>
+                                            ))}
+                                        </Space>
+                                    ) : (
+                                        <div />
+                                    )}
+
+                                    {/* Duration bên phải */}
+                                    {course?.duration_hours && (
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            <ClockCircleOutlined /> {formatDuration(course.duration_hours * 60)}
+                                        </Text>
+                                    )}
+                                </div>
+
+                                {/* Meta info: Due date/Status */}
                                 {enrollment.due_date && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         {isOverdue ? (
                                             <>
-                                                <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+                                                <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: 12 }} />
                                                 <Text type="danger" style={{ fontSize: 12 }}>
                                                     Quá hạn {Math.abs(days)} ngày
                                                 </Text>
                                             </>
                                         ) : isUrgent ? (
                                             <>
-                                                <ClockCircleOutlined style={{ color: '#faad14' }} />
+                                                <ClockCircleOutlined style={{ color: '#faad14', fontSize: 12 }} />
                                                 <Text style={{ color: '#faad14', fontSize: 12 }}>Còn {days} ngày</Text>
                                             </>
                                         ) : isCompleted ? (
                                             <>
-                                                <TrophyOutlined style={{ color: '#52c41a' }} />
+                                                <TrophyOutlined style={{ color: '#52c41a', fontSize: 12 }} />
                                                 <Text type="success" style={{ fontSize: 12 }}>
-                                                    Hoàn thành{' '}
-                                                    {new Date(enrollment.completed_at).toLocaleDateString('vi-VN')}
+                                                    Hoàn thành
                                                 </Text>
                                             </>
                                         ) : (
                                             <>
-                                                <ClockCircleOutlined style={{ color: '#999' }} />
+                                                <ClockCircleOutlined style={{ color: '#999', fontSize: 12 }} />
                                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    Hạn: {new Date(enrollment.due_date).toLocaleDateString('vi-VN')}
+                                                    Hạn: {formatDate(enrollment.due_date)}
                                                 </Text>
                                             </>
                                         )}
                                     </div>
                                 )}
+
+                                {/* Action button */}
+                                <div style={{ marginTop: 4, textAlign: 'center' }}>
+                                    <Button
+                                        type={isCompleted ? 'default' : 'primary'}
+                                        size="middle"
+                                        icon={isCompleted ? <CheckCircleOutlined /> : <PlayCircleOutlined />}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            handleContinueLearning(enrollment);
+                                        }}
+                                    >
+                                        {isCompleted
+                                            ? 'Xem lại'
+                                            : enrollment.status === 'assigned'
+                                              ? 'Bắt đầu học'
+                                              : 'Tiếp tục'}
+                                    </Button>
+                                </div>
                             </Space>
                         }
                     />
@@ -343,6 +389,19 @@ function MyCoursesPage() {
         );
     };
 
+    // Loading skeleton
+    const renderSkeleton = () => (
+        <Row gutter={[16, 16]}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+                <Col xs={24} sm={12} lg={8} key={i}>
+                    <Card>
+                        <Skeleton active />
+                    </Card>
+                </Col>
+            ))}
+        </Row>
+    );
+
     return (
         <div>
             {/* Header */}
@@ -359,7 +418,7 @@ function MyCoursesPage() {
                     <Card size="small">
                         <Statistic
                             title="Tổng khóa học"
-                            value={stats.total}
+                            value={statsLoading ? '-' : stats.total || 0}
                             prefix={<BookOutlined style={{ color: '#1890ff' }} />}
                         />
                     </Card>
@@ -368,7 +427,7 @@ function MyCoursesPage() {
                     <Card size="small">
                         <Statistic
                             title="Đang học"
-                            value={stats.inProgress}
+                            value={statsLoading ? '-' : stats.inProgress || 0}
                             valueStyle={{ color: '#1890ff' }}
                             prefix={<PlayCircleOutlined />}
                         />
@@ -378,7 +437,7 @@ function MyCoursesPage() {
                     <Card size="small">
                         <Statistic
                             title="Hoàn thành"
-                            value={stats.completed}
+                            value={statsLoading ? '-' : stats.completed || 0}
                             valueStyle={{ color: '#52c41a' }}
                             prefix={<CheckCircleOutlined />}
                         />
@@ -388,7 +447,7 @@ function MyCoursesPage() {
                     <Card size="small">
                         <Statistic
                             title="Lộ trình"
-                            value={stats.paths}
+                            value={userLearningPaths.length}
                             valueStyle={{ color: '#eb2f96' }}
                             prefix={<RocketOutlined />}
                         />
@@ -451,8 +510,21 @@ function MyCoursesPage() {
             </Card>
 
             {/* Course Grid */}
-            {filteredEnrollments.length > 0 ? (
-                <Row gutter={[16, 16]}>{filteredEnrollments.map(enrollment => renderCourseCard(enrollment))}</Row>
+            {enrollmentsLoading ? (
+                renderSkeleton()
+            ) : enrollmentsError ? (
+                <Card>
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="Không thể tải danh sách khóa học. Vui lòng thử lại sau."
+                    >
+                        <Button type="primary" onClick={() => window.location.reload()}>
+                            Tải lại
+                        </Button>
+                    </Empty>
+                </Card>
+            ) : enrollments.length > 0 ? (
+                <Row gutter={[16, 16]}>{enrollments.map(enrollment => renderCourseCard(enrollment))}</Row>
             ) : (
                 <Card>
                     <Empty

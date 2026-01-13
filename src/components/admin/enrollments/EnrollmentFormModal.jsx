@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Modal, Form, Select, DatePicker, Row, Col, Divider, Alert, Typography } from 'antd';
+import { Modal, Form, Select, DatePicker, Row, Col, Divider, Alert, Typography, Avatar, Space } from 'antd';
 import { UserOutlined, BookOutlined, CalendarOutlined } from '@ant-design/icons';
 import { mockCourses, mockUsers, getUserFullName } from '../../../mocks';
 import { ENROLLMENT_STATUS_OPTIONS } from '../../../constants/lms';
@@ -60,6 +60,81 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
         }
     };
 
+    // Custom option render for courses with thumbnail
+    const renderCourseOption = course => (
+        <Space>
+            <Avatar
+                size={32}
+                src={course.thumbnail}
+                icon={!course.thumbnail && <BookOutlined />}
+                shape="square"
+                style={{
+                    backgroundColor: !course.thumbnail ? '#1890ff' : undefined,
+                    borderRadius: 4,
+                }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
+                <span style={{ fontWeight: 500 }}>{course.title}</span>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    {course.duration} phút • {course.modules_count || 0} modules
+                </Text>
+            </div>
+        </Space>
+    );
+
+    // Custom option render for users with avatar
+    const renderUserOption = user => (
+        <Space>
+            <Avatar
+                size={32}
+                src={user.avatar}
+                icon={!user.avatar && <UserOutlined />}
+                style={{ backgroundColor: !user.avatar ? '#ea4544' : undefined }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
+                <span style={{ fontWeight: 500 }}>{getUserFullName(user)}</span>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    {user.email}
+                </Text>
+            </div>
+        </Space>
+    );
+
+    // Custom tag render for selected users (multiple mode)
+    const tagRender = props => {
+        const { value, closable, onClose } = props;
+        const user = availableUsers.find(u => u.id === value);
+        if (!user) return null;
+
+        return (
+            <span
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px 2px 4px',
+                    background: '#f5f5f5',
+                    borderRadius: 4,
+                    marginRight: 4,
+                    marginBottom: 4,
+                }}
+            >
+                <Avatar
+                    size={20}
+                    src={user.avatar}
+                    icon={!user.avatar && <UserOutlined />}
+                    style={{ backgroundColor: !user.avatar ? '#ea4544' : undefined }}
+                />
+                <span style={{ fontSize: 13 }}>{getUserFullName(user)}</span>
+                {closable && (
+                    <span onClick={onClose} style={{ cursor: 'pointer', marginLeft: 4, color: '#999' }}>
+                        ×
+                    </span>
+                )}
+            </span>
+        );
+    };
+
     return (
         <Modal
             title={isEdit ? 'Chỉnh sửa Đăng ký' : 'Gán Khóa học'}
@@ -69,7 +144,9 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
             okText={isEdit ? 'Cập nhật' : 'Gán khóa học'}
             cancelText="Hủy"
             confirmLoading={loading}
-            width={600}
+            width="90%"
+            style={{ maxWidth: 600 }}
+            centered
             destroyOnClose
         >
             <Form
@@ -92,7 +169,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
                     Thông tin đăng ký
                 </Divider>
 
-                {/* Course Selection */}
+                {/* Course Selection with thumbnail */}
                 <Form.Item
                     name="course_id"
                     label="Khóa học"
@@ -106,8 +183,11 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
                         options={availableCourses.map(c => ({
                             value: c.id,
                             label: c.title,
+                            course: c,
                         }))}
+                        optionRender={option => renderCourseOption(option.data.course)}
                         suffixIcon={<BookOutlined />}
+                        listHeight={300}
                     />
                 </Form.Item>
 
@@ -126,8 +206,11 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
                             options={availableUsers.map(u => ({
                                 value: u.id,
                                 label: `${getUserFullName(u)} - ${u.email}`,
+                                user: u,
                             }))}
+                            optionRender={option => renderUserOption(option.data.user)}
                             suffixIcon={<UserOutlined />}
+                            listHeight={300}
                         />
                     </Form.Item>
                 ) : (
@@ -147,15 +230,18 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
                             options={availableUsers.map(u => ({
                                 value: u.id,
                                 label: `${getUserFullName(u)} - ${u.email}`,
+                                user: u,
                             }))}
-                            maxTagCount={3}
-                            maxTagPlaceholder={omittedValues => `+${omittedValues.length} người khác`}
+                            optionRender={option => renderUserOption(option.data.user)}
+                            tagRender={tagRender}
+                            listHeight={300}
+                            maxTagCount="responsive"
                         />
                     </Form.Item>
                 )}
 
                 <Row gutter={16}>
-                    <Col span={12}>
+                    <Col xs={24} sm={12}>
                         <Form.Item name="due_date" label="Hạn hoàn thành" extra="Để trống nếu không giới hạn thời gian">
                             <DatePicker
                                 format="DD/MM/YYYY"
@@ -166,7 +252,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} sm={12}>
                         {isEdit && (
                             <Form.Item name="status" label="Trạng thái">
                                 <Select

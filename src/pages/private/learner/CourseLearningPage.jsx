@@ -63,7 +63,21 @@ function CourseLearningPage() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebarVisible, setMobileSidebarVisible] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [completedLessons, setCompletedLessons] = useState(['l1', 'l2']); // Mock completed (first 2 lessons)
+
+    // Load completedLessons from localStorage (per course)
+    const [completedLessons, setCompletedLessons] = useState(() => {
+        const storageKey = `lms_completed_lessons_${courseId}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch {
+                return [];
+            }
+        }
+        // Default mock data for demo (first 2 lessons completed)
+        return ['l1', 'l2'];
+    });
     const [currentLesson, setCurrentLesson] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -112,12 +126,6 @@ function CourseLearningPage() {
         return allLessons.findIndex(l => l.id === currentLesson.id);
     }, [currentLesson, allLessons]);
 
-    // Navigation helpers
-    const hasPrevious = currentLessonIndex > 0;
-    const hasNext = currentLessonIndex < allLessons.length - 1;
-    const previousLesson = hasPrevious ? allLessons[currentLessonIndex - 1] : null;
-    const nextLesson = hasNext ? allLessons[currentLessonIndex + 1] : null;
-
     // Check if a lesson is locked (must complete previous lessons first)
     const isLessonLocked = lessonId => {
         const lessonIndex = allLessons.findIndex(l => l.id === lessonId);
@@ -131,6 +139,21 @@ function CourseLearningPage() {
         }
         return false;
     };
+
+    // Navigation helpers
+    const hasPrevious = currentLessonIndex > 0;
+    const hasNext = currentLessonIndex < allLessons.length - 1;
+    const previousLesson = hasPrevious ? allLessons[currentLessonIndex - 1] : null;
+    const nextLesson = hasNext ? allLessons[currentLessonIndex + 1] : null;
+
+    // Check if next lesson is locked
+    const isNextLessonLocked = nextLesson ? isLessonLocked(nextLesson.id) : false;
+
+    // Persist completedLessons to localStorage whenever it changes
+    useEffect(() => {
+        const storageKey = `lms_completed_lessons_${courseId}`;
+        localStorage.setItem(storageKey, JSON.stringify(completedLessons));
+    }, [completedLessons, courseId]);
 
     // Get the first unlocked incomplete lesson
     const getFirstUnlockedLesson = () => {
@@ -213,8 +236,6 @@ function CourseLearningPage() {
     const handleNext = () => {
         if (nextLesson && !isLessonLocked(nextLesson.id)) {
             handleLessonClick(nextLesson);
-        } else if (nextLesson && isLessonLocked(nextLesson.id)) {
-            message.warning('Vui lòng hoàn thành bài học hiện tại trước!');
         }
     };
 
@@ -824,17 +845,19 @@ function CourseLearningPage() {
                         {isCompleted ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
                     </Button>
 
-                    <Button
-                        type="primary"
-                        ghost
-                        size="large"
-                        icon={<ArrowRightOutlined />}
-                        iconPosition="end"
-                        disabled={!hasNext}
-                        onClick={handleNext}
-                    >
-                        Bài tiếp theo
-                    </Button>
+                    <Tooltip title={isNextLessonLocked ? 'Hoàn thành bài hiện tại để mở khóa' : ''}>
+                        <Button
+                            type="primary"
+                            ghost
+                            size="large"
+                            icon={isNextLessonLocked ? <LockOutlined /> : <ArrowRightOutlined />}
+                            iconPosition="end"
+                            disabled={!hasNext || isNextLessonLocked}
+                            onClick={handleNext}
+                        >
+                            Bài tiếp theo
+                        </Button>
+                    </Tooltip>
                 </div>
 
                 {/* Tabs Area */}
@@ -894,7 +917,7 @@ function CourseLearningPage() {
                 placement="left"
                 onClose={() => setMobileSidebarVisible(false)}
                 open={mobileSidebarVisible}
-                bodyStyle={{ padding: 0 }}
+                style={{ padding: 0 }}
                 width={320}
                 className="mobile-sidebar"
             >

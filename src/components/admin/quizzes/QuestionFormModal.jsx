@@ -84,7 +84,9 @@ function QuestionFormModal({ open, onCancel, onSubmit, initialValues }) {
             okText={isEditing ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
             destroyOnClose
-            width={700}
+            width="90%"
+            style={{ maxWidth: 700 }}
+            centered
         >
             <Form form={form} layout="vertical">
                 <Form.Item

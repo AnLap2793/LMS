@@ -47,6 +47,9 @@ function TagFormModal({ open, onCancel, onSubmit, initialValues, loading }) {
             okText={isEditing ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
             confirmLoading={loading}
+            width="90%"
+            style={{ maxWidth: 520 }}
+            centered
             destroyOnClose
         >
             <Form

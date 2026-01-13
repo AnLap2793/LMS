@@ -50,7 +50,9 @@ function UserFormModal({ open, onCancel, onSave, initialValues, loading }) {
             okText={isEdit ? 'Cập nhật' : 'Thêm mới'}
             cancelText="Hủy"
             confirmLoading={loading}
-            width={600}
+            width="90%"
+            style={{ maxWidth: 600 }}
+            centered
             destroyOnClose
         >
             <Form

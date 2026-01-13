@@ -1,0 +1,441 @@
+/**
+ * Responsive Utilities CSS
+ * Ant Design Standard Breakpoints:
+ * - xs: < 576px (Mobile small)
+ * - sm: >= 576px (Mobile large)
+ * - md: >= 768px (Tablet)
+ * - lg: >= 992px (Desktop small)
+ * - xl: >= 1200px (Desktop)
+ * - xxl: >= 1600px (Desktop large)
+ */
+
+/* ============================================
+   DISPLAY UTILITIES
+   ============================================ */
+
+/* Hide on specific breakpoints */
+@media (max-width: 575px) {
+    .hidden-xs {
+        display: none !important;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+    .hidden-sm {
+        display: none !important;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .hidden-md {
+        display: none !important;
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .hidden-lg {
+        display: none !important;
+    }
+}
+
+@media (min-width: 1200px) {
+    .hidden-xl {
+        display: none !important;
+    }
+}
+
+/* Hide on mobile (< 768px) */
+@media (max-width: 767px) {
+    .hidden-mobile {
+        display: none !important;
+    }
+}
+
+/* Hide on desktop (>= 768px) */
+@media (min-width: 768px) {
+    .hidden-desktop {
+        display: none !important;
+    }
+}
+
+/* Show only on specific breakpoints */
+@media (min-width: 576px) {
+    .visible-xs-only {
+        display: none !important;
+    }
+}
+
+@media (max-width: 575px) {
+    .visible-xs-only {
+        display: block !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .visible-md-up {
+        display: none !important;
+    }
+}
+
+@media (min-width: 768px) {
+    .visible-md-up {
+        display: block !important;
+    }
+}
+
+@media (max-width: 991px) {
+    .visible-lg-up {
+        display: none !important;
+    }
+}
+
+@media (min-width: 992px) {
+    .visible-lg-up {
+        display: block !important;
+    }
+}
+
+/* ============================================
+   FLEX UTILITIES
+   ============================================ */
+
+/* Stack to column on mobile */
+@media (max-width: 767px) {
+    .stack-mobile {
+        flex-direction: column !important;
+    }
+
+    .stack-mobile > * {
+        width: 100% !important;
+    }
+
+    .stack-mobile-reverse {
+        flex-direction: column-reverse !important;
+    }
+
+    .flex-wrap-mobile {
+        flex-wrap: wrap !important;
+    }
+
+    .justify-center-mobile {
+        justify-content: center !important;
+    }
+
+    .items-start-mobile {
+        align-items: flex-start !important;
+    }
+}
+
+/* ============================================
+   TEXT UTILITIES
+   ============================================ */
+
+@media (max-width: 767px) {
+    .text-center-mobile {
+        text-align: center !important;
+    }
+
+    .text-left-mobile {
+        text-align: left !important;
+    }
+
+    /* Smaller text on mobile */
+    .text-sm-mobile {
+        font-size: var(--text-sm) !important;
+    }
+
+    .text-xs-mobile {
+        font-size: var(--text-xs) !important;
+    }
+}
+
+/* ============================================
+   SPACING UTILITIES
+   ============================================ */
+
+@media (max-width: 767px) {
+    /* Padding adjustments */
+    .p-mobile-sm {
+        padding: var(--space-2) !important;
+    }
+
+    .p-mobile-md {
+        padding: var(--space-4) !important;
+    }
+
+    .px-mobile-sm {
+        padding-left: var(--space-2) !important;
+        padding-right: var(--space-2) !important;
+    }
+
+    .py-mobile-sm {
+        padding-top: var(--space-2) !important;
+        padding-bottom: var(--space-2) !important;
+    }
+
+    /* Margin adjustments */
+    .m-mobile-0 {
+        margin: 0 !important;
+    }
+
+    .mx-mobile-0 {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .my-mobile-sm {
+        margin-top: var(--space-2) !important;
+        margin-bottom: var(--space-2) !important;
+    }
+
+    /* Gap adjustments */
+    .gap-mobile-sm {
+        gap: var(--space-2) !important;
+    }
+
+    .gap-mobile-md {
+        gap: var(--space-4) !important;
+    }
+}
+
+/* ============================================
+   WIDTH UTILITIES
+   ============================================ */
+
+@media (max-width: 767px) {
+    .w-full-mobile {
+        width: 100% !important;
+    }
+
+    .max-w-full-mobile {
+        max-width: 100% !important;
+    }
+}
+
+@media (max-width: 575px) {
+    .w-full-xs {
+        width: 100% !important;
+    }
+}
+
+/* ============================================
+   LAYOUT SPECIFIC - ADMIN/APP LAYOUT
+   ============================================ */
+
+/* Mobile layout adjustments */
+@media (max-width: 991px) {
+    /* Hide desktop sidebar on mobile */
+    .desktop-sider {
+        display: none !important;
+    }
+
+    /* Show mobile drawer trigger */
+    .mobile-menu-trigger {
+        display: flex !important;
+    }
+
+    /* Full width content on mobile */
+    .mobile-full-content {
+        margin-left: 0 !important;
+    }
+}
+
+@media (min-width: 992px) {
+    /* Hide mobile elements on desktop */
+    .mobile-menu-trigger {
+        display: none !important;
+    }
+
+    .mobile-drawer {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   MODAL RESPONSIVE
+   ============================================ */
+
+@media (max-width: 767px) {
+    /* Full width modals on mobile */
+    .ant-modal {
+        max-width: calc(100vw - 32px) !important;
+        margin: 16px !important;
+    }
+
+    .ant-modal-centered .ant-modal {
+        top: 0;
+    }
+
+    /* Drawer adjustments */
+    .ant-drawer-content-wrapper {
+        max-width: 100vw !important;
+    }
+}
+
+/* ============================================
+   TABLE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 767px) {
+    /* Smaller table padding on mobile */
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+        padding: 8px !important;
+    }
+
+    /* Smaller font in tables */
+    .ant-table {
+        font-size: 13px !important;
+    }
+
+    /* Fixed action column on mobile */
+    .ant-table-cell-fix-right {
+        background: #fff !important;
+    }
+}
+
+/* ============================================
+   FORM RESPONSIVE
+   ============================================ */
+
+@media (max-width: 767px) {
+    /* Stack form items on mobile */
+    .ant-form-horizontal .ant-form-item-label {
+        padding-bottom: 4px !important;
+    }
+
+    .ant-form-horizontal .ant-form-item-label > label {
+        height: auto !important;
+    }
+
+    /* Full width inputs */
+    .ant-input,
+    .ant-select,
+    .ant-picker {
+        width: 100% !important;
+    }
+
+    /* Larger touch targets */
+    .ant-btn {
+        min-height: 40px !important;
+    }
+
+    .ant-input,
+    .ant-select-selector,
+    .ant-picker {
+        min-height: 40px !important;
+    }
+}
+
+/* ============================================
+   CARD RESPONSIVE
+   ============================================ */
+
+@media (max-width: 767px) {
+    .ant-card {
+        border-radius: 8px !important;
+    }
+
+    .ant-card-body {
+        padding: 16px !important;
+    }
+
+    .ant-card-head {
+        padding: 0 16px !important;
+    }
+}
+
+/* ============================================
+   PAGE HEADER RESPONSIVE
+   ============================================ */
+
+@media (max-width: 767px) {
+    .page-header-responsive {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+
+    .page-header-responsive .page-header-actions {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .page-header-responsive .page-header-actions > * {
+        flex: 1 1 auto !important;
+    }
+}
+
+/* ============================================
+   STATS/DASHBOARD CARDS
+   ============================================ */
+
+@media (max-width: 575px) {
+    .stat-card {
+        padding: 12px !important;
+    }
+
+    .stat-card .ant-statistic-title {
+        font-size: 12px !important;
+    }
+
+    .stat-card .ant-statistic-content {
+        font-size: 20px !important;
+    }
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+
+@media (max-width: 767px) {
+    .content-area {
+        margin: 12px !important;
+        padding: 16px !important;
+    }
+}
+
+@media (max-width: 575px) {
+    .content-area {
+        margin: 8px !important;
+        padding: 12px !important;
+        border-radius: 8px !important;
+    }
+}
+
+/* ============================================
+   NAVIGATION SPECIFIC
+   ============================================ */
+
+/* Mobile header */
+@media (max-width: 991px) {
+    .app-header {
+        padding: 0 12px !important;
+    }
+
+    .app-header .header-user-name {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   PRINT UTILITIES
+   ============================================ */
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+}
+
+@media not print {
+    .print-only {
+        display: none !important;
+    }
+}

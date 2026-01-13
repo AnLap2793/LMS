@@ -75,6 +75,55 @@ export const queryKeys = {
     },
 
     /**
+     * LMS - Quizzes query keys
+     */
+    quizzes: {
+        all: ['quizzes'],
+        lists: () => [...queryKeys.quizzes.all, 'list'],
+        list: filters => [...queryKeys.quizzes.lists(), { filters }],
+        detail: id => [...queryKeys.quizzes.all, 'detail', id],
+        byLesson: lessonId => [...queryKeys.quizzes.all, 'lesson', lessonId],
+    },
+
+    /**
+     * LMS - Quiz Questions query keys
+     */
+    quizQuestions: {
+        all: ['quiz-questions'],
+        byQuiz: quizId => [...queryKeys.quizQuestions.all, 'quiz', quizId],
+    },
+
+    /**
+     * LMS - Quiz Attempts query keys
+     */
+    quizAttempts: {
+        all: ['quiz-attempts'],
+        mine: () => [...queryKeys.quizAttempts.all, 'mine'],
+        byQuiz: quizId => [...queryKeys.quizAttempts.all, 'quiz', quizId],
+        detail: id => [...queryKeys.quizAttempts.all, 'detail', id],
+    },
+
+    /**
+     * LMS - Lesson Progress query keys
+     */
+    lessonProgress: {
+        all: ['lesson-progress'],
+        mine: () => [...queryKeys.lessonProgress.all, 'mine'],
+        byEnrollment: enrollmentId => [...queryKeys.lessonProgress.all, 'enrollment', enrollmentId],
+        byLesson: lessonId => [...queryKeys.lessonProgress.all, 'lesson', lessonId],
+    },
+
+    /**
+     * LMS - Certificates query keys
+     */
+    certificates: {
+        all: ['certificates'],
+        mine: () => [...queryKeys.certificates.all, 'mine'],
+        byUser: userId => [...queryKeys.certificates.all, 'user', userId],
+        detail: id => [...queryKeys.certificates.all, 'detail', id],
+    },
+
+    /**
      * LMS - Dashboard stats
      */
     dashboard: {
@@ -82,5 +131,14 @@ export const queryKeys = {
         popularCourses: ['dashboard', 'popular-courses'],
         atRiskLearners: ['dashboard', 'at-risk-learners'],
         recentActivity: ['dashboard', 'recent-activity'],
+    },
+
+    /**
+     * Learner Home - Featured content
+     */
+    home: {
+        featured: ['home', 'featured'],
+        continueLearning: ['home', 'continue-learning'],
+        recentActivity: ['home', 'recent-activity'],
     },
 };

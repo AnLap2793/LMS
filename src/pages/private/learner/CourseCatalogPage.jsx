@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Card,
@@ -15,7 +15,7 @@ import {
     Statistic,
     Tabs,
     Divider,
-    Progress,
+    Skeleton,
 } from 'antd';
 import {
     BookOutlined,
@@ -30,8 +30,9 @@ import {
     ArrowRightOutlined,
     FlagOutlined,
 } from '@ant-design/icons';
-import { mockCourses, mockTags, mockLearningPaths } from '../../../mocks';
-import { COURSE_DIFFICULTY_MAP } from '../../../constants/lms';
+import { usePublishedCourses, useCoursesCount, useTags } from '../../../hooks/useCourses';
+import { COURSE_DIFFICULTY_MAP, COURSE_DIFFICULTY_OPTIONS } from '../../../constants/lms';
+import { getAssetUrl } from '../../../utils/directusHelpers';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -43,60 +44,46 @@ function CourseCatalogPage() {
     const navigate = useNavigate();
     const [activeMainTab, setActiveMainTab] = useState('courses');
     const [searchText, setSearchText] = useState('');
-    const [selectedTag, setSelectedTag] = useState(null);
+    const [selectedTags, setSelectedTags] = useState([]);
     const [selectedDifficulty, setSelectedDifficulty] = useState(null);
     const [viewMode, setViewMode] = useState('grid');
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 9;
+    const pageSize = 12;
 
-    // Get only published courses
-    const publishedCourses = mockCourses.filter(c => c.status === 'published');
+    // Fetch courses từ API
+    const {
+        data: courses = [],
+        isLoading: coursesLoading,
+        error: coursesError,
+    } = usePublishedCourses({
+        search: searchText || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        difficulty: selectedDifficulty || undefined,
+        page: currentPage,
+        limit: pageSize,
+    });
 
-    // Get only published learning paths
-    const publishedPaths = mockLearningPaths.filter(p => p.status === 'published');
+    // Fetch total count cho pagination
+    const { data: totalCount = 0 } = useCoursesCount({
+        search: searchText || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        difficulty: selectedDifficulty || undefined,
+    });
 
-    // Filtered courses
-    const filteredCourses = useMemo(() => {
-        return publishedCourses.filter(course => {
-            const matchSearch =
-                !searchText.trim() ||
-                course.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                course.description?.toLowerCase().includes(searchText.toLowerCase());
+    // Fetch tags cho filter
+    const { data: tags = [] } = useTags();
 
-            const matchTag = !selectedTag || course.tags?.some(t => t.id === selectedTag);
-
-            const matchDifficulty = !selectedDifficulty || course.difficulty === selectedDifficulty;
-
-            return matchSearch && matchTag && matchDifficulty;
-        });
-    }, [publishedCourses, searchText, selectedTag, selectedDifficulty]);
-
-    // Filtered learning paths
-    const filteredPaths = useMemo(() => {
-        return publishedPaths.filter(path => {
-            const matchSearch =
-                !searchText.trim() ||
-                path.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                path.description?.toLowerCase().includes(searchText.toLowerCase());
-            return matchSearch;
-        });
-    }, [publishedPaths, searchText]);
-
-    // Paginated courses
-    const paginatedCourses = useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return filteredCourses.slice(start, start + pageSize);
-    }, [filteredCourses, currentPage]);
+    // TODO: Fetch learning paths khi có service
+    const publishedPaths = [];
+    const filteredPaths = [];
 
     // Format duration
-    const formatDuration = minutes => {
-        if (!minutes) return '';
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours > 0) {
-            return mins > 0 ? `${hours}h ${mins}p` : `${hours} giờ`;
+    const formatDuration = hours => {
+        if (!hours) return '';
+        if (hours < 1) {
+            return `${Math.round(hours * 60)} phút`;
         }
-        return `${mins} phút`;
+        return `${hours} giờ`;
     };
 
     // Handle course click
@@ -112,13 +99,35 @@ function CourseCatalogPage() {
     // Clear filters
     const handleClearFilters = () => {
         setSearchText('');
-        setSelectedTag(null);
+        setSelectedTags([]);
         setSelectedDifficulty(null);
+        setCurrentPage(1);
+    };
+
+    // Handle search with debounce effect (reset page on search)
+    const handleSearch = value => {
+        setSearchText(value);
+        setCurrentPage(1);
+    };
+
+    // Handle filter changes
+    const handleTagChange = value => {
+        setSelectedTags(value || []);
+        setCurrentPage(1);
+    };
+
+    const handleDifficultyChange = value => {
+        setSelectedDifficulty(value);
+        setCurrentPage(1);
     };
 
     // Render course card
     const renderCourseCard = course => {
         const difficultyConfig = COURSE_DIFFICULTY_MAP[course.difficulty] || {};
+        const thumbnailUrl = getAssetUrl(course.thumbnail);
+
+        // Flatten tags từ M2M relation
+        const courseTags = course.tags?.map(t => t.tags_id).filter(Boolean) || [];
 
         return (
             <Col xs={24} sm={12} lg={viewMode === 'grid' ? 8 : 24} key={course.id}>
@@ -131,14 +140,18 @@ function CourseCatalogPage() {
                             <div
                                 style={{
                                     height: 160,
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: thumbnailUrl
+                                        ? `url(${thumbnailUrl}) center/cover`
+                                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     position: 'relative',
                                 }}
                             >
-                                <BookOutlined style={{ fontSize: 48, color: 'rgba(255,255,255,0.8)' }} />
+                                {!thumbnailUrl && (
+                                    <BookOutlined style={{ fontSize: 48, color: 'rgba(255,255,255,0.8)' }} />
+                                )}
 
                                 {course.difficulty && (
                                     <Tag
@@ -159,14 +172,16 @@ function CourseCatalogPage() {
                                     style={{
                                         width: 80,
                                         height: 80,
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        background: thumbnailUrl
+                                            ? `url(${thumbnailUrl}) center/cover`
+                                            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                         borderRadius: 8,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                     }}
                                 >
-                                    <BookOutlined style={{ fontSize: 32, color: '#fff' }} />
+                                    {!thumbnailUrl && <BookOutlined style={{ fontSize: 32, color: '#fff' }} />}
                                 </div>
                             )
                         }
@@ -192,7 +207,7 @@ function CourseCatalogPage() {
                                 )}
 
                                 <Space wrap size={[4, 4]}>
-                                    {course.tags?.map(tag => (
+                                    {courseTags.slice(0, 3).map(tag => (
                                         <Tag key={tag.id} color={tag.color} style={{ fontSize: 11 }}>
                                             {tag.name}
                                         </Tag>
@@ -200,14 +215,11 @@ function CourseCatalogPage() {
                                 </Space>
 
                                 <Space split={<span style={{ color: '#d9d9d9' }}>•</span>}>
-                                    {course.duration && (
+                                    {course.duration_hours && (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            <ClockCircleOutlined /> {formatDuration(course.duration)}
+                                            <ClockCircleOutlined /> {formatDuration(course.duration_hours)}
                                         </Text>
                                     )}
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        <UserOutlined /> {course.enrollments_count || 0} học viên
-                                    </Text>
                                     {viewMode === 'list' && course.difficulty && (
                                         <Tag color={difficultyConfig.color} style={{ fontSize: 11 }}>
                                             {difficultyConfig.label}
@@ -315,13 +327,26 @@ function CourseCatalogPage() {
         );
     };
 
+    // Loading skeleton
+    const renderSkeleton = () => (
+        <Row gutter={[16, 16]}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+                <Col xs={24} sm={12} lg={8} key={i}>
+                    <Card>
+                        <Skeleton active />
+                    </Card>
+                </Col>
+            ))}
+        </Row>
+    );
+
     // Tab items for main navigation
     const mainTabItems = [
         {
             key: 'courses',
             label: (
                 <span>
-                    <BookOutlined /> Khóa học ({publishedCourses.length})
+                    <BookOutlined /> Khóa học ({totalCount})
                 </span>
             ),
             children: (
@@ -334,33 +359,33 @@ function CourseCatalogPage() {
                                     placeholder="Tìm kiếm khóa học..."
                                     prefix={<SearchOutlined />}
                                     value={searchText}
-                                    onChange={e => setSearchText(e.target.value)}
+                                    onChange={e => handleSearch(e.target.value)}
                                     allowClear
                                 />
                             </Col>
                             <Col xs={12} sm={6} md={4}>
                                 <Select
                                     placeholder="Chủ đề"
-                                    value={selectedTag}
-                                    onChange={setSelectedTag}
-                                    options={[
-                                        { value: null, label: 'Tất cả chủ đề' },
-                                        ...mockTags.map(t => ({ value: t.id, label: t.name })),
-                                    ]}
+                                    mode="multiple"
+                                    value={selectedTags}
+                                    onChange={handleTagChange}
+                                    options={tags.map(t => ({ value: t.id, label: t.name }))}
                                     style={{ width: '100%' }}
                                     allowClear
+                                    maxTagCount={1}
                                 />
                             </Col>
                             <Col xs={12} sm={6} md={4}>
                                 <Select
                                     placeholder="Độ khó"
                                     value={selectedDifficulty}
-                                    onChange={setSelectedDifficulty}
+                                    onChange={handleDifficultyChange}
                                     options={[
                                         { value: null, label: 'Tất cả độ khó' },
-                                        { value: 'beginner', label: 'Cơ bản' },
-                                        { value: 'intermediate', label: 'Trung bình' },
-                                        { value: 'advanced', label: 'Nâng cao' },
+                                        ...COURSE_DIFFICULTY_OPTIONS.map(d => ({
+                                            value: d.value,
+                                            label: d.label,
+                                        })),
                                     ]}
                                     style={{ width: '100%' }}
                                     allowClear
@@ -368,7 +393,7 @@ function CourseCatalogPage() {
                             </Col>
                             <Col flex="auto">
                                 <Space style={{ float: 'right' }}>
-                                    {(searchText || selectedTag || selectedDifficulty) && (
+                                    {(searchText || selectedTags.length > 0 || selectedDifficulty) && (
                                         <Button onClick={handleClearFilters}>Xóa bộ lọc</Button>
                                     )}
                                     <Button.Group>
@@ -389,15 +414,25 @@ function CourseCatalogPage() {
                     </Card>
 
                     {/* Course Grid */}
-                    {paginatedCourses.length > 0 ? (
+                    {coursesLoading ? (
+                        renderSkeleton()
+                    ) : coursesError ? (
+                        <Card>
+                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không thể tải danh sách khóa học">
+                                <Button type="primary" onClick={() => window.location.reload()}>
+                                    Tải lại
+                                </Button>
+                            </Empty>
+                        </Card>
+                    ) : courses.length > 0 ? (
                         <>
-                            <Row gutter={[16, 16]}>{paginatedCourses.map(course => renderCourseCard(course))}</Row>
+                            <Row gutter={[16, 16]}>{courses.map(course => renderCourseCard(course))}</Row>
 
-                            {filteredCourses.length > pageSize && (
+                            {totalCount > pageSize && (
                                 <div style={{ textAlign: 'center', marginTop: 24 }}>
                                     <Pagination
                                         current={currentPage}
-                                        total={filteredCourses.length}
+                                        total={totalCount}
                                         pageSize={pageSize}
                                         onChange={setCurrentPage}
                                         showTotal={total => `Tổng ${total} khóa học`}
@@ -452,11 +487,7 @@ function CourseCatalogPage() {
                         <Row gutter={[16, 16]}>{filteredPaths.map(path => renderPathCard(path))}</Row>
                     ) : (
                         <Card>
-                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không tìm thấy lộ trình phù hợp">
-                                <Button type="primary" onClick={() => setSearchText('')}>
-                                    Xóa tìm kiếm
-                                </Button>
-                            </Empty>
+                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có lộ trình học tập nào" />
                         </Card>
                     )}
                 </>
@@ -481,7 +512,7 @@ function CourseCatalogPage() {
                     <Card size="small">
                         <Statistic
                             title="Khóa học"
-                            value={publishedCourses.length}
+                            value={totalCount}
                             prefix={<BookOutlined style={{ color: '#1890ff' }} />}
                         />
                     </Card>
@@ -499,7 +530,7 @@ function CourseCatalogPage() {
                     <Card size="small">
                         <Statistic
                             title="Chủ đề"
-                            value={mockTags.length}
+                            value={tags.length}
                             prefix={<AppstoreOutlined style={{ color: '#52c41a' }} />}
                         />
                     </Card>
@@ -508,7 +539,7 @@ function CourseCatalogPage() {
                     <Card size="small">
                         <Statistic
                             title="Kết quả"
-                            value={activeMainTab === 'courses' ? filteredCourses.length : filteredPaths.length}
+                            value={activeMainTab === 'courses' ? courses.length : filteredPaths.length}
                             valueStyle={{ color: '#faad14' }}
                         />
                     </Card>

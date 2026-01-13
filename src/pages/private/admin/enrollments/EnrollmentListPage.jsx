@@ -37,6 +37,7 @@ import { PageHeader, EmptyState } from '../../../../components/common';
 import { mockEnrollments, mockCourses, mockUsers, getUserFullName } from '../../../../mocks';
 import { ENROLLMENT_STATUS_OPTIONS } from '../../../../constants/lms';
 import EnrollmentFormModal from '../../../../components/admin/enrollments/EnrollmentFormModal';
+import { getAvatarUrl, getAssetUrl } from '../../../../utils/directusHelpers';
 
 /**
  * Enrollment List Page
@@ -63,9 +64,29 @@ function EnrollmentListPage() {
         return { total, completed, inProgress, expired, assigned, completionRate };
     }, [enrollments]);
 
+    // Enrich enrollments with user and course data (avatar, thumbnail)
+    const enrichedEnrollments = useMemo(() => {
+        return enrollments.map(enrollment => {
+            const fullUser = mockUsers.find(u => u.id === enrollment.user_id) || enrollment.user;
+            const fullCourse = mockCourses.find(c => c.id === enrollment.course_id) || enrollment.course;
+
+            return {
+                ...enrollment,
+                user: {
+                    ...enrollment.user,
+                    avatar: fullUser?.avatar || enrollment.user?.avatar,
+                },
+                course: {
+                    ...enrollment.course,
+                    thumbnail: fullCourse?.thumbnail || enrollment.course?.thumbnail,
+                },
+            };
+        });
+    }, [enrollments]);
+
     // Filtered enrollments
     const filteredEnrollments = useMemo(() => {
-        return enrollments.filter(enrollment => {
+        return enrichedEnrollments.filter(enrollment => {
             const userName = `${enrollment.user?.first_name} ${enrollment.user?.last_name}`.toLowerCase();
             const courseName = enrollment.course?.title?.toLowerCase() || '';
 
@@ -80,7 +101,7 @@ function EnrollmentListPage() {
 
             return matchSearch && matchStatus && matchCourse;
         });
-    }, [enrollments, searchText, statusFilter, courseFilter]);
+    }, [enrichedEnrollments, searchText, statusFilter, courseFilter]);
 
     // Handle add new enrollment
     const handleAdd = () => {
@@ -222,17 +243,25 @@ function EnrollmentListPage() {
             key: 'user',
             width: 220,
             fixed: 'left',
-            render: (_, record) => (
-                <Space>
-                    <Avatar size={36} icon={<UserOutlined />} style={{ backgroundColor: '#ea4544' }} />
-                    <div>
-                        <div style={{ fontWeight: 500 }}>
-                            {record.user?.first_name} {record.user?.last_name}
+            render: (_, record) => {
+                const avatarUrl = getAvatarUrl(record.user?.avatar, 36);
+                return (
+                    <Space>
+                        <Avatar
+                            size={36}
+                            src={avatarUrl}
+                            icon={!avatarUrl && <UserOutlined />}
+                            style={{ backgroundColor: !avatarUrl ? '#ea4544' : undefined }}
+                        />
+                        <div>
+                            <div style={{ fontWeight: 500 }}>
+                                {record.user?.first_name} {record.user?.last_name}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#999' }}>{record.user?.email}</div>
                         </div>
-                        <div style={{ fontSize: 12, color: '#999' }}>{record.user?.email}</div>
-                    </div>
-                </Space>
-            ),
+                    </Space>
+                );
+            },
             sorter: (a, b) =>
                 `${a.user?.first_name} ${a.user?.last_name}`.localeCompare(
                     `${b.user?.first_name} ${b.user?.last_name}`
@@ -242,18 +271,30 @@ function EnrollmentListPage() {
             title: 'Khóa học',
             key: 'course',
             width: 250,
-            render: (_, record) => (
-                <Space>
-                    <Avatar size={36} icon={<BookOutlined />} shape="square" style={{ backgroundColor: '#1890ff' }} />
-                    <div>
-                        <div style={{ fontWeight: 500 }}>
-                            {record.course?.title?.length > 30
-                                ? `${record.course?.title.substring(0, 30)}...`
-                                : record.course?.title}
+            render: (_, record) => {
+                const thumbnailUrl = getAssetUrl(record.course?.thumbnail, { width: 36, height: 36, fit: 'cover' });
+                return (
+                    <Space>
+                        <Avatar
+                            size={36}
+                            src={thumbnailUrl}
+                            icon={!thumbnailUrl && <BookOutlined />}
+                            shape="square"
+                            style={{
+                                backgroundColor: !thumbnailUrl ? '#1890ff' : undefined,
+                                borderRadius: 4,
+                            }}
+                        />
+                        <div>
+                            <div style={{ fontWeight: 500 }}>
+                                {record.course?.title?.length > 30
+                                    ? `${record.course?.title.substring(0, 30)}...`
+                                    : record.course?.title}
+                            </div>
                         </div>
-                    </div>
-                </Space>
-            ),
+                    </Space>
+                );
+            },
         },
         {
             title: 'Tiến độ',

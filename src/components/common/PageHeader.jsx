@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Typography, Space, Breadcrumb } from 'antd';
+import { Typography, Space, Breadcrumb, Row, Col } from 'antd';
 import { Link } from 'react-router-dom';
 import { HomeOutlined } from '@ant-design/icons';
 
@@ -8,6 +8,7 @@ const { Title } = Typography;
 /**
  * PageHeader Component
  * Header cho các trang admin với breadcrumb và actions
+ * Responsive: Stack title/actions trên mobile
  */
 function PageHeader({ title, subtitle, breadcrumbs, actions, style }) {
     return (
@@ -32,29 +33,29 @@ function PageHeader({ title, subtitle, breadcrumbs, actions, style }) {
                 />
             )}
 
-            {/* Title and Actions */}
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    flexWrap: 'wrap',
-                    gap: 16,
-                }}
-            >
-                <div>
-                    <Title level={4} style={{ margin: 0 }}>
-                        {title}
-                    </Title>
-                    {subtitle && (
-                        <Typography.Text type="secondary" style={{ marginTop: 4 }}>
-                            {subtitle}
-                        </Typography.Text>
-                    )}
-                </div>
+            {/* Title and Actions - Responsive layout */}
+            <Row gutter={[16, 12]} align="middle" justify="space-between" wrap className="page-header-responsive">
+                <Col xs={24} sm={24} md="auto">
+                    <div>
+                        <Title level={4} style={{ margin: 0 }}>
+                            {title}
+                        </Title>
+                        {subtitle && (
+                            <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
+                                {subtitle}
+                            </Typography.Text>
+                        )}
+                    </div>
+                </Col>
 
-                {actions && <Space wrap>{actions}</Space>}
-            </div>
+                {actions && (
+                    <Col xs={24} sm={24} md="auto" className="page-header-actions">
+                        <Space wrap size={[8, 8]} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                            {actions}
+                        </Space>
+                    </Col>
+                )}
+            </Row>
         </div>
     );
 }

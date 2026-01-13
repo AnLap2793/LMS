@@ -1,10 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Modal, Form, Input, Select, InputNumber, Switch, Space, Radio, Divider } from 'antd';
 import { PlayCircleOutlined, FileTextOutlined, FileOutlined, LinkOutlined, FormOutlined } from '@ant-design/icons';
 import { LESSON_TYPE_OPTIONS, VIDEO_PROVIDER_OPTIONS } from '../../../constants/lms';
-
-const { TextArea } = Input;
+import { LexicalEditor } from '../../common';
 
 /**
  * LessonFormModal Component
@@ -17,14 +16,19 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
     // Derive lessonType from form values instead of separate state
     const lessonType = Form.useWatch('type', form) || 'video';
 
+    // State for Lexical editor content (since Lexical doesn't work directly with Form.Item)
+    const [articleContent, setArticleContent] = useState('');
+
     // Reset form when modal opens/closes
     useEffect(() => {
         if (open) {
             if (initialValues) {
                 form.setFieldsValue(initialValues);
+                setArticleContent(initialValues.content || '');
             } else {
                 form.resetFields();
                 form.setFieldValue('type', 'video');
+                setArticleContent('');
             }
         }
     }, [open, initialValues, form]);
@@ -32,6 +36,10 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
+            // Add article content from Lexical editor
+            if (lessonType === 'article') {
+                values.content = articleContent;
+            }
             onSubmit(values);
         } catch {
             // Validation failed
@@ -48,6 +56,7 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
             external_link: null,
             file_attachment: null,
         });
+        setArticleContent('');
     };
 
     // Icon map for type buttons
@@ -68,7 +77,9 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
             okText={isEditing ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
             destroyOnClose
-            width={700}
+            width="90%"
+            style={{ maxWidth: 800 }}
+            centered
         >
             <Form
                 form={form}
@@ -136,14 +147,16 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
 
                 {lessonType === 'article' && (
                     <Form.Item
-                        name="content"
                         label="Nội dung bài viết"
-                        rules={[{ required: true, message: 'Vui lòng nhập nội dung' }]}
-                        extra="Hỗ trợ Markdown format"
+                        required
+                        help="Sử dụng toolbar để định dạng văn bản"
+                        validateStatus={!articleContent ? 'error' : ''}
                     >
-                        <TextArea
-                            placeholder="# Tiêu đề&#10;&#10;Nội dung bài viết..."
-                            rows={10}
+                        <LexicalEditor
+                            value={articleContent}
+                            onChange={setArticleContent}
+                            placeholder="Nhập nội dung bài học..."
+                            size="large"
                         />
                     </Form.Item>
                 )}
