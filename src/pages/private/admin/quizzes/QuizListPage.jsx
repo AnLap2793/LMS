@@ -8,6 +8,7 @@ import {
     SearchOutlined,
     UnorderedListOutlined,
     TrophyOutlined,
+    BarChartOutlined,
 } from '@ant-design/icons';
 import { PageHeader, EmptyState } from '../../../../components/common';
 import QuizFormModal from '../../../../components/admin/quizzes/QuizFormModal';
@@ -130,6 +131,13 @@ function QuizListPage() {
                             type="text"
                             icon={<UnorderedListOutlined />}
                             onClick={() => handleManageQuestions(record.id)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Phân tích">
+                        <Button
+                            type="text"
+                            icon={<BarChartOutlined />}
+                            onClick={() => navigate(`/admin/quizzes/${record.id}/analysis`)}
                         />
                     </Tooltip>
                     <Tooltip title="Chỉnh sửa">

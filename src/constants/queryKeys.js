@@ -94,6 +94,17 @@ export const queryKeys = {
     },
 
     /**
+     * LMS - Question Bank query keys
+     */
+    questionBank: {
+        all: ['question-bank'],
+        lists: () => [...queryKeys.questionBank.all, 'list'],
+        list: filters => [...queryKeys.questionBank.lists(), { filters }],
+        details: () => [...queryKeys.questionBank.all, 'detail'],
+        detail: id => [...queryKeys.questionBank.details(), id],
+    },
+
+    /**
      * LMS - Quiz Attempts query keys
      */
     quizAttempts: {

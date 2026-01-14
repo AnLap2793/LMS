@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Card,
     Row,
@@ -14,6 +15,9 @@ import {
     message,
     Tabs,
     Upload,
+    List,
+    Progress,
+    Tag,
 } from 'antd';
 import {
     UserOutlined,
@@ -26,9 +30,12 @@ import {
     TrophyOutlined,
     CameraOutlined,
     TeamOutlined,
+    RadarChartOutlined,
+    NodeIndexOutlined,
 } from '@ant-design/icons';
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
-import { mockEnrollments, mockCertificates } from '../../../mocks';
+import { mockEnrollments, mockCertificates, mockLearnerSkills, mockUserLearningPaths } from '../../../mocks';
 
 const { Title, Text } = Typography;
 
@@ -63,7 +70,7 @@ function ProfilePage() {
     const userCertificates = mockCertificates.filter(c => c.user_id === currentUserId);
 
     // Handle profile update
-    const handleUpdateProfile = async values => {
+    const handleUpdateProfile = async () => {
         setSaving(true);
         setTimeout(() => {
             message.success('Cập nhật thông tin thành công!');
@@ -73,7 +80,7 @@ function ProfilePage() {
     };
 
     // Handle password change
-    const handleChangePassword = async values => {
+    const handleChangePassword = async () => {
         setChangingPassword(true);
         setTimeout(() => {
             message.success('Đổi mật khẩu thành công!');
@@ -315,6 +322,46 @@ function ProfilePage() {
                         </Space>
                     </Card>
 
+                    {/* Skills Radar Chart */}
+                    <Card
+                        size="small"
+                        title={
+                            <Space>
+                                <RadarChartOutlined style={{ color: '#722ed1' }} />
+                                <span>Biểu đồ năng lực</span>
+                            </Space>
+                        }
+                        style={{ marginBottom: 16 }}
+                    >
+                        <ResponsiveContainer width="100%" height={250}>
+                            <RadarChart data={mockLearnerSkills} cx="50%" cy="50%" outerRadius="70%">
+                                <PolarGrid stroke="#f0f0f0" />
+                                <PolarAngleAxis dataKey="skill" tick={{ fontSize: 11 }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                                <Tooltip
+                                    formatter={value => [`${value}%`, 'Năng lực']}
+                                    contentStyle={{
+                                        borderRadius: 6,
+                                        border: '1px solid #f0f0f0',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                    }}
+                                />
+                                <Radar
+                                    name="Năng lực"
+                                    dataKey="value"
+                                    stroke="#ea4544"
+                                    fill="#ea4544"
+                                    fillOpacity={0.5}
+                                />
+                            </RadarChart>
+                        </ResponsiveContainer>
+                        <div style={{ textAlign: 'center', marginTop: 8 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Dựa trên các khóa học đã hoàn thành
+                            </Text>
+                        </div>
+                    </Card>
+
                     {/* Additional info */}
                     <Card size="small">
                         <Text type="secondary">
@@ -326,6 +373,53 @@ function ProfilePage() {
                 {/* Tabs */}
                 <Col xs={24} lg={16}>
                     <Tabs items={tabItems} />
+
+                    {/* Learning Paths Progress */}
+                    <Card
+                        title={
+                            <Space>
+                                <NodeIndexOutlined style={{ color: '#1890ff' }} />
+                                <span>Tiến độ lộ trình học tập</span>
+                            </Space>
+                        }
+                        style={{ marginTop: 24 }}
+                    >
+                        <List
+                            dataSource={mockUserLearningPaths}
+                            renderItem={path => (
+                                <List.Item>
+                                    <div style={{ width: '100%' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                marginBottom: 8,
+                                            }}
+                                        >
+                                            <Link to={`/learning-paths/${path.pathId}`}>
+                                                <Text strong style={{ fontSize: 16 }}>
+                                                    {path.title}
+                                                </Text>
+                                            </Link>
+                                            <Tag color={path.status === 'completed' ? 'success' : 'processing'}>
+                                                {path.status === 'completed' ? 'Hoàn thành' : 'Đang học'}
+                                            </Tag>
+                                        </div>
+                                        <Progress
+                                            percent={path.progress}
+                                            strokeColor={path.status === 'completed' ? '#52c41a' : '#1890ff'}
+                                        />
+                                        <div style={{ marginTop: 8, textAlign: 'right' }}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                Truy cập lần cuối:{' '}
+                                                {new Date(path.lastAccessed).toLocaleDateString('vi-VN')}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                </List.Item>
+                            )}
+                        />
+                    </Card>
                 </Col>
             </Row>
         </div>

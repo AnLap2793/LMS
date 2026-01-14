@@ -74,7 +74,7 @@ function LearningPathDetailPage() {
                 status="404"
                 title="Không tìm thấy lộ trình"
                 extra={
-                    <Button type="primary" onClick={() => navigate('/my-courses')}>
+                    <Button type="primary" onClick={() => navigate('/learning-paths')}>
                         Quay lại
                     </Button>
                 }
@@ -87,7 +87,7 @@ function LearningPathDetailPage() {
             <Button
                 type="text"
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/my-courses')}
+                onClick={() => navigate('/learning-paths')}
                 style={{ marginBottom: 16 }}
             >
                 Quay lại
@@ -121,14 +121,14 @@ function LearningPathDetailPage() {
                             </Space>
                         </Space>
                     </Col>
-                    <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+                    <Col xs={24} md={8} style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
                         <div
                             style={{
                                 background: '#f5f5f5',
                                 padding: 24,
                                 borderRadius: 8,
-                                display: 'inline-block',
-                                minWidth: 250,
+                                width: '100%',
+                                maxWidth: 300,
                                 textAlign: 'center',
                             }}
                         >
@@ -179,6 +179,7 @@ function LearningPathDetailPage() {
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
                                             width: '100%',
+                                            gap: 16,
                                         }}
                                     >
                                         <Text strong style={{ fontSize: 16 }}>
@@ -197,7 +198,7 @@ function LearningPathDetailPage() {
                                                     <PlayCircleOutlined />
                                                 )
                                             }
-                                            onClick={() => navigate(`/course/${course.id}`)}
+                                            onClick={() => navigate(`/courses/${course.id}`)}
                                         >
                                             {isCompleted ? 'Đã học xong' : demoLocked ? 'Đang khóa' : 'Vào học'}
                                         </Button>

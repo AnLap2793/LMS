@@ -165,3 +165,45 @@ export const mockCertificateStats = {
     issuedThisWeek: 5,
     topCourse: { id: '1', title: 'Onboarding cho Nhân viên mới', count: 45 },
 };
+
+// ============================================
+// Learner Dashboard Statistics
+// ============================================
+
+/**
+ * Mock learner weekly activity data
+ * Số phút học tập trong 7 ngày gần nhất
+ */
+export const mockLearnerWeeklyActivity = [
+    { day: 'T2', minutes: 45, lessons: 2 },
+    { day: 'T3', minutes: 30, lessons: 1 },
+    { day: 'T4', minutes: 60, lessons: 3 },
+    { day: 'T5', minutes: 0, lessons: 0 },
+    { day: 'T6', minutes: 90, lessons: 4 },
+    { day: 'T7', minutes: 25, lessons: 1 },
+    { day: 'CN', minutes: 45, lessons: 2 },
+];
+
+/**
+ * Mock learner skills radar data
+ * Dựa trên các khóa học đã hoàn thành theo tag
+ */
+export const mockLearnerSkills = [
+    { skill: 'Chuyên môn', value: 85, fullMark: 100 },
+    { skill: 'Kỹ năng mềm', value: 65, fullMark: 100 },
+    { skill: 'Lãnh đạo', value: 40, fullMark: 100 },
+    { skill: 'An toàn', value: 90, fullMark: 100 },
+    { skill: 'Bán hàng', value: 55, fullMark: 100 },
+    { skill: 'Onboarding', value: 100, fullMark: 100 },
+];
+
+/**
+ * Mock learner learning streak
+ */
+export const mockLearnerStreak = {
+    currentStreak: 5, // số ngày liên tục học
+    longestStreak: 12,
+    totalLearningDays: 45,
+    totalMinutes: 1250,
+    averageMinutesPerDay: 28,
+};

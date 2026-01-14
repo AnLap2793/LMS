@@ -12,6 +12,8 @@ import {
     MenuOutlined,
     CloseOutlined,
     HomeOutlined,
+    HistoryOutlined,
+    RocketOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -76,7 +78,17 @@ function AppLayout({ children }) {
         {
             key: '/courses',
             icon: <AppstoreOutlined />,
-            label: 'Khám phá',
+            label: 'Khóa học',
+        },
+        {
+            key: '/learning-paths',
+            icon: <RocketOutlined />,
+            label: 'Lộ trình học tập',
+        },
+        {
+            key: '/quiz-history',
+            icon: <HistoryOutlined />,
+            label: 'Lịch sử bài kiểm tra',
         },
         {
             key: '/my-certificates',
@@ -129,8 +141,10 @@ function AppLayout({ children }) {
     // Get selected keys
     const getSelectedKeys = () => {
         const path = location.pathname;
-        if (path.startsWith('/my-courses') || path.startsWith('/learn')) return ['/my-courses'];
+        if (path.startsWith('/learning-paths')) return ['/learning-paths'];
+        if (path.startsWith('/my-courses') || path.startsWith('/learn/')) return ['/my-courses'];
         if (path.startsWith('/courses')) return ['/courses'];
+        if (path.startsWith('/quiz-history')) return ['/quiz-history'];
         if (path.startsWith('/my-certificates')) return ['/my-certificates'];
         // Default for home
         if (path === '/') return ['/'];

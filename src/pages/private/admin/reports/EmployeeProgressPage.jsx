@@ -1,5 +1,19 @@
 import { useState, useMemo } from 'react';
-import { Table, Card, Input, Select, Tag, Progress, Space, Avatar, Typography, Row, Col, Statistic } from 'antd';
+import {
+    Table,
+    Card,
+    Input,
+    Select,
+    Tag,
+    Progress,
+    Space,
+    Avatar,
+    Typography,
+    Row,
+    Col,
+    Statistic,
+    Slider,
+} from 'antd';
 import {
     SearchOutlined,
     UserOutlined,
@@ -19,6 +33,7 @@ const { Text } = Typography;
 function EmployeeProgressPage() {
     const [searchText, setSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState(null);
+    const [progressRange, setProgressRange] = useState([0, 100]);
 
     const enrollmentStats = getEnrollmentStats();
 
@@ -38,8 +53,14 @@ function EmployeeProgressPage() {
             result = result.filter(e => e.status === statusFilter);
         }
 
+        if (progressRange) {
+            result = result.filter(
+                e => e.progress_percentage >= progressRange[0] && e.progress_percentage <= progressRange[1]
+            );
+        }
+
         return result;
-    }, [searchText, statusFilter]);
+    }, [searchText, statusFilter, progressRange]);
 
     // Get status tag
     const getStatusTag = status => {
@@ -193,10 +214,13 @@ function EmployeeProgressPage() {
             </Row>
 
             {/* Filters */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} md={8}>
+                    <div style={{ marginBottom: 8 }}>
+                        <Text strong>Tìm kiếm</Text>
+                    </div>
                     <Input
-                        placeholder="Tìm kiếm nhân viên hoặc khóa học..."
+                        placeholder="Tên nhân viên, khóa học..."
                         prefix={<SearchOutlined />}
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
@@ -204,8 +228,11 @@ function EmployeeProgressPage() {
                     />
                 </Col>
                 <Col xs={24} sm={12} md={6}>
+                    <div style={{ marginBottom: 8 }}>
+                        <Text strong>Trạng thái</Text>
+                    </div>
                     <Select
-                        placeholder="Trạng thái"
+                        placeholder="Chọn trạng thái"
                         value={statusFilter}
                         onChange={setStatusFilter}
                         style={{ width: '100%' }}
@@ -216,6 +243,25 @@ function EmployeeProgressPage() {
                             { value: 'completed', label: 'Hoàn thành' },
                             { value: 'expired', label: 'Quá hạn' },
                         ]}
+                    />
+                </Col>
+                <Col xs={24} sm={12} md={10}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <Text strong>Khoảng tiến độ</Text>
+                        <Text type="secondary">
+                            {progressRange[0]}% - {progressRange[1]}%
+                        </Text>
+                    </div>
+                    <Slider
+                        range
+                        defaultValue={[0, 100]}
+                        value={progressRange}
+                        onChange={setProgressRange}
+                        min={0}
+                        max={100}
+                        allowCross={false}
+                        trackStyle={[{ backgroundColor: '#ea4544' }]}
+                        handleStyle={[{ borderColor: '#ea4544' }, { borderColor: '#ea4544' }]}
                     />
                 </Col>
             </Row>

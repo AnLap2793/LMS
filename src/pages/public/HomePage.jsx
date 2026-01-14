@@ -12,13 +12,16 @@ import {
     PlayCircleOutlined,
     FireOutlined,
     RocketOutlined,
+    ThunderboltOutlined,
 } from '@ant-design/icons';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 import { useAuth } from '../../context/AuthContext';
 import { useFeaturedCourses, usePopularCourses } from '../../hooks/useCourses';
 import { useContinueLearning, useMyEnrollmentStats } from '../../hooks/useEnrollments';
 import DifficultyTag from '../../components/common/DifficultyTag';
 import { getAssetUrl } from '../../utils/directusHelpers';
+import { mockLearnerWeeklyActivity, mockLearnerStreak } from '../../mocks';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -370,6 +373,108 @@ function GuestWelcomeSection() {
     );
 }
 
+/**
+ * Section Weekly Activity Chart
+ * Biểu đồ hoạt động học tập trong tuần
+ */
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div
+                style={{
+                    background: '#fff',
+                    padding: '8px 12px',
+                    border: '1px solid #f0f0f0',
+                    borderRadius: 6,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+            >
+                <Text strong>{label}</Text>
+                <div>
+                    <Text type="secondary">{payload[0].value} phút học</Text>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
+function WeeklyActivitySection() {
+    const weeklyData = mockLearnerWeeklyActivity;
+    const streak = mockLearnerStreak;
+    const totalMinutesThisWeek = weeklyData.reduce((sum, d) => sum + d.minutes, 0);
+    const totalLessonsThisWeek = weeklyData.reduce((sum, d) => sum + d.lessons, 0);
+
+    return (
+        <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={4} style={{ margin: 0 }}>
+                    <ThunderboltOutlined style={{ marginRight: 8, color: '#faad14' }} />
+                    Hoạt động tuần này
+                </Title>
+                <Space>
+                    <Tag color="orange" icon={<FireOutlined />}>
+                        Streak: {streak.currentStreak} ngày
+                    </Tag>
+                </Space>
+            </div>
+
+            <Row gutter={[16, 16]}>
+                {/* Chart */}
+                <Col xs={24} md={16}>
+                    <Card bodyStyle={{ padding: '16px 16px 8px 0' }}>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <BarChart data={weeklyData}>
+                                <XAxis dataKey="day" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                                <YAxis hide />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar dataKey="minutes" radius={[4, 4, 0, 0]} barSize={32}>
+                                    {weeklyData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.minutes > 0 ? '#ea4544' : '#f0f0f0'}
+                                            fillOpacity={entry.minutes > 0 ? 0.8 : 0.5}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+
+                {/* Stats */}
+                <Col xs={24} md={8}>
+                    <Card style={{ height: '100%' }}>
+                        <Row gutter={[16, 16]}>
+                            <Col span={12}>
+                                <Statistic
+                                    title="Tổng phút học"
+                                    value={totalMinutesThisWeek}
+                                    suffix="phút"
+                                    valueStyle={{ color: '#ea4544' }}
+                                />
+                            </Col>
+                            <Col span={12}>
+                                <Statistic
+                                    title="Bài học hoàn thành"
+                                    value={totalLessonsThisWeek}
+                                    suffix="bài"
+                                    valueStyle={{ color: '#52c41a' }}
+                                />
+                            </Col>
+                            <Col span={24}>
+                                <Text type="secondary">
+                                    Trung bình: <Text strong>{streak.averageMinutesPerDay} phút/ngày</Text>
+                                </Text>
+                            </Col>
+                        </Row>
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
+}
+
 // ============================================
 // Main Component
 // ============================================
@@ -392,6 +497,9 @@ function HomePage() {
             ) : (
                 <GuestWelcomeSection />
             )}
+
+            {/* Weekly Activity Chart (chỉ khi đã đăng nhập) */}
+            {isLoggedIn && <WeeklyActivitySection />}
 
             {/* Continue Learning (chỉ khi đã đăng nhập) */}
             {isLoggedIn && <ContinueLearningSection />}

@@ -29,18 +29,28 @@ const EnrollmentListPage = lazy(() => import('../pages/private/admin/enrollments
 // Quiz Pages (Admin)
 const QuizListPage = lazy(() => import('../pages/private/admin/quizzes/QuizListPage'));
 const QuizQuestionsPage = lazy(() => import('../pages/private/admin/quizzes/QuizQuestionsPage'));
+const QuizAnalysisPage = lazy(() => import('../pages/private/admin/quizzes/QuizAnalysisPage'));
+
+// Question Bank (Admin)
+const QuestionBankPage = lazy(() => import('../pages/private/admin/questions/QuestionBankPage'));
 
 // Learner pages
 const MyCoursesPage = lazy(() => import('../pages/private/learner/MyCoursesPage'));
 const CourseLearningPage = lazy(() => import('../pages/private/learner/CourseLearningPage'));
 const QuizTakingPage = lazy(() => import('../pages/private/learner/QuizTakingPage'));
 const QuizResultPage = lazy(() => import('../pages/private/learner/QuizResultPage'));
+const QuizHistoryPage = lazy(() => import('../pages/private/learner/QuizHistoryPage'));
+const QuizAttemptDetailPage = lazy(() => import('../pages/private/learner/QuizAttemptDetailPage'));
 const MyCertificatesPage = lazy(() => import('../pages/private/learner/MyCertificatesPage'));
 const CourseCatalogPage = lazy(() => import('../pages/private/learner/CourseCatalogPage'));
 const CourseDetailPage = lazy(() => import('../pages/private/learner/CourseDetailPage'));
+const LearningPathCatalogPage = lazy(() => import('../pages/private/learner/LearningPathCatalogPage'));
 const LearningPathDetailPage = lazy(() => import('../pages/private/learner/LearningPathDetailPage'));
 const ProfilePage = lazy(() => import('../pages/private/learner/ProfilePage'));
 const NotificationsPage = lazy(() => import('../pages/private/learner/NotificationsPage'));
+
+// Admin Quiz Attempts
+const QuizAttemptsPage = lazy(() => import('../pages/private/admin/quiz-attempts/QuizAttemptsPage'));
 
 /**
  * Cấu hình Routes của ứng dụng
@@ -87,11 +97,15 @@ export const router = createBrowserRouter([
         ],
     },
     {
-        path: '/learning-paths/:pathId',
+        path: '/learning-paths',
         element: <AppLayout />,
         children: [
             {
                 index: true,
+                element: <LearningPathCatalogPage />,
+            },
+            {
+                path: ':pathId',
                 element: <LearningPathDetailPage />,
             },
         ],
@@ -143,6 +157,21 @@ export const router = createBrowserRouter([
     {
         path: '/quiz/:quizId/result',
         element: <QuizResultPage />,
+    },
+    // Quiz History (Learner)
+    {
+        path: '/quiz-history',
+        element: <AppLayout />,
+        children: [
+            {
+                index: true,
+                element: <QuizHistoryPage />,
+            },
+        ],
+    },
+    {
+        path: '/quiz-history/:attemptId',
+        element: <QuizAttemptDetailPage />,
     },
 
     // Admin routes
@@ -226,6 +255,20 @@ export const router = createBrowserRouter([
             {
                 path: 'quizzes/:id/questions',
                 element: <QuizQuestionsPage />,
+            },
+            {
+                path: 'quizzes/:id/analysis',
+                element: <QuizAnalysisPage />,
+            },
+            // Question Bank
+            {
+                path: 'questions',
+                element: <QuestionBankPage />,
+            },
+            // Quiz Attempts (Admin)
+            {
+                path: 'quiz-attempts',
+                element: <QuizAttemptsPage />,
             },
         ],
     },

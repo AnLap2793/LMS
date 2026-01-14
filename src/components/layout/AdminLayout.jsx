@@ -17,6 +17,8 @@ import {
     ScheduleOutlined,
     MenuOutlined,
     CloseOutlined,
+    DatabaseOutlined,
+    HistoryOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -101,6 +103,16 @@ function AdminLayout() {
                     key: '/admin/quizzes',
                     icon: <FormOutlined />,
                     label: 'Bài kiểm tra',
+                },
+                {
+                    key: '/admin/questions',
+                    icon: <DatabaseOutlined />,
+                    label: 'Ngân hàng câu hỏi',
+                },
+                {
+                    key: '/admin/quiz-attempts',
+                    icon: <HistoryOutlined />,
+                    label: 'Lịch sử làm bài',
                 },
                 {
                     key: '/admin/tags',
@@ -196,6 +208,8 @@ function AdminLayout() {
         if (path.startsWith('/admin/enrollments')) return ['/admin/enrollments'];
         if (path.startsWith('/admin/courses')) return ['/admin/courses'];
         if (path.startsWith('/admin/quizzes')) return ['/admin/quizzes'];
+        if (path.startsWith('/admin/questions')) return ['/admin/questions'];
+        if (path.startsWith('/admin/quiz-attempts')) return ['/admin/quiz-attempts'];
         if (path.startsWith('/admin/tags')) return ['/admin/tags'];
         if (path.startsWith('/admin/learning-paths')) return ['/admin/learning-paths'];
         if (path.startsWith('/admin/reports/employees')) return ['/admin/reports/employees'];
@@ -215,6 +229,7 @@ function AdminLayout() {
         if (
             path.includes('/courses') ||
             path.includes('/quizzes') ||
+            path.includes('/questions') ||
             path.includes('/tags') ||
             path.includes('/learning-paths')
         ) {

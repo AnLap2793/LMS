@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, List, Typography, Space, Tag, Popconfirm, Tooltip, message, Collapse } from 'antd';
+import { Card, Button, Typography, Space, Tag, Popconfirm, message } from 'antd';
 import {
     PlusOutlined,
     ArrowLeftOutlined,
@@ -8,6 +8,7 @@ import {
     DeleteOutlined,
     HolderOutlined,
     CheckCircleOutlined,
+    DatabaseOutlined,
 } from '@ant-design/icons';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
@@ -20,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { PageHeader, EmptyState } from '../../../../components/common';
 import QuestionFormModal from '../../../../components/admin/quizzes/QuestionFormModal';
+import { QuestionSelectionModal } from '../../../../components/admin/questions';
 import { mockQuizzes, getQuestionsByQuizId } from '../../../../mocks';
 
 const { Text } = Typography;
@@ -91,6 +93,11 @@ function SortableQuestionItem({ question, index, onEdit, onDelete }) {
                                   : 'Tự luận'}
                         </Tag>
                         <Tag color="blue">{question.points} điểm</Tag>
+                        {question.source_question_id && (
+                            <Tag color="purple" icon={<DatabaseOutlined />}>
+                                Từ ngân hàng
+                            </Tag>
+                        )}
                     </div>
                 }
                 extra={
@@ -135,7 +142,13 @@ function QuizQuestionsPage() {
     const [questions, setQuestions] = useState(() => getQuestionsByQuizId(quizId));
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState(null);
+
+    // Get IDs of questions already in quiz (to exclude from selection)
+    const existingQuestionIds = useMemo(() => {
+        return questions.filter(q => q.source_question_id).map(q => q.source_question_id);
+    }, [questions]);
 
     // DnD sensors
     const sensors = useSensors(
@@ -160,6 +173,10 @@ function QuizQuestionsPage() {
     const handleCreate = () => {
         setEditingQuestion(null);
         setIsModalOpen(true);
+    };
+
+    const handleOpenSelectionModal = () => {
+        setIsSelectionModalOpen(true);
     };
 
     const handleEdit = question => {
@@ -190,6 +207,25 @@ function QuizQuestionsPage() {
         setEditingQuestion(null);
     };
 
+    // Handle questions selected from Question Bank
+    const handleSelectFromBank = selectedQuestions => {
+        const newQuestions = selectedQuestions.map((q, index) => ({
+            id: `qq-${Date.now()}-${index}`,
+            quiz_id: quizId,
+            question: q.question,
+            type: q.type,
+            options: q.options ? { ...q.options } : null,
+            explanation: q.explanation,
+            points: q.points,
+            sort: questions.length + index + 1,
+            source_question_id: q.id, // Track source question
+        }));
+
+        setQuestions(prev => [...prev, ...newQuestions]);
+        setIsSelectionModalOpen(false);
+        message.success(`Đã thêm ${newQuestions.length} câu hỏi từ Ngân hàng`);
+    };
+
     return (
         <div>
             <PageHeader
@@ -200,6 +236,9 @@ function QuizQuestionsPage() {
                     <Space>
                         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/quizzes')}>
                             Quay lại
+                        </Button>
+                        <Button icon={<DatabaseOutlined />} onClick={handleOpenSelectionModal}>
+                            Chọn từ Ngân hàng
                         </Button>
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                             Thêm Câu hỏi
@@ -227,12 +266,18 @@ function QuizQuestionsPage() {
             ) : (
                 <EmptyState
                     title="Chưa có câu hỏi nào"
-                    description="Thêm câu hỏi để hoàn thiện bài kiểm tra"
+                    description="Thêm câu hỏi mới hoặc chọn từ Ngân hàng câu hỏi"
                     actionText="Thêm Câu hỏi"
                     onAction={handleCreate}
+                    extra={
+                        <Button icon={<DatabaseOutlined />} onClick={handleOpenSelectionModal} style={{ marginTop: 8 }}>
+                            Chọn từ Ngân hàng
+                        </Button>
+                    }
                 />
             )}
 
+            {/* Form Modal - Tạo câu hỏi mới */}
             <QuestionFormModal
                 open={isModalOpen}
                 onCancel={() => {
@@ -241,6 +286,14 @@ function QuizQuestionsPage() {
                 }}
                 onSubmit={handleFormSubmit}
                 initialValues={editingQuestion}
+            />
+
+            {/* Selection Modal - Chọn từ Ngân hàng */}
+            <QuestionSelectionModal
+                open={isSelectionModalOpen}
+                onCancel={() => setIsSelectionModalOpen(false)}
+                onSelect={handleSelectFromBank}
+                excludeIds={existingQuestionIds}
             />
         </div>
     );

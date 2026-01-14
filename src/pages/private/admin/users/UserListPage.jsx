@@ -18,7 +18,6 @@ import {
     Statistic,
 } from 'antd';
 import {
-    PlusOutlined,
     EditOutlined,
     DeleteOutlined,
     SearchOutlined,
@@ -28,7 +27,6 @@ import {
     TeamOutlined,
     CheckCircleOutlined,
     StopOutlined,
-    ExportOutlined,
     ReloadOutlined,
 } from '@ant-design/icons';
 import { PageHeader, EmptyState } from '../../../../components/common';
@@ -289,14 +287,6 @@ function UserListPage() {
                 title="Quản lý Người dùng"
                 subtitle="Quản lý tài khoản nhân viên trong hệ thống"
                 breadcrumbs={[{ title: 'Người dùng' }]}
-                actions={
-                    <Space>
-                        <Button icon={<ExportOutlined />}>Xuất Excel</Button>
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            Thêm Người dùng
-                        </Button>
-                    </Space>
-                }
             />
 
             {/* Statistics Cards */}

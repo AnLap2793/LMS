@@ -166,10 +166,7 @@ function MyCoursesPage() {
 
                             {/* Difficulty tag ở góc trên bên trái (nếu có) */}
                             {course?.difficulty && (
-                                <Tag
-                                    color={difficultyConfig.color}
-                                    style={{ position: 'absolute', top: 12, left: 12 }}
-                                >
+                                <Tag color={difficultyConfig.color} style={{ position: 'absolute', top: 12, left: 12 }}>
                                     {difficultyConfig.label}
                                 </Tag>
                             )}
@@ -228,7 +225,9 @@ function MyCoursesPage() {
                                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                                     Tiến độ
                                                 </Text>
-                                                <Text style={{ fontSize: 12 }}>{enrollment.progress_percentage || 0}%</Text>
+                                                <Text style={{ fontSize: 12 }}>
+                                                    {enrollment.progress_percentage || 0}%
+                                                </Text>
                                             </div>
                                             <Progress
                                                 percent={enrollment.progress_percentage || 0}
@@ -470,7 +469,7 @@ function MyCoursesPage() {
                             <RocketOutlined style={{ color: '#eb2f96', marginRight: 8 }} />
                             Lộ trình của tôi
                         </Title>
-                        <Button type="link" onClick={() => navigate('/courses')}>
+                        <Button type="link" onClick={() => navigate('/learning-paths')}>
                             Xem tất cả lộ trình <ArrowRightOutlined />
                         </Button>
                     </div>
@@ -503,7 +502,7 @@ function MyCoursesPage() {
                         prefix={<SearchOutlined />}
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
-                        style={{ width: 250 }}
+                        style={{ width: '100%', maxWidth: 250 }}
                         allowClear
                     />
                 </div>

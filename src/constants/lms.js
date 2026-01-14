@@ -77,14 +77,12 @@ export const LESSON_TYPE_MAP = {
 // ============================================
 export const VIDEO_PROVIDER = {
     YOUTUBE: 'youtube',
-    VIMEO: 'vimeo',
-    DIRECT: 'direct',
+    GOOGLE_DRIVE: 'google_drive',
 };
 
 export const VIDEO_PROVIDER_OPTIONS = [
     { value: 'youtube', label: 'YouTube' },
-    { value: 'vimeo', label: 'Vimeo' },
-    { value: 'direct', label: 'Direct URL' },
+    { value: 'google_drive', label: 'Google Drive' },
 ];
 
 // ============================================
@@ -115,6 +113,85 @@ export const MODULE_STATUS = {
 export const MODULE_STATUS_OPTIONS = [
     { value: 'draft', label: 'Nháp', color: 'default' },
     { value: 'published', label: 'Đã xuất bản', color: 'success' },
+];
+
+// ============================================
+// QUESTION TYPES
+// ============================================
+export const QUESTION_TYPE = {
+    SINGLE: 'single',
+    MULTIPLE: 'multiple',
+    TEXT: 'text',
+};
+
+export const QUESTION_TYPE_OPTIONS = [
+    { value: 'single', label: 'Một đáp án đúng', color: 'blue' },
+    { value: 'multiple', label: 'Nhiều đáp án đúng', color: 'purple' },
+    { value: 'text', label: 'Tự luận / Điền từ', color: 'orange' },
+];
+
+export const QUESTION_TYPE_MAP = {
+    single: { label: 'Một đáp án', color: 'blue' },
+    multiple: { label: 'Nhiều đáp án', color: 'purple' },
+    text: { label: 'Tự luận', color: 'orange' },
+};
+
+// ============================================
+// QUESTION DIFFICULTY
+// ============================================
+export const QUESTION_DIFFICULTY = {
+    EASY: 'easy',
+    MEDIUM: 'medium',
+    HARD: 'hard',
+};
+
+export const QUESTION_DIFFICULTY_OPTIONS = [
+    { value: 'easy', label: 'Dễ', color: 'green' },
+    { value: 'medium', label: 'Trung bình', color: 'orange' },
+    { value: 'hard', label: 'Khó', color: 'red' },
+];
+
+export const QUESTION_DIFFICULTY_MAP = {
+    easy: { label: 'Dễ', color: 'green' },
+    medium: { label: 'Trung bình', color: 'orange' },
+    hard: { label: 'Khó', color: 'red' },
+};
+
+// ============================================
+// QUESTION CATEGORY
+// ============================================
+export const QUESTION_CATEGORY = {
+    PROGRAMMING: 'programming',
+    DATABASE: 'database',
+    DESIGN: 'design',
+    SOFT_SKILLS: 'soft_skills',
+};
+
+export const QUESTION_CATEGORY_OPTIONS = [
+    { value: 'programming', label: 'Lập trình', color: 'blue' },
+    { value: 'database', label: 'Cơ sở dữ liệu', color: 'green' },
+    { value: 'design', label: 'Thiết kế', color: 'purple' },
+    { value: 'soft_skills', label: 'Kỹ năng mềm', color: 'cyan' },
+];
+
+export const QUESTION_CATEGORY_MAP = {
+    programming: { label: 'Lập trình', color: 'blue' },
+    database: { label: 'Cơ sở dữ liệu', color: 'green' },
+    design: { label: 'Thiết kế', color: 'purple' },
+    soft_skills: { label: 'Kỹ năng mềm', color: 'cyan' },
+};
+
+// ============================================
+// QUESTION STATUS
+// ============================================
+export const QUESTION_STATUS = {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+};
+
+export const QUESTION_STATUS_OPTIONS = [
+    { value: 'active', label: 'Hoạt động', color: 'success' },
+    { value: 'inactive', label: 'Không hoạt động', color: 'default' },
 ];
 
 // ============================================
