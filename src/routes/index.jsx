@@ -34,6 +34,9 @@ const QuizAnalysisPage = lazy(() => import('../pages/private/admin/quizzes/QuizA
 // Question Bank (Admin)
 const QuestionBankPage = lazy(() => import('../pages/private/admin/questions/QuestionBankPage'));
 
+// Document Library (Admin)
+const DocumentLibraryPage = lazy(() => import('../pages/private/admin/documents/DocumentLibraryPage'));
+
 // Learner pages
 const MyCoursesPage = lazy(() => import('../pages/private/learner/MyCoursesPage'));
 const CourseLearningPage = lazy(() => import('../pages/private/learner/CourseLearningPage'));
@@ -264,6 +267,11 @@ export const router = createBrowserRouter([
             {
                 path: 'questions',
                 element: <QuestionBankPage />,
+            },
+            // Document Library
+            {
+                path: 'documents',
+                element: <DocumentLibraryPage />,
             },
             // Quiz Attempts (Admin)
             {

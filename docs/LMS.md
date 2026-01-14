@@ -341,24 +341,24 @@ Tags để phân loại và tìm kiếm khóa học.
 
 #### Lessons
 
-| Field           | Type                 | Required | Default     | Description                                              | Interface       | Display        |
-| --------------- | -------------------- | -------- | ----------- | -------------------------------------------------------- | --------------- | -------------- |
-| id              | uuid                 | Yes      | Auto        | Primary key                                              | -               | -              |
-| status          | string               | Yes      | "published" | Trạng thái: "published", "draft"                         | select-dropdown | labels         |
-| module_id       | M2O → modules        | Yes      | -           | Module chứa lesson này                                   | select-dropdown | related-values |
-| title           | string               | Yes      | -           | Tên bài học                                              | input           | raw            |
-| type            | string               | Yes      | -           | Loại bài học: "video", "article", "file", "link", "quiz" | select-dropdown | labels         |
-| content         | text (markdown)      | No       | null        | Nội dung bài học (nếu type = "article")                  | markdown        | formatted-text |
-| video_url       | string               | No       | null        | URL video (YouTube hoặc Google Drive URL)                | input           | raw            |
-| video_provider  | string               | No       | null        | Provider: "youtube", "google_drive"                      | select-dropdown | labels         |
-| video_id        | string               | No       | null        | Video ID (YouTube ID hoặc Google Drive File ID)          | input           | raw            |
-| external_link   | string               | No       | null        | Link ngoài (nếu type = "link")                           | input           | raw            |
-| file_attachment | file                 | No       | null        | File đính kèm (PDF, PPTX, nếu type = "file")             | file            | file           |
-| duration        | integer              | No       | null        | Thời lượng bài học (phút)                                | input           | raw            |
-| is_required     | boolean              | No       | true        | Bài học bắt buộc hay không                               | boolean         | boolean        |
-| sort            | integer              | No       | 0           | Thứ tự hiển thị trong module                             | input           | raw            |
-| user_created    | M2O → directus_users | Yes      | Auto        | Người tạo                                                | user            | user           |
-| date_created    | timestamp            | Yes      | Auto        | Ngày tạo                                                 | datetime        | datetime       |
+| Field           | Type                 | Required | Default     | Description                                                | Interface       | Display        |
+| --------------- | -------------------- | -------- | ----------- | ---------------------------------------------------------- | --------------- | -------------- |
+| id              | uuid                 | Yes      | Auto        | Primary key                                                | -               | -              |
+| status          | string               | Yes      | "published" | Trạng thái: "published", "draft"                           | select-dropdown | labels         |
+| module_id       | M2O → modules        | Yes      | -           | Module chứa lesson này                                     | select-dropdown | related-values |
+| title           | string               | Yes      | -           | Tên bài học                                                | input           | raw            |
+| type            | string               | Yes      | -           | Loại bài học: "video", "article", "file", "link", "quiz"   | select-dropdown | labels         |
+| content         | text (markdown)      | No       | null        | Nội dung bài học (nếu type = "article")                    | markdown        | formatted-text |
+| video_url       | string               | No       | null        | URL video (YouTube hoặc Google Drive URL)                  | input           | raw            |
+| video_provider  | string               | No       | null        | Provider: "youtube", "google_drive"                        | select-dropdown | labels         |
+| video_id        | string               | No       | null        | Video ID (YouTube ID hoặc Google Drive File ID)            | input           | raw            |
+| external_link   | string               | No       | null        | Link ngoài (nếu type = "link")                             | input           | raw            |
+| file_attachment | file                 | No       | null        | File đính kèm chính (deprecated, sử dụng lesson_documents) | file            | file           |
+| duration        | integer              | No       | null        | Thời lượng bài học (phút)                                  | input           | raw            |
+| is_required     | boolean              | No       | true        | Bài học bắt buộc hay không                                 | boolean         | boolean        |
+| sort            | integer              | No       | 0           | Thứ tự hiển thị trong module                               | input           | raw            |
+| user_created    | M2O → directus_users | Yes      | Auto        | Người tạo                                                  | user            | user           |
+| date_created    | timestamp            | Yes      | Auto        | Ngày tạo                                                   | datetime        | datetime       |
 
 **Indexes:**
 
@@ -370,15 +370,85 @@ Tags để phân loại và tìm kiếm khóa học.
 - `module_id` → `modules` (Many-to-One)
 - `lesson_progress` → `lesson_progress` (One-to-Many)
 - `quizzes` → `quizzes` (One-to-Many)
+- `documents` → `documents` (Many-to-Many qua `lessons_documents`)
 
 **Business Rules:**
 
 - `type = "video"`: Cần có `video_url` và `video_provider`
 - `type = "article"`: Cần có `content` (markdown)
-- `type = "file"`: Cần có `file_attachment`
+- `type = "file"`: Cần có ít nhất 1 document trong `lessons_documents`
 - `type = "link"`: Cần có `external_link`
 - `sort` dùng để sắp xếp thứ tự lessons trong module
 - Cascade delete: Xóa module → xóa tất cả lessons
+- Mỗi bài học có thể có nhiều tài liệu đính kèm (qua `lessons_documents` junction table)
+- Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
+
+#### Documents (Thư viện Tài liệu)
+
+Thư viện tài liệu tập trung cho toàn hệ thống. Hỗ trợ cả file upload và URL bên ngoài.
+
+| Field        | Type                 | Required | Default  | Description                                                  | Interface       | Display        |
+| ------------ | -------------------- | -------- | -------- | ------------------------------------------------------------ | --------------- | -------------- |
+| id           | uuid                 | Yes      | Auto     | Primary key                                                  | -               | -              |
+| type         | string               | Yes      | "file"   | Loại tài liệu: "file" hoặc "url"                             | select-dropdown | labels         |
+| title        | string               | Yes      | -        | Tên tài liệu                                                 | input           | raw            |
+| description  | text                 | No       | null     | Mô tả ngắn về tài liệu                                       | input-multiline | formatted-text |
+| file         | file                 | Cond.    | null     | File đính kèm (khi type = "file")                            | file            | file           |
+| url          | string               | Cond.    | null     | URL bên ngoài (khi type = "url")                             | input           | raw            |
+| url_type     | string               | No       | null     | Loại URL: "google_doc", "google_sheet", "notion", "external" | select-dropdown | labels         |
+| tags         | json                 | No       | null     | Tags để tìm kiếm/filter                                      | tags            | tags           |
+| status       | string               | Yes      | "active" | Trạng thái: "active", "archived"                             | select-dropdown | labels         |
+| user_created | M2O → directus_users | Yes      | Auto     | Người tạo                                                    | user            | user           |
+| date_created | timestamp            | Yes      | Auto     | Ngày tạo                                                     | datetime        | datetime       |
+| date_updated | timestamp            | Yes      | Auto     | Ngày cập nhật                                                | datetime        | datetime       |
+
+**Indexes:**
+
+- `type`
+- `status`
+- `user_created`
+
+**Relations:**
+
+- `lessons` → `lessons` (Many-to-Many qua `lessons_documents`)
+
+**Business Rules:**
+
+- `type = "file"`: Cần có `file` (bắt buộc)
+- `type = "url"`: Cần có `url` (bắt buộc)
+- Một tài liệu có thể được đính kèm vào nhiều bài học khác nhau
+- Hỗ trợ các định dạng file: PDF, DOCX, PPTX, XLSX, ZIP, RAR, TXT, CSV
+- `url_type` gợi ý icon và cách hiển thị phù hợp
+- `status = "archived"`: Tài liệu bị ẩn khỏi thư viện nhưng vẫn hiển thị trong các bài học đã đính kèm
+
+#### Lessons Documents (Junction Table)
+
+Bảng liên kết Many-to-Many giữa Lessons và Documents.
+
+| Field       | Type            | Required | Default | Description                   | Interface       | Display        |
+| ----------- | --------------- | -------- | ------- | ----------------------------- | --------------- | -------------- |
+| id          | integer         | Yes      | Auto    | Primary key                   | -               | -              |
+| lesson_id   | M2O → lessons   | Yes      | -       | Bài học                       | select-dropdown | related-values |
+| document_id | M2O → documents | Yes      | -       | Tài liệu                      | select-dropdown | related-values |
+| sort        | integer         | No       | 0       | Thứ tự hiển thị trong bài học | input           | raw            |
+
+**Indexes:**
+
+- `[lesson_id, document_id]` (composite, unique) - Mỗi document chỉ được đính kèm 1 lần/lesson
+- `lesson_id`
+- `document_id`
+
+**Relations:**
+
+- `lesson_id` → `lessons` (Many-to-One)
+- `document_id` → `documents` (Many-to-One)
+
+**Business Rules:**
+
+- Unique constraint: `(lesson_id, document_id)` - Tránh duplicate
+- `sort` dùng để sắp xếp thứ tự tài liệu trong bài học
+- Cascade delete: Xóa lesson → xóa các records trong junction table (không xóa document)
+- Khi xóa document: Xóa các records trong junction table
 
 ### 4.4. Learning Progress Collections
 

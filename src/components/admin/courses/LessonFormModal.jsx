@@ -1,9 +1,23 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Modal, Form, Input, Select, InputNumber, Switch, Space, Radio, Divider } from 'antd';
-import { PlayCircleOutlined, FileTextOutlined, FileOutlined, LinkOutlined, FormOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, Select, InputNumber, Switch, Space, Radio, Divider, Button, List, Tag, Empty } from 'antd';
+import {
+    PlayCircleOutlined,
+    FileTextOutlined,
+    FileOutlined,
+    LinkOutlined,
+    FormOutlined,
+    PlusOutlined,
+    DeleteOutlined,
+    FilePdfOutlined,
+    FileWordOutlined,
+    FileExcelOutlined,
+    FilePptOutlined,
+    GoogleOutlined,
+} from '@ant-design/icons';
 import { LESSON_TYPE_OPTIONS, VIDEO_PROVIDER_OPTIONS } from '../../../constants/lms';
 import { LexicalEditor } from '../../common';
+import DocumentSelectorModal from '../documents/DocumentSelectorModal';
 
 /**
  * LessonFormModal Component
@@ -19,16 +33,35 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
     // State for Lexical editor content (since Lexical doesn't work directly with Form.Item)
     const [articleContent, setArticleContent] = useState('');
 
+    // State for selected documents (for file type lessons)
+    const [selectedDocuments, setSelectedDocuments] = useState([]);
+    const [isDocSelectorOpen, setIsDocSelectorOpen] = useState(false);
+
     // Reset form when modal opens/closes
     useEffect(() => {
         if (open) {
             if (initialValues) {
                 form.setFieldsValue(initialValues);
                 setArticleContent(initialValues.content || '');
+
+                // Handle documents (with backward compatibility for file_attachment)
+                let docs = initialValues.documents || [];
+                if (docs.length === 0 && initialValues.file_attachment) {
+                    docs = [
+                        {
+                            id: initialValues.file_attachment.id || 'mock-file-id',
+                            title: initialValues.file_attachment.filename_download || 'Legacy File',
+                            type: 'file',
+                            file: initialValues.file_attachment,
+                        },
+                    ];
+                }
+                setSelectedDocuments(docs);
             } else {
                 form.resetFields();
                 form.setFieldValue('type', 'video');
                 setArticleContent('');
+                setSelectedDocuments([]);
             }
         }
     }, [open, initialValues, form]);
@@ -40,6 +73,9 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
             if (lessonType === 'article') {
                 values.content = articleContent;
             }
+            // Add selected documents for file type
+            values.documents = selectedDocuments;
+
             onSubmit(values);
         } catch {
             // Validation failed
@@ -57,6 +93,37 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
             file_attachment: null,
         });
         setArticleContent('');
+        setSelectedDocuments([]);
+    };
+
+    // Handle document selection from library
+    const handleDocumentsSelected = docs => {
+        // Merge new docs with existing, avoiding duplicates
+        const existingIds = selectedDocuments.map(d => d.id);
+        const newDocs = docs.filter(d => !existingIds.includes(d.id));
+        setSelectedDocuments([...selectedDocuments, ...newDocs]);
+        setIsDocSelectorOpen(false);
+    };
+
+    // Remove document from selection
+    const handleRemoveDocument = docId => {
+        setSelectedDocuments(selectedDocuments.filter(d => d.id !== docId));
+    };
+
+    // Get file icon helper
+    const getDocIcon = doc => {
+        if (doc.type === 'url') {
+            if (doc.url_type?.includes('google')) return <GoogleOutlined style={{ color: '#4285f4' }} />;
+            return <LinkOutlined style={{ color: '#1890ff' }} />;
+        }
+        const fileType = doc.file?.type || '';
+        if (fileType.includes('pdf')) return <FilePdfOutlined style={{ color: '#ff4d4f' }} />;
+        if (fileType.includes('word')) return <FileWordOutlined style={{ color: '#1890ff' }} />;
+        if (fileType.includes('excel') || fileType.includes('sheet'))
+            return <FileExcelOutlined style={{ color: '#52c41a' }} />;
+        if (fileType.includes('powerpoint') || fileType.includes('presentation'))
+            return <FilePptOutlined style={{ color: '#fa8c16' }} />;
+        return <FileOutlined />;
     };
 
     // Icon map for type buttons
@@ -161,34 +228,70 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
                     </Form.Item>
                 )}
 
-                {lessonType === 'file' && (
-                    <Form.Item
-                        name="file_attachment"
-                        label="Tài liệu đính kèm"
-                        extra="Chức năng upload sẽ được bổ sung khi kết nối Directus"
-                    >
-                        <Input placeholder="File sẽ được upload sau khi kết nối Directus" disabled />
-                    </Form.Item>
-                )}
-
-                {lessonType === 'link' && (
-                    <Form.Item
-                        name="external_link"
-                        label="Liên kết ngoài"
-                        rules={[
-                            { required: true, message: 'Vui lòng nhập URL' },
-                            { type: 'url', message: 'URL không hợp lệ' },
-                        ]}
-                    >
-                        <Input placeholder="https://example.com" />
-                    </Form.Item>
-                )}
-
                 {lessonType === 'quiz' && (
                     <Form.Item label="Bài kiểm tra">
                         <Input placeholder="Quản lý câu hỏi quiz sẽ được bổ sung sau" disabled />
                     </Form.Item>
                 )}
+
+                <Divider />
+
+                {/* Attachments - Available for ALL lesson types */}
+                <Form.Item
+                    label="Tài liệu / Tài nguyên đính kèm"
+                    tooltip="Tài liệu bổ trợ cho bài học (Slide, Source code, Ebook...)"
+                    required={lessonType === 'file'}
+                    validateStatus={lessonType === 'file' && selectedDocuments.length === 0 ? 'error' : ''}
+                    help={
+                        lessonType === 'file' && selectedDocuments.length === 0
+                            ? 'Bài học dạng File yêu cầu ít nhất 1 tài liệu'
+                            : ''
+                    }
+                >
+                    {/* Selected documents list */}
+                    {selectedDocuments.length > 0 ? (
+                        <List
+                            size="small"
+                            bordered
+                            dataSource={selectedDocuments}
+                            renderItem={doc => (
+                                <List.Item
+                                    actions={[
+                                        <Button
+                                            key="delete"
+                                            type="text"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => handleRemoveDocument(doc.id)}
+                                        />,
+                                    ]}
+                                >
+                                    <List.Item.Meta
+                                        avatar={getDocIcon(doc)}
+                                        title={doc.title}
+                                        description={
+                                            <Tag color={doc.type === 'file' ? 'blue' : 'green'}>
+                                                {doc.type === 'file' ? 'File' : 'URL'}
+                                            </Tag>
+                                        }
+                                    />
+                                </List.Item>
+                            )}
+                            style={{ marginBottom: 12 }}
+                        />
+                    ) : (
+                        <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description="Chưa có tài liệu đính kèm"
+                            style={{ margin: '12px 0' }}
+                        />
+                    )}
+
+                    {/* Button to open document selector */}
+                    <Button type="dashed" icon={<PlusOutlined />} onClick={() => setIsDocSelectorOpen(true)} block>
+                        Chọn từ Thư viện Tài liệu
+                    </Button>
+                </Form.Item>
 
                 <Divider />
 
@@ -203,6 +306,14 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
                     </Form.Item>
                 </Space>
             </Form>
+
+            {/* Document Selector Modal */}
+            <DocumentSelectorModal
+                open={isDocSelectorOpen}
+                onCancel={() => setIsDocSelectorOpen(false)}
+                onSelect={handleDocumentsSelected}
+                selectedIds={selectedDocuments.map(d => d.id)}
+            />
         </Modal>
     );
 }
@@ -221,6 +332,13 @@ LessonFormModal.propTypes = {
         external_link: PropTypes.string,
         duration: PropTypes.number,
         is_required: PropTypes.bool,
+        documents: PropTypes.arrayOf(
+            PropTypes.shape({
+                id: PropTypes.string,
+                title: PropTypes.string,
+                type: PropTypes.string,
+            })
+        ),
     }),
 };
 

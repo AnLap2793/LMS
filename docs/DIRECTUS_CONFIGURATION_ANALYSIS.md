@@ -21,6 +21,8 @@
 | `courses_tags`           | `COLLECTIONS.COURSES_TAGS`           | Chưa có                  | Chưa có                    | Junction table    |
 | `modules`                | `COLLECTIONS.MODULES`                | Chưa có                  | Chưa có                    | Cần tạo           |
 | `lessons`                | `COLLECTIONS.LESSONS`                | Chưa có                  | Chưa có                    | Cần tạo           |
+| `documents`              | `COLLECTIONS.DOCUMENTS`              | Chưa có                  | Chưa có                    | Cần tạo           |
+| `lessons_documents`      | `COLLECTIONS.LESSONS_DOCUMENTS`      | Chưa có                  | Chưa có                    | Junction table    |
 | `enrollments`            | `COLLECTIONS.ENROLLMENTS`            | Mock                     | `useEnrollments.js` (mock) | Cần cập nhật      |
 | `lesson_progress`        | `COLLECTIONS.LESSON_PROGRESS`        | Chưa có                  | Chưa có                    | Cần tạo           |
 | `quizzes`                | `COLLECTIONS.QUIZZES`                | Chưa có                  | Chưa có                    | Cần tạo           |
@@ -155,7 +157,7 @@ Primary Key: uuid (auto-generated)
 | `video_provider`  | string      | select-dropdown     | Options: `youtube`, `google_drive`                                  |
 | `video_id`        | string      | input               | Optional, Extracted from URL (YouTube ID hoặc Google Drive File ID) |
 | `external_link`   | string      | input               | Optional, For link type                                             |
-| `file_attachment` | uuid (file) | file                | Optional, For file type                                             |
+| `file_attachment` | uuid (file) | file                | Optional, deprecated (use documents M2M via lessons_documents)      |
 | `duration`        | integer     | input               | Optional, Minutes                                                   |
 | `is_required`     | boolean     | boolean             | Default: true                                                       |
 | `sort`            | integer     | input               | Default: 0                                                          |
@@ -166,8 +168,94 @@ Primary Key: uuid (auto-generated)
 
 - `type = 'video'`: `video_url` required
 - `type = 'article'`: `content` required
-- `type = 'file'`: `file_attachment` required
+- `type = 'file'`: Cần có ít nhất 1 document trong `lessons_documents` (M2M)
 - `type = 'link'`: `external_link` required
+
+**Relations:**
+
+- `module_id`: M2O -> `modules`
+- `documents`: M2M -> `documents` via `lessons_documents` (thư viện tài liệu)
+
+---
+
+### 2.6. Documents (Thư viện Tài liệu)
+
+```
+Collection: documents
+Primary Key: uuid (auto-generated)
+```
+
+| Field          | Type        | Interface       | Options                                                     |
+| -------------- | ----------- | --------------- | ----------------------------------------------------------- |
+| `id`           | uuid        | -               | Primary Key, Auto                                           |
+| `type`         | string      | select-dropdown | Required. Options: `file`, `url`. Default: `file`           |
+| `title`        | string      | input           | Required, Max 255                                           |
+| `description`  | text        | textarea        | Optional                                                    |
+| `file`         | uuid (file) | file            | Conditional (required if type = 'file')                     |
+| `url`          | string      | input           | Conditional (required if type = 'url')                      |
+| `url_type`     | string      | select-dropdown | Options: `google_doc`, `google_sheet`, `notion`, `external` |
+| `tags`         | json        | tags            | Optional, Array of strings for filtering                    |
+| `status`       | string      | select-dropdown | Options: `active`, `archived`. Default: `active`            |
+| `user_created` | uuid        | user            | Auto                                                        |
+| `date_created` | timestamp   | datetime        | Auto                                                        |
+| `date_updated` | timestamp   | datetime        | Auto                                                        |
+
+**Relations:**
+
+- `lessons`: M2M -> `lessons` via `lessons_documents`
+
+**Validation Rules:**
+
+- `type = 'file'`: `file` required
+- `type = 'url'`: `url` required
+
+**Business Rules:**
+
+- Thư viện tài liệu tập trung cho toàn hệ thống LMS
+- Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
+- Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
+- `status = 'archived'`: Tài liệu bị ẩn khỏi thư viện nhưng vẫn hiển thị trong các bài học đã đính kèm
+- `tags` dùng để filter và tìm kiếm tài liệu
+
+**URL Types:**
+
+| url_type       | Description      | Example URL                                       |
+| -------------- | ---------------- | ------------------------------------------------- |
+| `google_doc`   | Google Docs      | `https://docs.google.com/document/d/xxx/edit`     |
+| `google_sheet` | Google Sheets    | `https://docs.google.com/spreadsheets/d/xxx/edit` |
+| `notion`       | Notion page      | `https://notion.so/xxx`                           |
+| `external`     | Any external URL | `https://example.com/resource`                    |
+
+---
+
+### 2.7. Lessons Documents (Junction Table)
+
+```
+Collection: lessons_documents
+Primary Key: auto-increment integer
+```
+
+| Field          | Type    | Interface           | Options                                |
+| -------------- | ------- | ------------------- | -------------------------------------- |
+| `id`           | integer | -                   | Primary Key, Auto                      |
+| `lessons_id`   | uuid    | select-dropdown-m2o | Required, M2O -> lessons               |
+| `documents_id` | uuid    | select-dropdown-m2o | Required, M2O -> documents             |
+| `sort`         | integer | input               | Default: 0, For ordering within lesson |
+
+**Indexes:**
+
+- `[lessons_id, documents_id]` (composite, unique)
+
+**Relations:**
+
+- `lessons_id`: M2O -> `lessons`
+- `documents_id`: M2O -> `documents`
+
+**Business Rules:**
+
+- Junction table cho M2M relation giữa lessons và documents
+- `sort` dùng để sắp xếp thứ tự tài liệu trong bài học
+- Unique constraint: Mỗi document chỉ được đính kèm 1 lần/lesson
 
 **Video URL Formats:**
 
@@ -650,19 +738,21 @@ const transformed = enrollments.map(e => ({
 3. courses_tags (junction - M2M)
 4. modules (M2O -> courses)
 5. lessons (M2O -> modules)
-6. enrollments (M2O -> users, courses)
-7. lesson_progress (M2O -> users, lessons, enrollments)
-8. quizzes (M2O -> lessons, courses)
-9. quiz_questions (M2O -> quizzes)
-10. question_bank (Standalone)
-11. quiz_attempts (M2O -> users, quizzes, enrollments)
-12. learning_paths
-13. learning_paths_courses (junction - M2M)
-14. certificate_templates
-15. certificates (M2O -> users, courses)
-16. user_notes (M2O -> users, lessons)
-17. lesson_comments (M2O -> users, lessons, self-ref)
-18. course_reviews (M2O -> users, courses)
+6. documents (thư viện tài liệu tập trung - hỗ trợ file và URL)
+7. lessons_documents (junction - M2M giữa lessons và documents)
+8. enrollments (M2O -> users, courses)
+9. lesson_progress (M2O -> users, lessons, enrollments)
+10. quizzes (M2O -> lessons, courses)
+11. quiz_questions (M2O -> quizzes)
+12. question_bank (Standalone)
+13. quiz_attempts (M2O -> users, quizzes, enrollments)
+14. learning_paths
+15. learning_paths_courses (junction - M2M)
+16. certificate_templates
+17. certificates (M2O -> users, courses)
+18. user_notes (M2O -> users, lessons)
+19. lesson_comments (M2O -> users, lessons, self-ref)
+20. course_reviews (M2O -> users, courses)
 ```
 
 #### Bước 2: Thiết lập Permissions
@@ -1049,6 +1139,7 @@ export const enrollmentService = {
 - [ ] Cập nhật `courseService.js` (thay mock)
 - [ ] Tạo `moduleService.js`
 - [ ] Tạo `lessonService.js`
+- [ ] Tạo `documentService.js` (thư viện tài liệu - hỗ trợ file và URL)
 - [ ] Cập nhật `enrollmentService.js` (thay mock)
 - [ ] Tạo `lessonProgressService.js`
 - [ ] Tạo `quizService.js`
@@ -1063,6 +1154,7 @@ export const enrollmentService = {
 - [ ] Cập nhật `useCourses.js`
 - [ ] Tạo `useModules.js`
 - [ ] Tạo `useLessons.js`
+- [ ] Tạo `useDocuments.js` (hooks cho thư viện tài liệu)
 - [ ] Cập nhật `useEnrollments.js`
 - [ ] Tạo `useLessonProgress.js`
 - [ ] Tạo `useQuizzes.js`

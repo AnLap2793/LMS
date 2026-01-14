@@ -19,6 +19,7 @@ import {
     CloseOutlined,
     DatabaseOutlined,
     HistoryOutlined,
+    FolderOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -108,6 +109,11 @@ function AdminLayout() {
                     key: '/admin/questions',
                     icon: <DatabaseOutlined />,
                     label: 'Ngân hàng câu hỏi',
+                },
+                {
+                    key: '/admin/documents',
+                    icon: <FolderOutlined />,
+                    label: 'Thư viện Tài liệu',
                 },
                 {
                     key: '/admin/quiz-attempts',
@@ -209,6 +215,7 @@ function AdminLayout() {
         if (path.startsWith('/admin/courses')) return ['/admin/courses'];
         if (path.startsWith('/admin/quizzes')) return ['/admin/quizzes'];
         if (path.startsWith('/admin/questions')) return ['/admin/questions'];
+        if (path.startsWith('/admin/documents')) return ['/admin/documents'];
         if (path.startsWith('/admin/quiz-attempts')) return ['/admin/quiz-attempts'];
         if (path.startsWith('/admin/tags')) return ['/admin/tags'];
         if (path.startsWith('/admin/learning-paths')) return ['/admin/learning-paths'];
@@ -231,6 +238,7 @@ function AdminLayout() {
             path.includes('/quizzes') ||
             path.includes('/questions') ||
             path.includes('/tags') ||
+            path.includes('/documents') ||
             path.includes('/learning-paths')
         ) {
             return ['training'];

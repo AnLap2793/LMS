@@ -55,6 +55,28 @@ export const queryKeys = {
     },
 
     /**
+     * LMS - Lesson Documents query keys
+     */
+    lessonDocuments: {
+        all: ['lesson-documents'],
+        byLesson: lessonId => [...queryKeys.lessonDocuments.all, 'lesson', lessonId],
+        detail: id => [...queryKeys.lessonDocuments.all, 'detail', id],
+    },
+
+    /**
+     * LMS - Documents (Thư viện Tài liệu) query keys
+     */
+    documents: {
+        all: ['documents'],
+        lists: () => [...queryKeys.documents.all, 'list'],
+        list: filters => [...queryKeys.documents.lists(), { filters }],
+        details: () => [...queryKeys.documents.all, 'detail'],
+        detail: id => [...queryKeys.documents.details(), id],
+        byLesson: lessonId => [...queryKeys.documents.all, 'lesson', lessonId],
+        usageStats: id => [...queryKeys.documents.all, 'usage', id],
+    },
+
+    /**
      * LMS - Enrollments query keys
      */
     enrollments: {

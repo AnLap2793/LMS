@@ -637,24 +637,50 @@ function CourseLearningPage() {
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <List
-                        dataSource={[
-                            { id: 1, name: 'Slide bài giảng.pdf', size: '2.5 MB' },
-                            { id: 2, name: 'Source code mẫu.zip', size: '15 MB' },
-                        ]}
+                        dataSource={
+                            currentLesson?.documents?.length > 0
+                                ? currentLesson.documents
+                                : currentLesson?.file_attachment
+                                  ? [
+                                        {
+                                            id: currentLesson.file_attachment.id,
+                                            title: currentLesson.file_attachment.filename_download,
+                                            type: 'file',
+                                            file: currentLesson.file_attachment,
+                                        },
+                                    ]
+                                  : []
+                        }
+                        locale={{ emptyText: 'Không có tài liệu đính kèm' }}
                         renderItem={item => (
                             <List.Item
                                 actions={[
-                                    <Button key="download" type="link" icon={<DownloadOutlined />}>
-                                        Tải xuống
+                                    <Button
+                                        key="download"
+                                        type="link"
+                                        icon={item.type === 'url' ? <LinkOutlined /> : <DownloadOutlined />}
+                                        onClick={() => {
+                                            if (item.type === 'url') {
+                                                window.open(item.url, '_blank');
+                                            } else {
+                                                // Handle download (mock)
+                                                message.success('Đang tải xuống...');
+                                            }
+                                        }}
+                                    >
+                                        {item.type === 'url' ? 'Mở liên kết' : 'Tải xuống'}
                                     </Button>,
                                 ]}
                             >
                                 <List.Item.Meta
                                     avatar={
-                                        <Avatar icon={<FileTextOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                                        <Avatar
+                                            icon={item.type === 'url' ? <LinkOutlined /> : <FileTextOutlined />}
+                                            style={{ backgroundColor: item.type === 'url' ? '#52c41a' : '#1890ff' }}
+                                        />
                                     }
-                                    title={item.name}
-                                    description={item.size}
+                                    title={item.title || item.name}
+                                    description={item.type === 'url' ? item.url : 'Tài liệu đính kèm'}
                                 />
                             </List.Item>
                         )}

@@ -12,6 +12,8 @@ export const COLLECTIONS = {
     COURSES_TAGS: 'courses_tags',
     MODULES: 'modules',
     LESSONS: 'lessons',
+    DOCUMENTS: 'documents',
+    LESSONS_DOCUMENTS: 'lessons_documents',
     ENROLLMENTS: 'enrollments',
     LESSON_PROGRESS: 'lesson_progress',
     QUIZZES: 'quizzes',
