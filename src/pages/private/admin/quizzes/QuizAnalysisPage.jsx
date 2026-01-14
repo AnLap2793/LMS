@@ -1,18 +1,19 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Table, Typography, Space, Progress, Tag, Button, Statistic, Row, Col, Tooltip } from 'antd';
+import { Card, Table, Typography, Space, Progress, Tag, Button, Statistic, Row, Col, Tooltip, Tabs } from 'antd';
 import {
     ArrowLeftOutlined,
     BarChartOutlined,
     CheckCircleOutlined,
     WarningOutlined,
     UserOutlined,
+    UnorderedListOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '../../../../components/common';
 import { useQuizAnalysis } from '../../../../hooks/useQuizAttempts';
-import { useCourseDetail } from '../../../../hooks/useCourses';
 import { mockQuizzes } from '../../../../mocks';
+import QuizAttemptList from './components/QuizAttemptList';
 
-const { Text, Title, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 /**
  * Quiz Analysis Page
@@ -161,11 +162,86 @@ function QuizAnalysisPage() {
         },
     ];
 
+    const tabItems = [
+        {
+            key: 'stats',
+            label: (
+                <span>
+                    <BarChartOutlined />
+                    Thống kê chung
+                </span>
+            ),
+            children: (
+                <>
+                    {/* Summary Cards */}
+                    <Row gutter={16} style={{ marginBottom: 24 }}>
+                        <Col span={8}>
+                            <Card>
+                                <Statistic
+                                    title="Tổng lượt làm bài"
+                                    value={summary?.totalAttempts || 0}
+                                    prefix={<UserOutlined />}
+                                    valueStyle={{ color: '#1890ff' }}
+                                />
+                            </Card>
+                        </Col>
+                        <Col span={8}>
+                            <Card>
+                                <Statistic
+                                    title="Điểm trung bình"
+                                    value={summary?.averageScore || 0}
+                                    prefix={<BarChartOutlined />}
+                                    suffix="/ 100"
+                                />
+                            </Card>
+                        </Col>
+                        <Col span={8}>
+                            <Card>
+                                <Statistic
+                                    title="Tỷ lệ đạt"
+                                    value={summary?.passRate || 0}
+                                    prefix={<CheckCircleOutlined />}
+                                    suffix="%"
+                                    valueStyle={{ color: '#52c41a' }}
+                                />
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    {/* Analysis Table */}
+                    <Card title="Chi tiết câu hỏi">
+                        <Table
+                            rowKey="id"
+                            columns={columns}
+                            dataSource={questions || []}
+                            loading={isLoading}
+                            pagination={false}
+                        />
+                    </Card>
+                </>
+            ),
+        },
+        {
+            key: 'attempts',
+            label: (
+                <span>
+                    <UnorderedListOutlined />
+                    Danh sách bài làm
+                </span>
+            ),
+            children: (
+                <Card>
+                    <QuizAttemptList quizId={quizId} />
+                </Card>
+            ),
+        },
+    ];
+
     return (
         <div>
             <PageHeader
                 title={`Phân tích: ${quiz.title}`}
-                subtitle="Chi tiết hiệu quả từng câu hỏi và phân phối đáp án"
+                subtitle="Chi tiết hiệu quả từng câu hỏi và danh sách bài làm"
                 breadcrumbs={[{ title: 'Bài kiểm tra', path: '/admin/quizzes' }, { title: 'Phân tích' }]}
                 actions={
                     <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/quizzes')}>
@@ -174,51 +250,7 @@ function QuizAnalysisPage() {
                 }
             />
 
-            {/* Summary Cards */}
-            <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col span={8}>
-                    <Card>
-                        <Statistic
-                            title="Tổng lượt làm bài"
-                            value={summary?.totalAttempts || 0}
-                            prefix={<UserOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
-                        />
-                    </Card>
-                </Col>
-                <Col span={8}>
-                    <Card>
-                        <Statistic
-                            title="Điểm trung bình"
-                            value={summary?.averageScore || 0}
-                            prefix={<BarChartOutlined />}
-                            suffix="/ 100"
-                        />
-                    </Card>
-                </Col>
-                <Col span={8}>
-                    <Card>
-                        <Statistic
-                            title="Tỷ lệ đạt"
-                            value={summary?.passRate || 0}
-                            prefix={<CheckCircleOutlined />}
-                            suffix="%"
-                            valueStyle={{ color: '#52c41a' }}
-                        />
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* Analysis Table */}
-            <Card title="Chi tiết câu hỏi">
-                <Table
-                    rowKey="id"
-                    columns={columns}
-                    dataSource={questions || []}
-                    loading={isLoading}
-                    pagination={false}
-                />
-            </Card>
+            <Tabs defaultActiveKey="stats" items={tabItems} />
         </div>
     );
 }

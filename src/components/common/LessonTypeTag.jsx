@@ -39,7 +39,7 @@ function LessonTypeTag({ type, showLabel }) {
 }
 
 LessonTypeTag.propTypes = {
-    type: PropTypes.oneOf(['video', 'article', 'file', 'link', 'quiz']).isRequired,
+    type: PropTypes.oneOf(['video', 'article', 'link', 'quiz']).isRequired,
     showLabel: PropTypes.bool,
 };
 

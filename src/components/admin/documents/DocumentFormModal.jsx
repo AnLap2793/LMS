@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Modal, Form, Input, Select, Upload, Space, Radio, message, Tag } from 'antd';
+import { Modal, Form, Input, Select, Upload, Space, Radio, message } from 'antd';
 import { InboxOutlined, LinkOutlined, FileOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -23,8 +23,6 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
     const [form] = Form.useForm();
     const [documentType, setDocumentType] = useState('file');
     const [fileList, setFileList] = useState([]);
-    const [tags, setTags] = useState([]);
-    const [tagInputValue, setTagInputValue] = useState('');
 
     // Reset form when modal opens
     useEffect(() => {
@@ -35,7 +33,6 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
                     type: initialValues.type || 'file',
                 });
                 setDocumentType(initialValues.type || 'file');
-                setTags(initialValues.tags || []);
                 if (initialValues.file) {
                     setFileList([
                         {
@@ -49,7 +46,6 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
                 form.resetFields();
                 setDocumentType('file');
                 setFileList([]);
-                setTags([]);
             }
         }
     }, [open, initialValues, form]);
@@ -80,18 +76,6 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
         },
     };
 
-    // Handle tag input
-    const handleTagInputConfirm = () => {
-        if (tagInputValue && !tags.includes(tagInputValue)) {
-            setTags([...tags, tagInputValue]);
-        }
-        setTagInputValue('');
-    };
-
-    const handleTagClose = removedTag => {
-        setTags(tags.filter(tag => tag !== removedTag));
-    };
-
     // Handle submit
     const handleSubmit = async () => {
         try {
@@ -100,7 +84,6 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
             const submitData = {
                 ...values,
                 type: documentType,
-                tags: tags.length > 0 ? tags : null,
             };
 
             // If file type and has new file
@@ -211,25 +194,6 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
                         </Form.Item>
                     </>
                 )}
-
-                {/* Tags */}
-                <Form.Item label="Tags">
-                    <Space wrap style={{ marginBottom: 8 }}>
-                        {tags.map(tag => (
-                            <Tag key={tag} closable onClose={() => handleTagClose(tag)}>
-                                {tag}
-                            </Tag>
-                        ))}
-                    </Space>
-                    <Input
-                        value={tagInputValue}
-                        onChange={e => setTagInputValue(e.target.value)}
-                        onBlur={handleTagInputConfirm}
-                        onPressEnter={handleTagInputConfirm}
-                        placeholder="Nhập tag và nhấn Enter"
-                        style={{ width: 200 }}
-                    />
-                </Form.Item>
             </Form>
         </Modal>
     );

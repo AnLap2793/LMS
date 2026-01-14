@@ -24,7 +24,6 @@ const mockDocuments = [
         title: 'Sổ tay nhân viên 2024',
         description: 'Tài liệu hướng dẫn cho nhân viên mới',
         file: { id: 'f1', filename_download: 'so-tay-nhan-vien-2024.pdf', type: 'application/pdf' },
-        tags: ['onboarding', 'hr'],
         status: 'active',
     },
     {
@@ -34,7 +33,6 @@ const mockDocuments = [
         description: 'Template theo dõi KPIs hàng tháng',
         url: 'https://docs.google.com/spreadsheets/d/xxx',
         url_type: 'google_sheet',
-        tags: ['template', 'kpi'],
         status: 'active',
     },
     {
@@ -43,7 +41,6 @@ const mockDocuments = [
         title: 'Slide Đào tạo Kỹ năng Giao tiếp',
         description: 'Bài trình chiếu cho khóa học soft skills',
         file: { id: 'f2', filename_download: 'communication-skills.pptx', type: 'application/vnd.ms-powerpoint' },
-        tags: ['soft-skills', 'training'],
         status: 'active',
     },
     {
@@ -52,7 +49,6 @@ const mockDocuments = [
         title: 'Chính sách bảo mật',
         description: 'Quy định về bảo mật thông tin công ty',
         file: { id: 'f4', filename_download: 'security-policy.pdf', type: 'application/pdf' },
-        tags: ['policy', 'security'],
         status: 'active',
     },
     {
@@ -62,7 +58,6 @@ const mockDocuments = [
         description: 'Hướng dẫn quy trình làm việc chi tiết',
         url: 'https://notion.so/workflow',
         url_type: 'notion',
-        tags: ['process', 'guide'],
         status: 'active',
     },
 ];
@@ -108,11 +103,7 @@ function DocumentSelectorModal({ open, onCancel, onSelect, selectedIds, onCreate
     const filteredDocuments = useMemo(() => {
         const activeDocuments = mockDocuments.filter(doc => doc.status === 'active');
         if (!searchText.trim()) return activeDocuments;
-        return activeDocuments.filter(
-            doc =>
-                doc.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                doc.tags?.some(tag => tag.toLowerCase().includes(searchText.toLowerCase()))
-        );
+        return activeDocuments.filter(doc => doc.title.toLowerCase().includes(searchText.toLowerCase()));
     }, [searchText]);
 
     // Handle confirm selection
@@ -153,25 +144,6 @@ function DocumentSelectorModal({ open, onCancel, onSelect, selectedIds, onCreate
                 </Tag>
             ),
         },
-        {
-            title: 'Tags',
-            dataIndex: 'tags',
-            key: 'tags',
-            width: 180,
-            render: tags =>
-                tags?.length > 0 ? (
-                    <Space wrap size={[0, 4]}>
-                        {tags.slice(0, 2).map(tag => (
-                            <Tag key={tag} style={{ margin: 0 }}>
-                                {tag}
-                            </Tag>
-                        ))}
-                        {tags.length > 2 && <Tag style={{ margin: 0 }}>+{tags.length - 2}</Tag>}
-                    </Space>
-                ) : (
-                    '-'
-                ),
-        },
     ];
 
     // Row selection config
@@ -202,7 +174,7 @@ function DocumentSelectorModal({ open, onCancel, onSelect, selectedIds, onCreate
             {/* Search and Create New */}
             <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
                 <Input
-                    placeholder="Tìm kiếm theo tên hoặc tags..."
+                    placeholder="Tìm kiếm theo tên..."
                     prefix={<SearchOutlined />}
                     value={searchText}
                     onChange={e => setSearchText(e.target.value)}

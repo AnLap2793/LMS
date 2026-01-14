@@ -73,7 +73,7 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
             if (lessonType === 'article') {
                 values.content = articleContent;
             }
-            // Add selected documents for file type
+            // Add selected documents
             values.documents = selectedDocuments;
 
             onSubmit(values);
@@ -130,7 +130,6 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
     const typeIcons = {
         video: <PlayCircleOutlined />,
         article: <FileTextOutlined />,
-        file: <FileOutlined />,
         link: <LinkOutlined />,
         quiz: <FormOutlined />,
     };
@@ -240,13 +239,6 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
                 <Form.Item
                     label="Tài liệu / Tài nguyên đính kèm"
                     tooltip="Tài liệu bổ trợ cho bài học (Slide, Source code, Ebook...)"
-                    required={lessonType === 'file'}
-                    validateStatus={lessonType === 'file' && selectedDocuments.length === 0 ? 'error' : ''}
-                    help={
-                        lessonType === 'file' && selectedDocuments.length === 0
-                            ? 'Bài học dạng File yêu cầu ít nhất 1 tài liệu'
-                            : ''
-                    }
                 >
                     {/* Selected documents list */}
                     {selectedDocuments.length > 0 ? (

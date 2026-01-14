@@ -45,6 +45,7 @@ import {
     DownloadOutlined,
     UserOutlined,
     LockOutlined,
+    EyeOutlined,
 } from '@ant-design/icons';
 import { mockCourses, mockDiscussions, getModulesWithLessons } from '../../../mocks';
 import { LESSON_TYPE_MAP } from '../../../constants/lms';
@@ -658,7 +659,7 @@ function CourseLearningPage() {
                                     <Button
                                         key="download"
                                         type="link"
-                                        icon={item.type === 'url' ? <LinkOutlined /> : <DownloadOutlined />}
+                                        icon={item.type === 'url' ? <EyeOutlined /> : <DownloadOutlined />}
                                         onClick={() => {
                                             if (item.type === 'url') {
                                                 window.open(item.url, '_blank');
@@ -668,7 +669,7 @@ function CourseLearningPage() {
                                             }
                                         }}
                                     >
-                                        {item.type === 'url' ? 'Mở liên kết' : 'Tải xuống'}
+                                        {item.type === 'url' ? 'Xem trước' : 'Tải xuống'}
                                     </Button>,
                                 ]}
                             >

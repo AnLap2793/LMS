@@ -47,7 +47,6 @@ const mockDocuments = [
         file: { id: 'f1', filename_download: 'so-tay-nhan-vien-2024.pdf', type: 'application/pdf' },
         url: null,
         url_type: null,
-        tags: ['onboarding', 'hr'],
         status: 'active',
         user_created: { first_name: 'Admin', last_name: 'User' },
         date_created: '2024-01-15T10:00:00Z',
@@ -61,7 +60,6 @@ const mockDocuments = [
         file: null,
         url: 'https://docs.google.com/spreadsheets/d/xxx',
         url_type: 'google_sheet',
-        tags: ['template', 'kpi'],
         status: 'active',
         user_created: { first_name: 'HR', last_name: 'Manager' },
         date_created: '2024-02-01T08:30:00Z',
@@ -75,7 +73,6 @@ const mockDocuments = [
         file: { id: 'f2', filename_download: 'communication-skills.pptx', type: 'application/vnd.ms-powerpoint' },
         url: null,
         url_type: null,
-        tags: ['soft-skills', 'training'],
         status: 'active',
         user_created: { first_name: 'Training', last_name: 'Team' },
         date_created: '2024-02-10T14:00:00Z',
@@ -89,7 +86,6 @@ const mockDocuments = [
         file: { id: 'f3', filename_download: 'old-process.pdf', type: 'application/pdf' },
         url: null,
         url_type: null,
-        tags: ['archived'],
         status: 'archived',
         user_created: { first_name: 'Admin', last_name: 'User' },
         date_created: '2023-06-01T10:00:00Z',
@@ -168,10 +164,7 @@ function DocumentLibraryPage() {
     const filteredDocuments = useMemo(() => {
         return documents.filter(doc => {
             // Search filter
-            const matchSearch =
-                !searchText.trim() ||
-                doc.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                doc.tags?.some(tag => tag.toLowerCase().includes(searchText.toLowerCase()));
+            const matchSearch = !searchText.trim() || doc.title.toLowerCase().includes(searchText.toLowerCase());
 
             // Type filter
             const matchType = filterType === 'all' || doc.type === filterType;
@@ -283,6 +276,7 @@ function DocumentLibraryPage() {
         {
             title: 'Tài liệu',
             key: 'title',
+            width: '30%',
             render: (_, record) => (
                 <Space>
                     {record.type === 'file' ? getFileIcon(record.file) : getUrlIcon(record.url_type)}
@@ -304,7 +298,7 @@ function DocumentLibraryPage() {
             title: 'Loại',
             dataIndex: 'type',
             key: 'type',
-            width: 100,
+            width: '10%',
             render: type => <Tag color={type === 'file' ? 'blue' : 'green'}>{type === 'file' ? 'File' : 'URL'}</Tag>,
             filters: [
                 { text: 'File', value: 'file' },
@@ -313,27 +307,10 @@ function DocumentLibraryPage() {
             onFilter: (value, record) => record.type === value,
         },
         {
-            title: 'Tags',
-            dataIndex: 'tags',
-            key: 'tags',
-            width: 200,
-            render: tags =>
-                tags?.length > 0 ? (
-                    <Space wrap size={[0, 4]}>
-                        {tags.slice(0, 3).map(tag => (
-                            <Tag key={tag}>{tag}</Tag>
-                        ))}
-                        {tags.length > 3 && <Tag>+{tags.length - 3}</Tag>}
-                    </Space>
-                ) : (
-                    '-'
-                ),
-        },
-        {
             title: 'Đang sử dụng',
             dataIndex: 'usageCount',
             key: 'usageCount',
-            width: 120,
+            width: '10%',
             align: 'center',
             render: (count, record) => (
                 <Tooltip title="Xem chi tiết">
@@ -349,7 +326,7 @@ function DocumentLibraryPage() {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            width: 100,
+            width: '10%',
             render: status => (
                 <Tag color={status === 'active' ? 'success' : 'default'}>
                     {status === 'active' ? 'Hoạt động' : 'Lưu trữ'}
@@ -359,7 +336,7 @@ function DocumentLibraryPage() {
         {
             title: 'Người tạo',
             key: 'user_created',
-            width: 150,
+            width: '15%',
             render: (_, record) =>
                 record.user_created ? `${record.user_created.first_name} ${record.user_created.last_name}` : '-',
         },
@@ -367,15 +344,14 @@ function DocumentLibraryPage() {
             title: 'Ngày tạo',
             dataIndex: 'date_created',
             key: 'date_created',
-            width: 120,
+            width: '10%',
             render: date => new Date(date).toLocaleDateString('vi-VN'),
             sorter: (a, b) => new Date(a.date_created) - new Date(b.date_created),
         },
         {
             title: 'Thao tác',
             key: 'action',
-            width: 150,
-            fixed: 'right',
+            width: '15%',
             render: (_, record) => (
                 <Space size="small">
                     <Tooltip title="Chỉnh sửa">
@@ -445,7 +421,7 @@ function DocumentLibraryPage() {
             {/* Filters */}
             <div style={{ marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <Input
-                    placeholder="Tìm kiếm theo tên hoặc tags..."
+                    placeholder="Tìm kiếm theo tên..."
                     prefix={<SearchOutlined />}
                     value={searchText}
                     onChange={e => setSearchText(e.target.value)}
@@ -492,7 +468,6 @@ function DocumentLibraryPage() {
                         showSizeChanger: true,
                         showTotal: total => `Tổng ${total} tài liệu`,
                     }}
-                    scroll={{ x: 1200 }}
                 />
             ) : (
                 <EmptyState

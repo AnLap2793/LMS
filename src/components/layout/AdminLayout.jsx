@@ -116,11 +116,6 @@ function AdminLayout() {
                     label: 'Thư viện Tài liệu',
                 },
                 {
-                    key: '/admin/quiz-attempts',
-                    icon: <HistoryOutlined />,
-                    label: 'Lịch sử làm bài',
-                },
-                {
                     key: '/admin/tags',
                     icon: <TagsOutlined />,
                     label: 'Tags',

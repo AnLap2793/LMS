@@ -51,7 +51,6 @@ export const COURSE_DIFFICULTY_MAP = {
 export const LESSON_TYPE = {
     VIDEO: 'video',
     ARTICLE: 'article',
-    FILE: 'file',
     LINK: 'link',
     QUIZ: 'quiz',
 };
@@ -59,7 +58,6 @@ export const LESSON_TYPE = {
 export const LESSON_TYPE_OPTIONS = [
     { value: 'video', label: 'Video', icon: 'PlayCircleOutlined', color: '#1890ff' },
     { value: 'article', label: 'Bài viết', icon: 'FileTextOutlined', color: '#52c41a' },
-    { value: 'file', label: 'Tài liệu', icon: 'FileOutlined', color: '#faad14' },
     { value: 'link', label: 'Liên kết', icon: 'LinkOutlined', color: '#722ed1' },
     { value: 'quiz', label: 'Bài kiểm tra', icon: 'FormOutlined', color: '#eb2f96' },
 ];
@@ -67,7 +65,6 @@ export const LESSON_TYPE_OPTIONS = [
 export const LESSON_TYPE_MAP = {
     video: { label: 'Video', icon: 'PlayCircleOutlined', color: '#1890ff' },
     article: { label: 'Bài viết', icon: 'FileTextOutlined', color: '#52c41a' },
-    file: { label: 'Tài liệu', icon: 'FileOutlined', color: '#faad14' },
     link: { label: 'Liên kết', icon: 'LinkOutlined', color: '#722ed1' },
     quiz: { label: 'Bài kiểm tra', icon: 'FormOutlined', color: '#eb2f96' },
 };

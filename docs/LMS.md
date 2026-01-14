@@ -71,7 +71,7 @@ Hệ thống được xây dựng trên các công nghệ hiện đại, đảm 
     - YouTube: Embed video từ YouTube (chỉ cần paste URL)
     - Google Drive: Embed video từ Google Drive (cần set permission "Anyone with the link can view")
 - **Rich Content**: Soạn thảo bài học dạng Article với trình soạn thảo WYSIWYG của Directus
-- **Resources**: Đính kèm file tài liệu (PDF, PPTX) từ thư viện file
+- **Resources**: Đính kèm file tài liệu (PDF, PPTX) vào bất kỳ loại bài học nào (Video, Article)
 
 ### 2.3. Assessment & Testing
 
@@ -347,13 +347,12 @@ Tags để phân loại và tìm kiếm khóa học.
 | status          | string               | Yes      | "published" | Trạng thái: "published", "draft"                           | select-dropdown | labels         |
 | module_id       | M2O → modules        | Yes      | -           | Module chứa lesson này                                     | select-dropdown | related-values |
 | title           | string               | Yes      | -           | Tên bài học                                                | input           | raw            |
-| type            | string               | Yes      | -           | Loại bài học: "video", "article", "file", "link", "quiz"   | select-dropdown | labels         |
+| type            | string               | Yes      | -           | Loại bài học: "video", "article", "link", "quiz"           | select-dropdown | labels         |
 | content         | text (markdown)      | No       | null        | Nội dung bài học (nếu type = "article")                    | markdown        | formatted-text |
 | video_url       | string               | No       | null        | URL video (YouTube hoặc Google Drive URL)                  | input           | raw            |
 | video_provider  | string               | No       | null        | Provider: "youtube", "google_drive"                        | select-dropdown | labels         |
 | video_id        | string               | No       | null        | Video ID (YouTube ID hoặc Google Drive File ID)            | input           | raw            |
 | external_link   | string               | No       | null        | Link ngoài (nếu type = "link")                             | input           | raw            |
-| file_attachment | file                 | No       | null        | File đính kèm chính (deprecated, sử dụng lesson_documents) | file            | file           |
 | duration        | integer              | No       | null        | Thời lượng bài học (phút)                                  | input           | raw            |
 | is_required     | boolean              | No       | true        | Bài học bắt buộc hay không                                 | boolean         | boolean        |
 | sort            | integer              | No       | 0           | Thứ tự hiển thị trong module                               | input           | raw            |
@@ -376,12 +375,13 @@ Tags để phân loại và tìm kiếm khóa học.
 
 - `type = "video"`: Cần có `video_url` và `video_provider`
 - `type = "article"`: Cần có `content` (markdown)
-- `type = "file"`: Cần có ít nhất 1 document trong `lessons_documents`
 - `type = "link"`: Cần có `external_link`
 - `sort` dùng để sắp xếp thứ tự lessons trong module
 - Cascade delete: Xóa module → xóa tất cả lessons
-- Mỗi bài học có thể có nhiều tài liệu đính kèm (qua `lessons_documents` junction table)
-- Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
+- **Tài liệu đính kèm**: Sử dụng quan hệ M2M `documents` qua `lessons_documents` junction table
+  - Mỗi bài học có thể có nhiều tài liệu đính kèm (không giới hạn)
+  - Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
+  - Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
 
 #### Documents (Thư viện Tài liệu)
 
@@ -396,7 +396,6 @@ Thư viện tài liệu tập trung cho toàn hệ thống. Hỗ trợ cả file
 | file         | file                 | Cond.    | null     | File đính kèm (khi type = "file")                            | file            | file           |
 | url          | string               | Cond.    | null     | URL bên ngoài (khi type = "url")                             | input           | raw            |
 | url_type     | string               | No       | null     | Loại URL: "google_doc", "google_sheet", "notion", "external" | select-dropdown | labels         |
-| tags         | json                 | No       | null     | Tags để tìm kiếm/filter                                      | tags            | tags           |
 | status       | string               | Yes      | "active" | Trạng thái: "active", "archived"                             | select-dropdown | labels         |
 | user_created | M2O → directus_users | Yes      | Auto     | Người tạo                                                    | user            | user           |
 | date_created | timestamp            | Yes      | Auto     | Ngày tạo                                                     | datetime        | datetime       |
@@ -910,3 +909,33 @@ Bình luận và thảo luận trong bài học.
 
 - `course_id`
 - `[user_id, course_id]` (unique)
+
+### 4.9. System Configuration
+
+#### App Settings (Singleton)
+
+Cấu hình toàn hệ thống (Singleton Collection).
+
+| Field                     | Type                 | Required | Default | Description                                | Interface | Display  |
+| ------------------------- | -------------------- | -------- | ------- | ------------------------------------------ | --------- | -------- |
+| id                        | integer              | Yes      | 1       | Primary key (Singleton)                    | -         | -        |
+| default_pass_score        | integer              | Yes      | 70      | Điểm đạt mặc định (%)                      | input     | raw      |
+| default_max_attempts      | integer              | Yes      | 3       | Số lần làm bài tối đa (0 = không giới hạn) | input     | raw      |
+| default_time_limit        | integer              | No       | 30      | Thời gian làm bài mặc định (phút)          | input     | raw      |
+| randomize_questions       | boolean              | No       | true    | Trộn câu hỏi mặc định                      | boolean   | boolean  |
+| auto_enroll_new_employees | boolean              | No       | true    | Tự động đăng ký cho nhân viên mới          | boolean   | boolean  |
+| default_deadline_days     | integer              | Yes      | 30      | Deadline mặc định (ngày)                   | input     | raw      |
+| send_enrollment_email     | boolean              | No       | true    | Gửi email khi đăng ký                      | boolean   | boolean  |
+| send_deadline_reminder    | boolean              | No       | true    | Gửi email nhắc deadline                    | boolean   | boolean  |
+| reminder_days_before      | integer              | Yes      | 3       | Nhắc trước deadline (ngày)                 | input     | raw      |
+| auto_generate_certificate | boolean              | No       | true    | Tự động tạo chứng chỉ                      | boolean   | boolean  |
+| certificate_prefix        | string               | Yes      | "CERT"  | Prefix số chứng chỉ                        | input     | raw      |
+| allow_self_enrollment     | boolean              | No       | true    | Cho phép tự đăng ký                        | boolean   | boolean  |
+| show_course_progress      | boolean              | No       | true    | Hiển thị tiến độ học tập                   | boolean   | boolean  |
+| user_updated              | M2O → directus_users | No       | null    | Người cập nhật                             | user      | user     |
+| date_updated              | timestamp            | No       | Auto    | Ngày cập nhật                              | datetime  | datetime |
+
+**Business Rules:**
+
+- Chỉ Admin có quyền update.
+- Là Singleton collection (chỉ có 1 row).

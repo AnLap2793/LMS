@@ -3,4 +3,4 @@
  * Barrel export
  */
 
-export { default as QuizAttemptsPage } from './QuizAttemptsPage';
+export { default as QuizAttemptDetailPage } from './QuizAttemptDetailPage';

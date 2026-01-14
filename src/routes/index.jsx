@@ -53,7 +53,7 @@ const ProfilePage = lazy(() => import('../pages/private/learner/ProfilePage'));
 const NotificationsPage = lazy(() => import('../pages/private/learner/NotificationsPage'));
 
 // Admin Quiz Attempts
-const QuizAttemptsPage = lazy(() => import('../pages/private/admin/quiz-attempts/QuizAttemptsPage'));
+const AdminQuizAttemptDetailPage = lazy(() => import('../pages/private/admin/quiz-attempts/QuizAttemptDetailPage'));
 
 /**
  * Cấu hình Routes của ứng dụng
@@ -275,8 +275,8 @@ export const router = createBrowserRouter([
             },
             // Quiz Attempts (Admin)
             {
-                path: 'quiz-attempts',
-                element: <QuizAttemptsPage />,
+                path: 'quiz-attempts/:id',
+                element: <AdminQuizAttemptDetailPage />,
             },
         ],
     },

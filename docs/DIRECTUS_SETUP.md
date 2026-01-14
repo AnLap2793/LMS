@@ -75,14 +75,47 @@ REFRESH_TOKEN_TTL="7d"
 - **Name**: `lessons`
 - **Fields**:
     - `title` (String) - Required
-    - `type` (String) - Dropdown: `video`, `text`, `quiz`
-    - `content` (Text) - WYSIWYG (Cho bài học dạng text)
+    - `type` (String) - Dropdown: `video`, `article`, `link`, `quiz`
+    - `content` (Text) - Markdown/WYSIWYG (Cho bài học dạng article)
     - `video_url` (String) - (Cho bài học dạng video)
+    - `video_provider` (String) - `youtube`, `google_drive`
+    - `video_id` (String) - Extracted from URL
+    - `external_link` (String) - (Cho bài học dạng link)
     - `duration` (Integer) - Phút
     - `module_id` (M2O -> modules)
     - `sort` (Integer)
     - `status` (String) - `published`, `draft`
-    - `is_preview` (Boolean) - Cho phép học thử
+    - `is_required` (Boolean) - Default: true
+- **Relations**:
+    - `documents` (M2M) - Many-to-Many với `documents` qua `lessons_documents` junction table
+- **Lưu ý**: Tài liệu đính kèm được quản lý qua quan hệ M2M `documents`, không sử dụng trường `file_attachment` (đã bị loại bỏ).
+
+#### `documents` (Thư viện Tài liệu)
+
+- **Name**: `documents`
+- **Fields**:
+    - `type` (String) - Required, Dropdown: `file`, `url`
+    - `title` (String) - Required
+    - `description` (Text) - Optional
+    - `file` (File) - Required nếu `type = 'file'`
+    - `url` (String) - Required nếu `type = 'url'`
+    - `url_type` (String) - Dropdown: `google_doc`, `google_sheet`, `notion`, `external`
+    - `status` (String) - `active`, `archived` (Default: `active`)
+- **Relations**:
+    - `lessons` (M2M) - Many-to-Many với `lessons` qua `lessons_documents` junction table
+- **Business Rules**:
+    - Thư viện tài liệu tập trung cho toàn hệ thống LMS
+    - Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
+    - Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
+
+#### `lessons_documents` (Junction Table)
+
+- **Name**: `lessons_documents`
+- **Fields**:
+    - `lessons_id` (M2O -> lessons) - Required
+    - `documents_id` (M2O -> documents) - Required
+    - `sort` (Integer) - Default: 0, để sắp xếp thứ tự documents trong lesson
+- **Unique Constraint**: `(lessons_id, documents_id)` - Mỗi document chỉ được đính kèm 1 lần/lesson
 
 ### 3.3. Learning Process (Quá trình học)
 

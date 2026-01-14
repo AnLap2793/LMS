@@ -13,30 +13,31 @@
 
 ### 1.2. Collections đã định nghĩa vs Services đã tạo
 
-| Collection               | Constant                             | Service                  | Hook                       | Trạng thái        |
-| ------------------------ | ------------------------------------ | ------------------------ | -------------------------- | ----------------- |
-| `directus_users`         | `COLLECTIONS.USERS`                  | `userService.js`         | `useUsers.js`              | Hoàn thành        |
-| `tags`                   | `COLLECTIONS.TAGS`                   | Chưa có                  | Chưa có                    | Cần tạo           |
-| `courses`                | `COLLECTIONS.COURSES`                | Mock                     | `useCourses.js` (mock)     | Cần cập nhật      |
-| `courses_tags`           | `COLLECTIONS.COURSES_TAGS`           | Chưa có                  | Chưa có                    | Junction table    |
-| `modules`                | `COLLECTIONS.MODULES`                | Chưa có                  | Chưa có                    | Cần tạo           |
-| `lessons`                | `COLLECTIONS.LESSONS`                | Chưa có                  | Chưa có                    | Cần tạo           |
-| `documents`              | `COLLECTIONS.DOCUMENTS`              | Chưa có                  | Chưa có                    | Cần tạo           |
-| `lessons_documents`      | `COLLECTIONS.LESSONS_DOCUMENTS`      | Chưa có                  | Chưa có                    | Junction table    |
-| `enrollments`            | `COLLECTIONS.ENROLLMENTS`            | Mock                     | `useEnrollments.js` (mock) | Cần cập nhật      |
-| `lesson_progress`        | `COLLECTIONS.LESSON_PROGRESS`        | Chưa có                  | Chưa có                    | Cần tạo           |
-| `quizzes`                | `COLLECTIONS.QUIZZES`                | Chưa có                  | Chưa có                    | Cần tạo           |
-| `quiz_questions`         | `COLLECTIONS.QUIZ_QUESTIONS`         | Chưa có                  | Chưa có                    | Cần tạo           |
-| `question_bank`          | `COLLECTIONS.QUESTION_BANK`          | `questionBankService.js` | `useQuestionBank.js`       | Hoàn thành (Mock) |
-| `quiz_attempts`          | `COLLECTIONS.QUIZ_ATTEMPTS`          | `quizAttemptService.js`  | `useQuizAttempts.js`       | Hoàn thành (Mock) |
-| `learning_paths`         | `COLLECTIONS.LEARNING_PATHS`         | Chưa có                  | Chưa có                    | Cần tạo           |
-| `learning_paths_courses` | `COLLECTIONS.LEARNING_PATHS_COURSES` | Chưa có                  | Chưa có                    | Junction table    |
-| `certificates`           | `COLLECTIONS.CERTIFICATES`           | Chưa có                  | Chưa có                    | Cần tạo           |
-| `certificate_templates`  | `COLLECTIONS.CERTIFICATE_TEMPLATES`  | Chưa có                  | Chưa có                    | Cần tạo           |
-| `user_notes`             | `COLLECTIONS.USER_NOTES`             | Chưa có                  | Chưa có                    | Cần tạo           |
-| `lesson_comments`        | `COLLECTIONS.LESSON_COMMENTS`        | Chưa có                  | Chưa có                    | Cần tạo           |
-| `course_reviews`         | `COLLECTIONS.COURSE_REVIEWS`         | Chưa có                  | Chưa có                    | Cần tạo           |
-| `directus_notifications` | -                                    | -                        | -                          | System Extension  |
+| Collection               | Constant                             | Service                  | Hook                       | Trạng thái          |
+| ------------------------ | ------------------------------------ | ------------------------ | -------------------------- | ------------------- |
+| `directus_users`         | `COLLECTIONS.USERS`                  | `userService.js`         | `useUsers.js`              | Hoàn thành          |
+| `tags`                   | `COLLECTIONS.TAGS`                   | Chưa có                  | Chưa có                    | Cần tạo             |
+| `courses`                | `COLLECTIONS.COURSES`                | Mock                     | `useCourses.js` (mock)     | Cần cập nhật        |
+| `courses_tags`           | `COLLECTIONS.COURSES_TAGS`           | Chưa có                  | Chưa có                    | Junction table      |
+| `modules`                | `COLLECTIONS.MODULES`                | Chưa có                  | Chưa có                    | Cần tạo             |
+| `lessons`                | `COLLECTIONS.LESSONS`                | Chưa có                  | Chưa có                    | Cần tạo             |
+| `documents`              | `COLLECTIONS.DOCUMENTS`              | Chưa có                  | Chưa có                    | Cần tạo             |
+| `lessons_documents`      | `COLLECTIONS.LESSONS_DOCUMENTS`      | Chưa có                  | Chưa có                    | Junction table      |
+| `enrollments`            | `COLLECTIONS.ENROLLMENTS`            | Mock                     | `useEnrollments.js` (mock) | Cần cập nhật        |
+| `lesson_progress`        | `COLLECTIONS.LESSON_PROGRESS`        | Chưa có                  | Chưa có                    | Cần tạo             |
+| `quizzes`                | `COLLECTIONS.QUIZZES`                | Chưa có                  | Chưa có                    | Cần tạo             |
+| `quiz_questions`         | `COLLECTIONS.QUIZ_QUESTIONS`         | Chưa có                  | Chưa có                    | Cần tạo             |
+| `question_bank`          | `COLLECTIONS.QUESTION_BANK`          | `questionBankService.js` | `useQuestionBank.js`       | Hoàn thành (Mock)   |
+| `quiz_attempts`          | `COLLECTIONS.QUIZ_ATTEMPTS`          | `quizAttemptService.js`  | `useQuizAttempts.js`       | Hoàn thành (Mock)   |
+| `learning_paths`         | `COLLECTIONS.LEARNING_PATHS`         | Chưa có                  | Chưa có                    | Cần tạo             |
+| `learning_paths_courses` | `COLLECTIONS.LEARNING_PATHS_COURSES` | Chưa có                  | Chưa có                    | Junction table      |
+| `certificates`           | `COLLECTIONS.CERTIFICATES`           | Chưa có                  | Chưa có                    | Cần tạo             |
+| `certificate_templates`  | `COLLECTIONS.CERTIFICATE_TEMPLATES`  | Chưa có                  | Chưa có                    | Cần tạo             |
+| `user_notes`             | `COLLECTIONS.USER_NOTES`             | Chưa có                  | Chưa có                    | Cần tạo             |
+| `lesson_comments`        | `COLLECTIONS.LESSON_COMMENTS`        | Chưa có                  | Chưa có                    | Cần tạo             |
+| `course_reviews`         | `COLLECTIONS.COURSE_REVIEWS`         | Chưa có                  | Chưa có                    | Cần tạo             |
+| `directus_notifications` | -                                    | -                        | -                          | System Extension    |
+| `app_settings`           | `COLLECTIONS.APP_SETTINGS`           | `settingsService.js`     | `useSettings.js`           | Cần tạo (Singleton) |
 
 ---
 
@@ -151,13 +152,12 @@ Primary Key: uuid (auto-generated)
 | `status`          | string      | select-dropdown     | Options: `draft`, `published`. Default: `published`                 |
 | `module_id`       | uuid        | select-dropdown-m2o | Required, M2O -> modules                                            |
 | `title`           | string      | input               | Required, Max 255                                                   |
-| `type`            | string      | select-dropdown     | Required. Options: `video`, `article`, `file`, `link`, `quiz`       |
+| `type`            | string      | select-dropdown     | Required. Options: `video`, `article`, `link`, `quiz`               |
 | `content`         | text        | input-rich-text-md  | Optional, For article type                                          |
 | `video_url`       | string      | input               | Optional, YouTube hoặc Google Drive URL                             |
 | `video_provider`  | string      | select-dropdown     | Options: `youtube`, `google_drive`                                  |
 | `video_id`        | string      | input               | Optional, Extracted from URL (YouTube ID hoặc Google Drive File ID) |
 | `external_link`   | string      | input               | Optional, For link type                                             |
-| `file_attachment` | uuid (file) | file                | Optional, deprecated (use documents M2M via lessons_documents)      |
 | `duration`        | integer     | input               | Optional, Minutes                                                   |
 | `is_required`     | boolean     | boolean             | Default: true                                                       |
 | `sort`            | integer     | input               | Default: 0                                                          |
@@ -168,7 +168,6 @@ Primary Key: uuid (auto-generated)
 
 - `type = 'video'`: `video_url` required
 - `type = 'article'`: `content` required
-- `type = 'file'`: Cần có ít nhất 1 document trong `lessons_documents` (M2M)
 - `type = 'link'`: `external_link` required
 
 **Relations:**
@@ -194,7 +193,6 @@ Primary Key: uuid (auto-generated)
 | `file`         | uuid (file) | file            | Conditional (required if type = 'file')                     |
 | `url`          | string      | input           | Conditional (required if type = 'url')                      |
 | `url_type`     | string      | select-dropdown | Options: `google_doc`, `google_sheet`, `notion`, `external` |
-| `tags`         | json        | tags            | Optional, Array of strings for filtering                    |
 | `status`       | string      | select-dropdown | Options: `active`, `archived`. Default: `active`            |
 | `user_created` | uuid        | user            | Auto                                                        |
 | `date_created` | timestamp   | datetime        | Auto                                                        |
@@ -215,7 +213,6 @@ Primary Key: uuid (auto-generated)
 - Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
 - Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
 - `status = 'archived'`: Tài liệu bị ẩn khỏi thư viện nhưng vẫn hiển thị trong các bài học đã đính kèm
-- `tags` dùng để filter và tìm kiếm tài liệu
 
 **URL Types:**
 
@@ -632,6 +629,33 @@ Collection: directus_notifications
 
 ---
 
+### 2.20. App_Settings (Singleton)
+
+```
+Collection: app_settings (Singleton)
+```
+
+| Field                       | Type      | Interface | Options                     |
+| --------------------------- | --------- | --------- | --------------------------- |
+| `id`                        | integer   | -         | Primary Key, Auto           |
+| `default_pass_score`        | integer   | input     | Default: 70                 |
+| `default_max_attempts`      | integer   | input     | Default: 3                  |
+| `default_time_limit`        | integer   | input     | Default: 30                 |
+| `randomize_questions`       | boolean   | boolean   | Default: true               |
+| `auto_enroll_new_employees` | boolean   | boolean   | Default: true               |
+| `default_deadline_days`     | integer   | input     | Default: 30                 |
+| `send_enrollment_email`     | boolean   | boolean   | Default: true               |
+| `send_deadline_reminder`    | boolean   | boolean   | Default: true               |
+| `reminder_days_before`      | integer   | input     | Default: 3                  |
+| `auto_generate_certificate` | boolean   | boolean   | Default: true               |
+| `certificate_prefix`        | string    | input     | Default: "CERT"             |
+| `allow_self_enrollment`     | boolean   | boolean   | Default: true               |
+| `show_course_progress`      | boolean   | boolean   | Default: true               |
+| `user_updated`              | uuid      | user      | Auto, M2O -> directus_users |
+| `date_updated`              | timestamp | datetime  | Auto                        |
+
+---
+
 ## 3. Sự khác biệt giữa Mock Data và Directus API
 
 ### 3.1. Cấu trúc Relations
@@ -796,7 +820,8 @@ src/services/
 ├── quizAttemptService.js (cần tạo)
 ├── learningPathService.js (cần tạo)
 ├── certificateService.js (cần tạo)
-└── certificateTemplateService.js (cần tạo)
+├── certificateTemplateService.js (cần tạo)
+└── settingsService.js        (cần tạo)
 ```
 
 #### Bước 2: Tạo/Cập nhật Hooks
@@ -816,7 +841,8 @@ src/hooks/
 ├── useQuizQuestions.js (cần tạo)
 ├── useQuizAttempts.js (cần tạo)
 ├── useLearningPaths.js (cần tạo)
-└── useCertificates.js (cần tạo)
+├── useCertificates.js (cần tạo)
+└── useSettings.js      (cần tạo)
 ```
 
 #### Bước 3: Cập nhật Pages
@@ -1147,6 +1173,7 @@ export const enrollmentService = {
 - [ ] Tạo `quizAttemptService.js`
 - [ ] Tạo `learningPathService.js`
 - [ ] Tạo `certificateService.js`
+- [ ] Tạo `settingsService.js`
 
 ### Phase 3: Frontend Hooks
 
@@ -1162,6 +1189,7 @@ export const enrollmentService = {
 - [ ] Tạo `useQuizAttempts.js`
 - [ ] Tạo `useLearningPaths.js`
 - [ ] Tạo `useCertificates.js`
+- [ ] Tạo `useSettings.js`
 
 ### Phase 4: Update Pages
 

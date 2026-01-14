@@ -117,92 +117,93 @@ function QuizAttemptDetailPage() {
                 </Button>
 
                 {/* Result Card */}
-                <Card style={{ marginBottom: 24, textAlign: 'center' }}>
-                    <Result
-                        icon={<div style={{ fontSize: 80 }}>{attempt.is_passed ? '🎊' : '📖'}</div>}
-                        status={attempt.is_passed ? 'success' : 'warning'}
-                        title={
-                            <Space direction="vertical" size={0}>
-                                <Text style={{ fontSize: 24, color: resultStatus.color }}>
+                <Card style={{ marginBottom: 24 }} bodyStyle={{ padding: '16px 24px' }}>
+                    <Row gutter={[24, 16]} align="middle">
+                        {/* Score Circle */}
+                        <Col xs={24} sm={6} style={{ textAlign: 'center' }}>
+                            <Progress
+                                type="circle"
+                                percent={attempt.score}
+                                size={80}
+                                strokeColor={attempt.is_passed ? '#52c41a' : '#ff4d4f'}
+                                format={percent => (
+                                    <div>
+                                        <div
+                                            style={{
+                                                fontSize: 24,
+                                                fontWeight: 'bold',
+                                                color: attempt.is_passed ? '#52c41a' : '#ff4d4f',
+                                            }}
+                                        >
+                                            {percent}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#999' }}>điểm</div>
+                                    </div>
+                                )}
+                            />
+                        </Col>
+
+                        {/* Status and Info */}
+                        <Col xs={24} sm={10}>
+                            <Space direction="vertical" size={4}>
+                                <Text style={{ fontSize: 16, fontWeight: 500, color: resultStatus.color }}>
                                     {resultStatus.icon} {resultStatus.text}
                                 </Text>
-                                <Title level={3} style={{ margin: '16px 0 8px' }}>
+                                <Text strong style={{ fontSize: 14 }}>
                                     {attempt.quiz?.title || 'Bài kiểm tra'}
-                                </Title>
-                                <Text type="secondary">
-                                    Làm bài lúc: {dayjs(attempt.submitted_at).format('DD/MM/YYYY HH:mm')}
+                                </Text>
+                                <Text type="secondary" style={{ fontSize: 13 }}>
+                                    Làm bài: {dayjs(attempt.submitted_at).format('DD/MM/YYYY HH:mm')}
                                 </Text>
                             </Space>
-                        }
-                    />
+                        </Col>
 
-                    {/* Score display */}
-                    <div style={{ marginBottom: 32 }}>
-                        <Progress
-                            type="circle"
-                            percent={attempt.score}
-                            size={180}
-                            strokeColor={attempt.is_passed ? '#52c41a' : '#ff4d4f'}
-                            format={percent => (
-                                <div>
-                                    <div
-                                        style={{
-                                            fontSize: 48,
-                                            fontWeight: 'bold',
-                                            color: attempt.is_passed ? '#52c41a' : '#ff4d4f',
-                                        }}
-                                    >
-                                        {percent}
+                        {/* Stats */}
+                        <Col xs={24} sm={8}>
+                            <Row gutter={[16, 8]}>
+                                <Col span={8} style={{ textAlign: 'center' }}>
+                                    <Statistic
+                                        title={<span style={{ fontSize: 12 }}>Đúng</span>}
+                                        value={correctCount}
+                                        suffix={`/${totalQuestions}`}
+                                        valueStyle={{ fontSize: 18, color: '#52c41a' }}
+                                    />
+                                </Col>
+                                <Col span={8} style={{ textAlign: 'center' }}>
+                                    <Statistic
+                                        title={<span style={{ fontSize: 12 }}>Sai</span>}
+                                        value={totalQuestions - correctCount}
+                                        suffix={`/${totalQuestions}`}
+                                        valueStyle={{ fontSize: 18, color: '#ff4d4f' }}
+                                    />
+                                </Col>
+                                <Col span={8} style={{ textAlign: 'center' }}>
+                                    <div>
+                                        <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Thời gian</div>
+                                        <div style={{ fontSize: 16, fontWeight: 500 }}>
+                                            {formatDuration(attempt.started_at, attempt.submitted_at)}
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: 16, color: '#999' }}>điểm</div>
-                                </div>
-                            )}
-                        />
-                    </div>
-
-                    {/* Stats */}
-                    <Row gutter={24} justify="center" style={{ marginBottom: 24 }}>
-                        <Col xs={12} sm={8}>
-                            <Statistic
-                                title="Câu đúng"
-                                value={correctCount}
-                                suffix={`/ ${totalQuestions}`}
-                                valueStyle={{ color: '#52c41a' }}
-                                prefix={<CheckCircleOutlined />}
-                            />
-                        </Col>
-                        <Col xs={12} sm={8}>
-                            <Statistic
-                                title="Câu sai"
-                                value={totalQuestions - correctCount}
-                                suffix={`/ ${totalQuestions}`}
-                                valueStyle={{ color: '#ff4d4f' }}
-                                prefix={<CloseCircleOutlined />}
-                            />
-                        </Col>
-                        <Col xs={12} sm={8}>
-                            <Statistic
-                                title="Thời gian"
-                                value={formatDuration(attempt.started_at, attempt.submitted_at)}
-                                prefix={<ClockCircleOutlined />}
-                            />
+                                </Col>
+                            </Row>
                         </Col>
                     </Row>
 
                     {/* Action buttons */}
-                    <Space size="large" wrap>
-                        <Button size="large" icon={<HistoryOutlined />} onClick={() => navigate('/quiz-history')}>
-                            Xem lịch sử khác
-                        </Button>
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={<ReloadOutlined />}
-                            onClick={() => navigate(`/quiz/${attempt.quiz_id}`)}
-                        >
-                            Làm lại bài kiểm tra
-                        </Button>
-                    </Space>
+                    <div style={{ marginTop: 16, textAlign: 'center' }}>
+                        <Space size="middle" wrap>
+                            <Button icon={<HistoryOutlined />} onClick={() => navigate('/quiz-history')}>
+                                Xem lịch sử khác
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<ReloadOutlined />}
+                                onClick={() => navigate(`/quiz/${attempt.quiz_id}`)}
+                            >
+                                Làm lại bài kiểm tra
+                            </Button>
+                        </Space>
+                    </div>
                 </Card>
 
                 {/* Answer Review */}
