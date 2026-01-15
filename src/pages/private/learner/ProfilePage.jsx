@@ -36,6 +36,7 @@ import {
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
 import { mockEnrollments, mockCertificates, mockLearnerSkills, mockUserLearningPaths } from '../../../mocks';
+import { VALIDATION } from '../../../constants/app';
 
 const { Title, Text } = Typography;
 
@@ -203,7 +204,7 @@ function ProfilePage() {
                             label="Mật khẩu mới"
                             rules={[
                                 { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-                                { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự' },
+                                { min: VALIDATION.MIN_PASSWORD_LENGTH, message: `Mật khẩu phải có ít nhất ${VALIDATION.MIN_PASSWORD_LENGTH} ký tự` },
                             ]}
                         >
                             <Input.Password prefix={<LockOutlined />} placeholder="Nhập mật khẩu mới" />

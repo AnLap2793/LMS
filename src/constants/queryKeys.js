@@ -174,4 +174,52 @@ export const queryKeys = {
         continueLearning: ['home', 'continue-learning'],
         recentActivity: ['home', 'recent-activity'],
     },
+
+    /**
+     * LMS - User Notes query keys
+     */
+    userNotes: {
+        all: ['user-notes'],
+        lists: () => [...queryKeys.userNotes.all, 'list'],
+        list: filters => [...queryKeys.userNotes.lists(), { filters }],
+        details: () => [...queryKeys.userNotes.all, 'detail'],
+        detail: id => [...queryKeys.userNotes.details(), id],
+        byLesson: lessonId => [...queryKeys.userNotes.all, 'lesson', lessonId],
+        myNotes: () => [...queryKeys.userNotes.all, 'mine'],
+    },
+
+    /**
+     * LMS - Lesson Comments query keys
+     */
+    lessonComments: {
+        all: ['lesson-comments'],
+        lists: () => [...queryKeys.lessonComments.all, 'list'],
+        list: filters => [...queryKeys.lessonComments.lists(), { filters }],
+        details: () => [...queryKeys.lessonComments.all, 'detail'],
+        detail: id => [...queryKeys.lessonComments.details(), id],
+        byLesson: lessonId => [...queryKeys.lessonComments.all, 'lesson', lessonId],
+        replies: parentId => [...queryKeys.lessonComments.all, 'replies', parentId],
+    },
+
+    /**
+     * LMS - Course Reviews query keys
+     */
+    courseReviews: {
+        all: ['course-reviews'],
+        lists: () => [...queryKeys.courseReviews.all, 'list'],
+        list: filters => [...queryKeys.courseReviews.lists(), { filters }],
+        details: () => [...queryKeys.courseReviews.all, 'detail'],
+        detail: id => [...queryKeys.courseReviews.details(), id],
+        byCourse: courseId => [...queryKeys.courseReviews.all, 'course', courseId],
+        myReview: courseId => [...queryKeys.courseReviews.all, 'my-review', courseId],
+        stats: courseId => [...queryKeys.courseReviews.all, 'stats', courseId],
+    },
+
+    /**
+     * LMS - App Settings query keys (Singleton)
+     */
+    appSettings: {
+        all: ['app-settings'],
+        current: () => [...queryKeys.appSettings.all, 'current'],
+    },
 };

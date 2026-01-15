@@ -23,4 +23,11 @@ export const COLLECTIONS = {
     LEARNING_PATHS_COURSES: 'learning_paths_courses',
     CERTIFICATES: 'certificates',
     CERTIFICATE_TEMPLATES: 'certificate_templates',
+
+    // Collections thiếu - cần bổ sung
+    QUESTION_BANK: 'question_bank',
+    USER_NOTES: 'user_notes',
+    LESSON_COMMENTS: 'lesson_comments',
+    COURSE_REVIEWS: 'course_reviews',
+    APP_SETTINGS: 'app_settings',
 };

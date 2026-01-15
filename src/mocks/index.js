@@ -12,6 +12,7 @@ export * from './learningPaths';
 // User & Progress data
 export * from './users';
 export * from './enrollments';
+export * from './lessonProgress';
 
 // Assessment data
 export * from './quizzes';

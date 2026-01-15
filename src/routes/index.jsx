@@ -1,11 +1,21 @@
 import { lazy } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import { USER_ROLES } from '../constants/roles';
 import AppLayout from '../components/layout/AppLayout';
 import AdminLayout from '../components/layout/AdminLayout';
+import ProtectedRoute from '../components/layout/ProtectedRoute';
+
+// Error pages
+const NotFoundPage = lazy(() => import('../pages/error/NotFoundPage'));
+const UnauthorizedPage = lazy(() => import('../pages/error/UnauthorizedPage'));
+const ErrorPage = lazy(() => import('../pages/error/ErrorPage'));
 
 // Public pages
 const HomePage = lazy(() => import('../pages/public/HomePage'));
 const LoginPage = lazy(() => import('../pages/public/LoginPage'));
+const RegisterPage = lazy(() => import('../pages/public/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('../pages/public/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('../pages/public/ResetPasswordPage'));
 
 // Admin pages
 const AdminDashboardPage = lazy(() => import('../pages/private/admin/DashboardPage'));
@@ -57,27 +67,67 @@ const AdminQuizAttemptDetailPage = lazy(() => import('../pages/private/admin/qui
 
 /**
  * Cấu hình Routes của ứng dụng
- * Xem TEMPLATE_GUIDE.md để biết hướng dẫn chi tiết
+ *
+ * Route Structure:
+ * - Public routes: /, /login
+ * - Learner routes: /my-courses, /courses, /learn/:courseId, etc. (yêu cầu đăng nhập)
+ * - Admin routes: /admin/* (yêu cầu đăng nhập + role Admin/Manager)
+ * - Error routes: /unauthorized, /404, * (catch-all)
  */
 export const router = createBrowserRouter([
-    // Public routes
+    // ============================================
+    // ERROR ROUTES
+    // ============================================
+    {
+        path: '/unauthorized',
+        element: <UnauthorizedPage />,
+    },
+    {
+        path: '/404',
+        element: <NotFoundPage />,
+    },
+
+    // ============================================
+    // PUBLIC ROUTES
+    // ============================================
     {
         path: '/login',
         element: <LoginPage />,
     },
     {
+        path: '/register',
+        element: <RegisterPage />,
+    },
+    {
+        path: '/forgot-password',
+        element: <ForgotPasswordPage />,
+    },
+    {
+        path: '/reset-password',
+        element: <ResetPasswordPage />,
+    },
+    {
         path: '/',
         element: (
-            <AppLayout>
-                <HomePage />
-            </AppLayout>
+            <ProtectedRoute>
+                <AppLayout>
+                    <HomePage />
+                </AppLayout>
+            </ProtectedRoute>
         ),
     },
 
-    // Learner routes
+    // ============================================
+    // LEARNER ROUTES (Yêu cầu đăng nhập)
+    // ============================================
     {
         path: '/my-courses',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -87,7 +137,12 @@ export const router = createBrowserRouter([
     },
     {
         path: '/courses',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -101,7 +156,12 @@ export const router = createBrowserRouter([
     },
     {
         path: '/learning-paths',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -115,7 +175,12 @@ export const router = createBrowserRouter([
     },
     {
         path: '/my-certificates',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -125,7 +190,12 @@ export const router = createBrowserRouter([
     },
     {
         path: '/profile',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -135,7 +205,12 @@ export const router = createBrowserRouter([
     },
     {
         path: '/notifications',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -146,25 +221,50 @@ export const router = createBrowserRouter([
     // Course Learning (full screen, no LearnerLayout)
     {
         path: '/learn/:courseId',
-        element: <CourseLearningPage />,
+        element: (
+            <ProtectedRoute>
+                <CourseLearningPage />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
     },
     {
         path: '/learn/:courseId/:lessonId',
-        element: <CourseLearningPage />,
+        element: (
+            <ProtectedRoute>
+                <CourseLearningPage />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
     },
     // Quiz routes (full screen)
     {
         path: '/quiz/:quizId',
-        element: <QuizTakingPage />,
+        element: (
+            <ProtectedRoute>
+                <QuizTakingPage />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
     },
     {
         path: '/quiz/:quizId/result',
-        element: <QuizResultPage />,
+        element: (
+            <ProtectedRoute>
+                <QuizResultPage />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
     },
     // Quiz History (Learner)
     {
         path: '/quiz-history',
-        element: <AppLayout />,
+        element: (
+            <ProtectedRoute>
+                <AppLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -174,13 +274,25 @@ export const router = createBrowserRouter([
     },
     {
         path: '/quiz-history/:attemptId',
-        element: <QuizAttemptDetailPage />,
+        element: (
+            <ProtectedRoute>
+                <QuizAttemptDetailPage />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
     },
 
-    // Admin routes
+    // ============================================
+    // ADMIN ROUTES (Yêu cầu đăng nhập + role Admin/Manager)
+    // ============================================
     {
         path: '/admin',
-        element: <AdminLayout />,
+        element: (
+            <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.DIRECTOR, USER_ROLES.HEAD_OF_DEPARTMENT]}>
+                <AdminLayout />
+            </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
         children: [
             {
                 index: true,
@@ -279,5 +391,13 @@ export const router = createBrowserRouter([
                 element: <AdminQuizAttemptDetailPage />,
             },
         ],
+    },
+
+    // ============================================
+    // CATCH-ALL ROUTE (404)
+    // ============================================
+    {
+        path: '*',
+        element: <NotFoundPage />,
     },
 ]);

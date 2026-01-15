@@ -8,7 +8,7 @@ export const FILE_LIMITS = {
 
 // Quy tắc Validation
 export const VALIDATION = {
-  MIN_PASSWORD_LENGTH: 8,
+  MIN_PASSWORD_LENGTH: 4,
   MAX_PASSWORD_LENGTH: 128,
   MIN_NAME_LENGTH: 2,
   MAX_NAME_LENGTH: 100,

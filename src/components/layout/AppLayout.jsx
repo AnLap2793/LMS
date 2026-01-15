@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Layout, Menu, Avatar, Dropdown, Space, Typography, Drawer, Button, theme } from 'antd';
 import {
     BookOutlined,
@@ -17,6 +17,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { hasAdminAccess } from '../../constants/roles';
 import { NotificationPopover } from '../common';
 import logoVuong from '../../assets/logo-vuong.svg';
 import logoNgang from '../../assets/logo-ngang.svg';
@@ -97,29 +98,39 @@ function AppLayout({ children }) {
         },
     ];
 
-    // User dropdown menu
-    const userMenuItems = [
-        {
-            key: 'profile',
-            icon: <UserOutlined />,
-            label: 'Thông tin cá nhân',
-        },
-        {
-            key: 'admin',
-            icon: <DashboardOutlined />,
-            label: 'Trang quản trị',
-            // Trong thực tế nên check role
-        },
-        {
-            type: 'divider',
-        },
-        {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: 'Đăng xuất',
-            danger: true,
-        },
-    ];
+    // User dropdown menu - chỉ hiển thị "Trang quản trị" nếu user có quyền
+    const userMenuItems = useMemo(() => {
+        const items = [
+            {
+                key: 'profile',
+                icon: <UserOutlined />,
+                label: 'Thông tin cá nhân',
+            },
+        ];
+
+        // Chỉ thêm "Trang quản trị" nếu user có quyền admin
+        if (hasAdminAccess(user)) {
+            items.push({
+                key: 'admin',
+                icon: <DashboardOutlined />,
+                label: 'Trang quản trị',
+            });
+        }
+
+        items.push(
+            {
+                type: 'divider',
+            },
+            {
+                key: 'logout',
+                icon: <LogoutOutlined />,
+                label: 'Đăng xuất',
+                danger: true,
+            }
+        );
+
+        return items;
+    }, [user]);
 
     const handleMenuClick = ({ key }) => {
         if (key.startsWith('/')) {
