@@ -10,6 +10,7 @@
 | **Target**                 | Hooks (19 hooks)                       |
 | **Target Coverage**        | 70%+                                   |
 | **Mock Strategy**          | vi.mock() (Vitest native)              |
+| **Test Structure**         | Centralized trong `src/__tests__/`     |
 
 ---
 
@@ -23,6 +24,62 @@
 | `@testing-library/jest-dom`   | ^6.9.1  | DOM matchers                |
 | `@testing-library/user-event` | ^14.5.2 | User interaction simulation |
 | `jsdom`                       | ^25.0.1 | DOM environment             |
+
+---
+
+## Cấu trúc Test Files
+
+**Tập trung tất cả tests trong thư mục `src/__tests__/`** - giữ source code sạch sẽ:
+
+```
+src/
+├── hooks/                      # Source code ONLY - không có test files
+│   ├── useUsers.js
+│   ├── useCourses.js
+│   ├── usePermissions.js
+│   └── ...
+├── __tests__/                  # TẤT CẢ TESTS TẬP TRUNG TẠI ĐÂY
+│   ├── setup.js                # Test setup (global mocks)
+│   ├── test-utils.jsx          # Custom render utilities
+│   ├── mocks/                  # Shared mocks
+│   │   ├── data.js             # Mock data factories
+│   │   ├── directus.js         # Mock Directus client
+│   │   └── services.js         # Mock services
+│   ├── hooks/                  # Hook tests (mirror src/hooks)
+│   │   ├── useUsers.test.js
+│   │   ├── useCourses.test.js
+│   │   ├── usePermissions.test.js
+│   │   ├── useModules.test.js
+│   │   ├── useLessons.test.js
+│   │   ├── useEnrollments.test.js
+│   │   ├── useTags.test.js
+│   │   ├── useDocuments.test.js
+│   │   ├── useLearningPaths.test.js
+│   │   ├── useQuizzes.test.js
+│   │   ├── useQuestionBank.test.js
+│   │   ├── useQuizAttempts.test.js
+│   │   ├── useLessonProgress.test.js
+│   │   ├── useCertificates.test.js
+│   │   ├── useComments.test.js
+│   │   ├── useNotes.test.js
+│   │   ├── useReviews.test.js
+│   │   ├── useDashboard.test.js
+│   │   └── useSettings.test.js
+│   ├── components/             # Component tests
+│   │   ├── common/
+│   │   ├── layout/
+│   │   └── admin/
+│   └── pages/                  # Page tests
+│       ├── public/
+│       └── private/
+```
+
+**Lợi ích của cấu trúc tập trung:**
+
+- ✅ Source code sạch - thư mục hooks/components/pages chỉ chứa production code
+- ✅ Dễ quản lý - tất cả tests ở một nơi
+- ✅ Mirror structure - cấu trúc **tests** phản ánh cấu trúc src
+- ✅ Dễ exclude khi build
 
 ---
 
@@ -41,18 +98,25 @@
 
 **Mục tiêu:** Tạo các utilities dùng chung cho tất cả tests
 
-| Task | File                                   | Mô tả                              |
-| ---- | -------------------------------------- | ---------------------------------- |
-| 1.1  | `src/__tests__/setup.js`               | Mở rộng setup với global mocks     |
-| 1.2  | `src/__tests__/utils/testUtils.js`     | Tạo render wrapper với QueryClient |
-| 1.3  | `src/__tests__/utils/mockFactories.js` | Factory functions tạo mock data    |
-| 1.4  | `src/__tests__/mocks/serviceMocks.js`  | Mock patterns cho services         |
+| Task | File                              | Mô tả                              |
+| ---- | --------------------------------- | ---------------------------------- |
+| 1.1  | `src/__tests__/setup.js`          | Mở rộng setup với global mocks     |
+| 1.2  | `src/__tests__/test-utils.jsx`    | Tạo render wrapper với QueryClient |
+| 1.3  | `src/__tests__/mocks/data.js`     | Factory functions tạo mock data    |
+| 1.4  | `src/__tests__/mocks/services.js` | Mock patterns cho services         |
 
-**Ví dụ testUtils.js:**
+**Ví dụ test-utils.jsx:**
 
 ```javascript
+// src/__tests__/test-utils.jsx
+import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthContext } from '../../context/AuthContext';
+import { MemoryRouter } from 'react-router-dom';
+import { ConfigProvider } from 'antd';
+import viVN from 'antd/locale/vi_VN';
+import { AuthContext } from '../context/AuthContext';
+import { theme } from '../config/theme';
+import { vi } from 'vitest';
 
 export function createTestQueryClient() {
     return new QueryClient({
@@ -80,11 +144,42 @@ export function createWrapper(options = {}) {
         );
     };
 }
+
+// Default auth context value
+const defaultAuthValue = {
+    user: null,
+    loading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+};
+
+export function renderWithProviders(
+    ui,
+    { authValue = defaultAuthValue, queryClient = createTestQueryClient(), route = '/' } = {}
+) {
+    function Wrapper({ children }) {
+        return (
+            <QueryClientProvider client={queryClient}>
+                <ConfigProvider theme={theme} locale={viVN}>
+                    <AuthContext.Provider value={authValue}>
+                        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+                    </AuthContext.Provider>
+                </ConfigProvider>
+            </QueryClientProvider>
+        );
+    }
+
+    return { ...render(ui, { wrapper: Wrapper }), queryClient };
+}
+
+export * from '@testing-library/react';
+export { default as userEvent } from '@testing-library/user-event';
 ```
 
-**Ví dụ mockFactories.js:**
+**Ví dụ mocks/data.js:**
 
 ```javascript
+// src/__tests__/mocks/data.js
 export const mockUser = (overrides = {}) => ({
     id: '1',
     email: 'test@example.com',
@@ -119,7 +214,7 @@ export const mockPermissions = (overrides = {}) => ({
 
 ### Phase 2: Test usePermissions Hook (Priority: High)
 
-**File:** `src/hooks/usePermissions.test.js`
+**File:** `src/__tests__/hooks/usePermissions.test.js`
 
 Hook này không phụ thuộc services, chỉ cần mock AuthContext.
 
@@ -137,14 +232,16 @@ Hook này không phụ thuộc services, chỉ cần mock AuthContext.
 **Ví dụ test:**
 
 ```javascript
+// src/__tests__/hooks/usePermissions.test.js
 import { renderHook } from '@testing-library/react';
-import { usePermissions } from './usePermissions';
-import { createWrapper } from '../__tests__/utils/testUtils';
-import { mockPermissions } from '../__tests__/utils/mockFactories';
+import { describe, test, expect } from 'vitest';
+import { usePermissions } from '../../hooks/usePermissions';
+import { createWrapper } from '../test-utils';
+import { mockPermissions } from '../mocks/data';
 
 describe('usePermissions', () => {
     describe('canRead', () => {
-        it('should return true when user has full read access', () => {
+        test('should return true when user has full read access', () => {
             const user = {
                 all_permissions: mockPermissions(),
             };
@@ -155,7 +252,7 @@ describe('usePermissions', () => {
             expect(result.current.canRead('courses')).toBe(true);
         });
 
-        it('should return false when user has no permissions', () => {
+        test('should return false when user has no permissions', () => {
             const wrapper = createWrapper({ user: null });
 
             const { result } = renderHook(() => usePermissions(), { wrapper });
@@ -165,7 +262,7 @@ describe('usePermissions', () => {
     });
 
     describe('hasFieldPermission', () => {
-        it('should return true for wildcard fields', () => {
+        test('should return true for wildcard fields', () => {
             const user = {
                 all_permissions: {
                     courses: {
@@ -189,7 +286,7 @@ describe('usePermissions', () => {
 
 ### Phase 3: Test useUsers Hooks (Priority: High)
 
-**File:** `src/hooks/useUsers.test.js`
+**File:** `src/__tests__/hooks/useUsers.test.js`
 
 | Test Case                | Hook                 | Mô tả                                        |
 | ------------------------ | -------------------- | -------------------------------------------- |
@@ -205,14 +302,16 @@ describe('usePermissions', () => {
 **Ví dụ test:**
 
 ```javascript
+// src/__tests__/hooks/useUsers.test.js
 import { renderHook, waitFor } from '@testing-library/react';
-import { useUsers, useUser, useCreateUser } from './useUsers';
-import { userService } from '../services/userService';
-import { createWrapper, createTestQueryClient } from '../__tests__/utils/testUtils';
-import { mockUser } from '../__tests__/utils/mockFactories';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { useUsers, useUser, useCreateUser } from '../../hooks/useUsers';
+import { userService } from '../../services/userService';
+import { createWrapper } from '../test-utils';
+import { mockUser } from '../mocks/data';
 
 // Mock service
-vi.mock('../services/userService', () => ({
+vi.mock('../../services/userService', () => ({
     userService: {
         getAll: vi.fn(),
         getById: vi.fn(),
@@ -223,7 +322,7 @@ vi.mock('../services/userService', () => ({
 }));
 
 // Mock showSuccess
-vi.mock('../utils/errorHandler', () => ({
+vi.mock('../../utils/errorHandler', () => ({
     showSuccess: vi.fn(),
 }));
 
@@ -233,7 +332,7 @@ describe('useUsers', () => {
     });
 
     describe('useUsers', () => {
-        it('should fetch users successfully', async () => {
+        test('should fetch users successfully', async () => {
             const mockUsers = [mockUser(), mockUser({ id: '2' })];
             userService.getAll.mockResolvedValue(mockUsers);
 
@@ -249,7 +348,7 @@ describe('useUsers', () => {
             expect(userService.getAll).toHaveBeenCalledWith({});
         });
 
-        it('should pass params to service', async () => {
+        test('should pass params to service', async () => {
             const params = { filter: { role: { _eq: 'admin' } } };
             userService.getAll.mockResolvedValue([]);
 
@@ -264,7 +363,7 @@ describe('useUsers', () => {
     });
 
     describe('useUser', () => {
-        it('should fetch single user when id provided', async () => {
+        test('should fetch single user when id provided', async () => {
             const user = mockUser();
             userService.getById.mockResolvedValue(user);
 
@@ -279,7 +378,7 @@ describe('useUsers', () => {
             expect(result.current.data).toEqual(user);
         });
 
-        it('should not fetch when id is null', () => {
+        test('should not fetch when id is null', () => {
             const { result } = renderHook(() => useUser(null), {
                 wrapper: createWrapper(),
             });
@@ -290,7 +389,7 @@ describe('useUsers', () => {
     });
 
     describe('useCreateUser', () => {
-        it('should create user and invalidate queries', async () => {
+        test('should create user and invalidate queries', async () => {
             const newUser = mockUser();
             userService.create.mockResolvedValue(newUser);
 
@@ -312,7 +411,7 @@ describe('useUsers', () => {
 
 ### Phase 4: Test useCourses Hooks (Priority: High)
 
-**File:** `src/hooks/useCourses.test.js`
+**File:** `src/__tests__/hooks/useCourses.test.js`
 
 | Test Case               | Hook                         | Mô tả                   |
 | ----------------------- | ---------------------------- | ----------------------- |
@@ -334,14 +433,14 @@ describe('useUsers', () => {
 
 Áp dụng pattern tương tự useUsers cho các hooks còn lại:
 
-| File                       | Hooks                                                                 | Est. Time |
-| -------------------------- | --------------------------------------------------------------------- | --------- |
-| `useModules.test.js`       | useModules, useCreateModule, useUpdateModule, useDeleteModule         | ~40 phút  |
-| `useLessons.test.js`       | useLessons, useCreateLesson, useUpdateLesson, useDeleteLesson         | ~40 phút  |
-| `useEnrollments.test.js`   | useEnrollments, useCreateEnrollment, useUpdateEnrollment              | ~40 phút  |
-| `useTags.test.js`          | useTags, useCreateTag, useUpdateTag, useDeleteTag                     | ~40 phút  |
-| `useDocuments.test.js`     | useDocuments, useCreateDocument, useUpdateDocument, useDeleteDocument | ~40 phút  |
-| `useLearningPaths.test.js` | useLearningPaths, useCreateLearningPath, useUpdateLearningPath        | ~40 phút  |
+| File                                           | Hooks                                                                 | Est. Time |
+| ---------------------------------------------- | --------------------------------------------------------------------- | --------- |
+| `src/__tests__/hooks/useModules.test.js`       | useModules, useCreateModule, useUpdateModule, useDeleteModule         | ~40 phút  |
+| `src/__tests__/hooks/useLessons.test.js`       | useLessons, useCreateLesson, useUpdateLesson, useDeleteLesson         | ~40 phút  |
+| `src/__tests__/hooks/useEnrollments.test.js`   | useEnrollments, useCreateEnrollment, useUpdateEnrollment              | ~40 phút  |
+| `src/__tests__/hooks/useTags.test.js`          | useTags, useCreateTag, useUpdateTag, useDeleteTag                     | ~40 phút  |
+| `src/__tests__/hooks/useDocuments.test.js`     | useDocuments, useCreateDocument, useUpdateDocument, useDeleteDocument | ~40 phút  |
+| `src/__tests__/hooks/useLearningPaths.test.js` | useLearningPaths, useCreateLearningPath, useUpdateLearningPath        | ~40 phút  |
 
 **Est. Time:** ~4 giờ
 
@@ -349,13 +448,13 @@ describe('useUsers', () => {
 
 ### Phase 6: Test Quiz & Progress Hooks (Priority: Medium)
 
-| File                        | Hooks                                                             | Est. Time |
-| --------------------------- | ----------------------------------------------------------------- | --------- |
-| `useQuizzes.test.js`        | useQuizzes, useQuiz, useCreateQuiz, useUpdateQuiz                 | ~40 phút  |
-| `useQuestionBank.test.js`   | useQuestionBank, useCreateQuestion, useUpdateQuestion             | ~40 phút  |
-| `useQuizAttempts.test.js`   | useQuizAttempts, useMyAttempts, useStartAttempt, useSubmitAttempt | ~40 phút  |
-| `useLessonProgress.test.js` | useLessonProgress, useMarkComplete, useUpdateProgress             | ~30 phút  |
-| `useCertificates.test.js`   | useCertificates, useMyCertificates                                | ~30 phút  |
+| File                                            | Hooks                                                             | Est. Time |
+| ----------------------------------------------- | ----------------------------------------------------------------- | --------- |
+| `src/__tests__/hooks/useQuizzes.test.js`        | useQuizzes, useQuiz, useCreateQuiz, useUpdateQuiz                 | ~40 phút  |
+| `src/__tests__/hooks/useQuestionBank.test.js`   | useQuestionBank, useCreateQuestion, useUpdateQuestion             | ~40 phút  |
+| `src/__tests__/hooks/useQuizAttempts.test.js`   | useQuizAttempts, useMyAttempts, useStartAttempt, useSubmitAttempt | ~40 phút  |
+| `src/__tests__/hooks/useLessonProgress.test.js` | useLessonProgress, useMarkComplete, useUpdateProgress             | ~30 phút  |
+| `src/__tests__/hooks/useCertificates.test.js`   | useCertificates, useMyCertificates                                | ~30 phút  |
 
 **Est. Time:** ~3 giờ
 
@@ -363,39 +462,34 @@ describe('useUsers', () => {
 
 ### Phase 7: Test Remaining Hooks (Priority: Lower)
 
-| File                   | Hooks                                                   | Est. Time |
-| ---------------------- | ------------------------------------------------------- | --------- |
-| `useComments.test.js`  | useComments, useCreateComment, useDeleteComment         | ~25 phút  |
-| `useNotes.test.js`     | useNotes, useCreateNote, useUpdateNote, useDeleteNote   | ~25 phút  |
-| `useReviews.test.js`   | useReviews, useCreateReview, useUpdateReview            | ~25 phút  |
-| `useDashboard.test.js` | useDashboardStats, usePopularCourses, useAtRiskLearners | ~25 phút  |
-| `useSettings.test.js`  | useSettings, useUpdateSettings                          | ~20 phút  |
+| File                                       | Hooks                                                   | Est. Time |
+| ------------------------------------------ | ------------------------------------------------------- | --------- |
+| `src/__tests__/hooks/useComments.test.js`  | useComments, useCreateComment, useDeleteComment         | ~25 phút  |
+| `src/__tests__/hooks/useNotes.test.js`     | useNotes, useCreateNote, useUpdateNote, useDeleteNote   | ~25 phút  |
+| `src/__tests__/hooks/useReviews.test.js`   | useReviews, useCreateReview, useUpdateReview            | ~25 phút  |
+| `src/__tests__/hooks/useDashboard.test.js` | useDashboardStats, usePopularCourses, useAtRiskLearners | ~25 phút  |
+| `src/__tests__/hooks/useSettings.test.js`  | useSettings, useUpdateSettings                          | ~20 phút  |
 
 **Est. Time:** ~2 giờ
 
 ---
 
-## Cấu trúc thư mục sau khi hoàn thành
+## Import Paths trong Tests
 
-```
-src/
-├── __tests__/
-│   ├── setup.js                    # Mở rộng với global mocks
-│   ├── utils/
-│   │   ├── testUtils.js            # Render wrappers
-│   │   └── mockFactories.js        # Mock data factories
-│   └── mocks/
-│       └── serviceMocks.js         # Service mock patterns
-├── hooks/
-│   ├── useUsers.js
-│   ├── useUsers.test.js            # ✅ Co-located test
-│   ├── useCourses.js
-│   ├── useCourses.test.js          # ✅ Co-located test
-│   ├── usePermissions.js
-│   ├── usePermissions.test.js      # ✅ Co-located test
-│   ├── useModules.js
-│   ├── useModules.test.js          # ✅ Co-located test
-│   └── ... (các hook và test khác)
+```javascript
+// Từ file: src/__tests__/hooks/useUsers.test.js
+
+// Import hook cần test (đi lên 2 cấp từ __tests__/hooks)
+import { useUsers } from '../../hooks/useUsers';
+
+// Import service để mock (đi lên 2 cấp)
+import { userService } from '../../services/userService';
+
+// Import test utilities (đi lên 1 cấp từ hooks/)
+import { createWrapper } from '../test-utils';
+
+// Import mocks (cùng cấp với test-utils)
+import { mockUser } from '../mocks/data';
 ```
 
 ---
@@ -425,13 +519,13 @@ npm test
 npm run test:coverage
 
 # Chạy test cho một file cụ thể
-npx vitest run src/hooks/useUsers.test.js
+npx vitest run src/__tests__/hooks/useUsers.test.js
 
 # Chạy tests matching pattern
 npx vitest run --testNamePattern="usePermissions"
 
 # Watch mode cho một file
-npx vitest src/hooks/useUsers.test.js
+npx vitest src/__tests__/hooks/useUsers.test.js
 ```
 
 ---
@@ -441,53 +535,83 @@ npx vitest src/hooks/useUsers.test.js
 ### Phase 1: Test Utilities
 
 - [ ] Mở rộng `src/__tests__/setup.js`
-- [ ] Tạo `src/__tests__/utils/testUtils.js`
-- [ ] Tạo `src/__tests__/utils/mockFactories.js`
-- [ ] Tạo `src/__tests__/mocks/serviceMocks.js`
+- [ ] Tạo `src/__tests__/test-utils.jsx`
+- [ ] Tạo `src/__tests__/mocks/data.js`
+- [ ] Tạo `src/__tests__/mocks/services.js`
 
 ### Phase 2: usePermissions
 
-- [ ] `src/hooks/usePermissions.test.js`
+- [ ] `src/__tests__/hooks/usePermissions.test.js`
 
 ### Phase 3: useUsers
 
-- [ ] `src/hooks/useUsers.test.js`
+- [ ] `src/__tests__/hooks/useUsers.test.js`
 
 ### Phase 4: useCourses
 
-- [ ] `src/hooks/useCourses.test.js`
+- [ ] `src/__tests__/hooks/useCourses.test.js`
 
 ### Phase 5: CRUD Hooks
 
-- [ ] `src/hooks/useModules.test.js`
-- [ ] `src/hooks/useLessons.test.js`
-- [ ] `src/hooks/useEnrollments.test.js`
-- [ ] `src/hooks/useTags.test.js`
-- [ ] `src/hooks/useDocuments.test.js`
-- [ ] `src/hooks/useLearningPaths.test.js`
+- [ ] `src/__tests__/hooks/useModules.test.js`
+- [ ] `src/__tests__/hooks/useLessons.test.js`
+- [ ] `src/__tests__/hooks/useEnrollments.test.js`
+- [ ] `src/__tests__/hooks/useTags.test.js`
+- [ ] `src/__tests__/hooks/useDocuments.test.js`
+- [ ] `src/__tests__/hooks/useLearningPaths.test.js`
 
 ### Phase 6: Quiz & Progress
 
-- [ ] `src/hooks/useQuizzes.test.js`
-- [ ] `src/hooks/useQuestionBank.test.js`
-- [ ] `src/hooks/useQuizAttempts.test.js`
-- [ ] `src/hooks/useLessonProgress.test.js`
-- [ ] `src/hooks/useCertificates.test.js`
+- [ ] `src/__tests__/hooks/useQuizzes.test.js`
+- [ ] `src/__tests__/hooks/useQuestionBank.test.js`
+- [ ] `src/__tests__/hooks/useQuizAttempts.test.js`
+- [ ] `src/__tests__/hooks/useLessonProgress.test.js`
+- [ ] `src/__tests__/hooks/useCertificates.test.js`
 
 ### Phase 7: Remaining
 
-- [ ] `src/hooks/useComments.test.js`
-- [ ] `src/hooks/useNotes.test.js`
-- [ ] `src/hooks/useReviews.test.js`
-- [ ] `src/hooks/useDashboard.test.js`
-- [ ] `src/hooks/useSettings.test.js`
+- [ ] `src/__tests__/hooks/useComments.test.js`
+- [ ] `src/__tests__/hooks/useNotes.test.js`
+- [ ] `src/__tests__/hooks/useReviews.test.js`
+- [ ] `src/__tests__/hooks/useDashboard.test.js`
+- [ ] `src/__tests__/hooks/useSettings.test.js`
+
+---
+
+## Quick Start
+
+```bash
+# 1. Tạo cấu trúc thư mục tests
+mkdir -p src/__tests__/hooks
+mkdir -p src/__tests__/mocks
+
+# 2. Tạo các file utilities
+touch src/__tests__/test-utils.jsx
+touch src/__tests__/mocks/data.js
+touch src/__tests__/mocks/services.js
+
+# 3. Bắt đầu với Phase 2 - usePermissions
+touch src/__tests__/hooks/usePermissions.test.js
+
+# 4. Chạy test
+npm test
+
+# 5. Xem coverage
+npm run test:coverage
+```
 
 ---
 
 ## Ghi chú
 
 - **Mock Strategy:** Sử dụng `vi.mock()` của Vitest (native, hiệu quả)
-- **Co-located Tests:** Đặt test files cùng thư mục với source files
+- **Centralized Tests:** Tập trung tất cả tests trong thư mục `src/__tests__/`
+- **Mirror Structure:** Cấu trúc tests phản ánh cấu trúc source code
 - **Coverage Target:** 70%+ cho business logic
 - **Test Pattern:** Arrange → Act → Assert
-- **Naming Convention:** `describe` cho nhóm, `it`/`test` cho cases
+- **Naming Convention:** `describe` cho nhóm, `test` cho cases
+
+---
+
+**Tài liệu cập nhật:** 2026-01-15  
+**Version:** 2.0 - Centralized Test Structure
