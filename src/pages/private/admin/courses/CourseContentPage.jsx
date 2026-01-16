@@ -128,7 +128,6 @@ function SortableLessonItem({ lesson, onEdit, onDelete }) {
                     <Space size="small">
                         <Tag>{typeConfig.label}</Tag>
                         {lesson.duration && <Text type="secondary">{lesson.duration} phút</Text>}
-                        {lesson.is_required && <Tag color="red">Bắt buộc</Tag>}
                     </Space>
                 </div>
 

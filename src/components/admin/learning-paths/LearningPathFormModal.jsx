@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Modal, Form, Input, Select, Switch, Row, Col, Divider, Typography, InputNumber, Card, Space } from 'antd';
 import { NodeIndexOutlined, BookOutlined, ClockCircleOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import { mockCourses, mockPositions, mockDepartments } from '../../../mocks';
@@ -21,6 +22,8 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
 
     // Watch selected courses to calculate total duration
     const selectedCourseIds = Form.useWatch('course_ids', form) || [];
+    const isMandatory = Form.useWatch('is_mandatory', form);
+
     const totalDuration = useMemo(() => {
         return selectedCourseIds.reduce((total, courseId) => {
             const course = mockCourses.find(c => c.id === courseId);
@@ -52,6 +55,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                     sort: initialValues.sort || 0,
                     department_filter: initialValues.department_filter || [],
                     position_filter: initialValues.position_filter || [],
+                    duration_days: initialValues.duration_days || null,
                 });
             } else {
                 form.resetFields();
@@ -110,6 +114,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                     status: 'draft',
                     is_mandatory: false,
                     sort: 0,
+                    duration_days: null,
                 }}
             >
                 <Divider orientation="left" plain>
@@ -133,7 +138,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                 </Form.Item>
 
                 <Row gutter={16}>
-                    <Col span={8}>
+                    <Col span={12}>
                         <Form.Item name="status" label="Trạng thái">
                             <Select
                                 options={[
@@ -143,19 +148,31 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
-                        <Form.Item
-                            name="is_mandatory"
-                            label="Bắt buộc"
-                            valuePropName="checked"
-                            extra="Nhân viên mới phải hoàn thành"
-                        >
+                    <Col span={12}>
+                        <Form.Item name="sort" label="Thứ tự hiển thị">
+                            <InputNumber min={0} style={{ width: '100%' }} />
+                        </Form.Item>
+                    </Col>
+                </Row>
+
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <Form.Item name="is_mandatory" label="Bắt buộc" valuePropName="checked">
                             <Switch checkedChildren="Có" unCheckedChildren="Không" />
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
-                        <Form.Item name="sort" label="Thứ tự hiển thị">
-                            <InputNumber min={0} style={{ width: '100%' }} />
+                    <Col span={12}>
+                        <Form.Item
+                            name="duration_days"
+                            label="Thời hạn hoàn thành (ngày)"
+                            extra="Số ngày học viên có để hoàn thành lộ trình kể từ khi được gán."
+                        >
+                            <InputNumber
+                                min={1}
+                                placeholder={isMandatory ? 'Nhập số ngày' : 'Không áp dụng'}
+                                style={{ width: '100%' }}
+                                disabled={!isMandatory}
+                            />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -284,5 +301,23 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
         </Modal>
     );
 }
+
+LearningPathFormModal.propTypes = {
+    open: PropTypes.bool,
+    onCancel: PropTypes.func,
+    onSave: PropTypes.func,
+    initialValues: PropTypes.shape({
+        title: PropTypes.string,
+        description: PropTypes.string,
+        courses: PropTypes.array,
+        is_mandatory: PropTypes.bool,
+        status: PropTypes.string,
+        sort: PropTypes.number,
+        department_filter: PropTypes.array,
+        position_filter: PropTypes.array,
+        duration_days: PropTypes.number,
+    }),
+    loading: PropTypes.bool,
+};
 
 export default LearningPathFormModal;

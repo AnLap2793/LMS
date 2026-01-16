@@ -85,7 +85,6 @@ REFRESH_TOKEN_TTL="7d"
     - `module_id` (M2O -> modules)
     - `sort` (Integer)
     - `status` (String) - `published`, `draft`
-    - `is_required` (Boolean) - Default: true
 - **Relations**:
     - `documents` (M2M) - Many-to-Many với `documents` qua `lessons_documents` junction table
 - **Lưu ý**: Tài liệu đính kèm được quản lý qua quan hệ M2M `documents`, không sử dụng trường `file_attachment` (đã bị loại bỏ).
@@ -125,9 +124,12 @@ REFRESH_TOKEN_TTL="7d"
 - **Fields**:
     - `user_id` (M2O -> directus_users)
     - `course_id` (M2O -> courses)
-    - `status` (String) - `active`, `completed`, `dropped`
+    - `assigned_by` (M2O -> directus_users)
+    - `assignment_type` (String) - `individual`, `learning_path`, `self`
+    - `status` (String) - `assigned`, `in_progress`, `completed`, `expired`
     - `progress` (Integer) - % hoàn thành (0-100)
     - `completed_at` (DateTime)
+    - `due_date` (DateTime)
 
 #### `lesson_progress` (Tiến độ bài học)
 

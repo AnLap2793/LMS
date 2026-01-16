@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Modal, Form, Input, Select, InputNumber, Switch, Space, Radio, Divider, Button, List, Tag, Empty } from 'antd';
+import { Modal, Form, Input, Select, InputNumber, Space, Radio, Divider, Button, List, Tag, Empty } from 'antd';
 import {
     PlayCircleOutlined,
     FileTextOutlined,
@@ -152,7 +152,6 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
                 layout="vertical"
                 initialValues={{
                     type: 'video',
-                    is_required: true,
                     status: 'published',
                 }}
             >
@@ -288,15 +287,9 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
                 <Divider />
 
                 {/* Common fields */}
-                <Space size="large">
-                    <Form.Item name="duration" label="Thời lượng (phút)">
-                        <InputNumber min={0} placeholder="VD: 15" />
-                    </Form.Item>
-
-                    <Form.Item name="is_required" label="Bắt buộc" valuePropName="checked">
-                        <Switch checkedChildren="Có" unCheckedChildren="Không" />
-                    </Form.Item>
-                </Space>
+                <Form.Item name="duration" label="Thời lượng (phút)">
+                    <InputNumber min={0} placeholder="VD: 15" />
+                </Form.Item>
             </Form>
 
             {/* Document Selector Modal */}
@@ -323,7 +316,6 @@ LessonFormModal.propTypes = {
         video_provider: PropTypes.string,
         external_link: PropTypes.string,
         duration: PropTypes.number,
-        is_required: PropTypes.bool,
         documents: PropTypes.arrayOf(
             PropTypes.shape({
                 id: PropTypes.string,

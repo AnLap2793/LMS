@@ -1,5 +1,7 @@
 # AGENTS.md - LMS Directus Project
 
+When you need to search docs, use `context7` tools.
+
 ## Build, Lint, and Test Commands
 
 ```bash

@@ -341,23 +341,22 @@ Tags để phân loại và tìm kiếm khóa học.
 
 #### Lessons
 
-| Field           | Type                 | Required | Default     | Description                                                | Interface       | Display        |
-| --------------- | -------------------- | -------- | ----------- | ---------------------------------------------------------- | --------------- | -------------- |
-| id              | uuid                 | Yes      | Auto        | Primary key                                                | -               | -              |
-| status          | string               | Yes      | "published" | Trạng thái: "published", "draft"                           | select-dropdown | labels         |
-| module_id       | M2O → modules        | Yes      | -           | Module chứa lesson này                                     | select-dropdown | related-values |
-| title           | string               | Yes      | -           | Tên bài học                                                | input           | raw            |
-| type            | string               | Yes      | -           | Loại bài học: "video", "article", "link", "quiz"           | select-dropdown | labels         |
-| content         | text (markdown)      | No       | null        | Nội dung bài học (nếu type = "article")                    | markdown        | formatted-text |
-| video_url       | string               | No       | null        | URL video (YouTube hoặc Google Drive URL)                  | input           | raw            |
-| video_provider  | string               | No       | null        | Provider: "youtube", "google_drive"                        | select-dropdown | labels         |
-| video_id        | string               | No       | null        | Video ID (YouTube ID hoặc Google Drive File ID)            | input           | raw            |
-| external_link   | string               | No       | null        | Link ngoài (nếu type = "link")                             | input           | raw            |
-| duration        | integer              | No       | null        | Thời lượng bài học (phút)                                  | input           | raw            |
-| is_required     | boolean              | No       | true        | Bài học bắt buộc hay không                                 | boolean         | boolean        |
-| sort            | integer              | No       | 0           | Thứ tự hiển thị trong module                               | input           | raw            |
-| user_created    | M2O → directus_users | Yes      | Auto        | Người tạo                                                  | user            | user           |
-| date_created    | timestamp            | Yes      | Auto        | Ngày tạo                                                   | datetime        | datetime       |
+| Field          | Type                 | Required | Default     | Description                                      | Interface       | Display        |
+| -------------- | -------------------- | -------- | ----------- | ------------------------------------------------ | --------------- | -------------- |
+| id             | uuid                 | Yes      | Auto        | Primary key                                      | -               | -              |
+| status         | string               | Yes      | "published" | Trạng thái: "published", "draft"                 | select-dropdown | labels         |
+| module_id      | M2O → modules        | Yes      | -           | Module chứa lesson này                           | select-dropdown | related-values |
+| title          | string               | Yes      | -           | Tên bài học                                      | input           | raw            |
+| type           | string               | Yes      | -           | Loại bài học: "video", "article", "link", "quiz" | select-dropdown | labels         |
+| content        | text (markdown)      | No       | null        | Nội dung bài học (nếu type = "article")          | markdown        | formatted-text |
+| video_url      | string               | No       | null        | URL video (YouTube hoặc Google Drive URL)        | input           | raw            |
+| video_provider | string               | No       | null        | Provider: "youtube", "google_drive"              | select-dropdown | labels         |
+| video_id       | string               | No       | null        | Video ID (YouTube ID hoặc Google Drive File ID)  | input           | raw            |
+| external_link  | string               | No       | null        | Link ngoài (nếu type = "link")                   | input           | raw            |
+| duration       | integer              | No       | null        | Thời lượng bài học (phút)                        | input           | raw            |
+| sort           | integer              | No       | 0           | Thứ tự hiển thị trong module                     | input           | raw            |
+| user_created   | M2O → directus_users | Yes      | Auto        | Người tạo                                        | user            | user           |
+| date_created   | timestamp            | Yes      | Auto        | Ngày tạo                                         | datetime        | datetime       |
 
 **Indexes:**
 
@@ -379,9 +378,9 @@ Tags để phân loại và tìm kiếm khóa học.
 - `sort` dùng để sắp xếp thứ tự lessons trong module
 - Cascade delete: Xóa module → xóa tất cả lessons
 - **Tài liệu đính kèm**: Sử dụng quan hệ M2M `documents` qua `lessons_documents` junction table
-  - Mỗi bài học có thể có nhiều tài liệu đính kèm (không giới hạn)
-  - Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
-  - Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
+    - Mỗi bài học có thể có nhiều tài liệu đính kèm (không giới hạn)
+    - Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
+    - Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
 
 #### Documents (Thư viện Tài liệu)
 
@@ -459,7 +458,7 @@ Bảng liên kết Many-to-Many giữa Lessons và Documents.
 | user_id             | M2O → directus_users | Yes      | -            | User đăng ký                                                  | user            | user                |
 | course_id           | M2O → courses        | Yes      | -            | Khóa học được đăng ký                                         | select-dropdown | related-values      |
 | assigned_by         | M2O → directus_users | No       | null         | Người assign (nếu được assign)                                | user            | user                |
-| assignment_type     | string               | No       | "individual" | Loại assign: "individual", "department", "auto"               | select-dropdown | labels              |
+| assignment_type     | string               | No       | "individual" | Loại assign: "individual", "learning_path", "self"            | select-dropdown | labels              |
 | status              | string               | Yes      | "assigned"   | Trạng thái: "assigned", "in_progress", "completed", "expired" | select-dropdown | labels              |
 | progress_percentage | integer              | No       | 0            | % hoàn thành (0-100)                                          | input           | progress-bar        |
 | started_at          | timestamp            | No       | null         | Thời điểm bắt đầu học                                         | datetime        | datetime            |
@@ -567,15 +566,16 @@ Tiến độ học tập của từng bài học.
 
 #### Quiz Questions
 
-| Field    | Type          | Required | Default | Description                                | Interface                        | Display        |
-| -------- | ------------- | -------- | ------- | ------------------------------------------ | -------------------------------- | -------------- |
-| id       | uuid          | Yes      | Auto    | Primary key                                | -                                | -              |
-| quiz_id  | M2O → quizzes | Yes      | -       | Bài kiểm tra                               | select-dropdown                  | related-values |
-| question | text          | Yes      | -       | Nội dung câu hỏi                           | input-multiline                  | formatted-text |
-| type     | string        | Yes      | -       | Loại câu hỏi: "single", "multiple", "text" | select-dropdown                  | labels         |
-| options  | json          | Yes      | -       | Các lựa chọn (JSON format)                 | list (repeater) hoặc code-editor | raw            |
-| points   | integer       | Yes      | 1       | Điểm số câu hỏi                            | input                            | raw            |
-| sort     | integer       | No       | 0       | Thứ tự hiển thị                            | input                            | raw            |
+| Field            | Type                | Required | Default | Description                                | Interface                        | Display        |
+| ---------------- | ------------------- | -------- | ------- | ------------------------------------------ | -------------------------------- | -------------- |
+| id               | uuid                | Yes      | Auto    | Primary key                                | -                                | -              |
+| quiz_id          | M2O → quizzes       | Yes      | -       | Bài kiểm tra                               | select-dropdown                  | related-values |
+| question         | text                | Yes      | -       | Nội dung câu hỏi                           | input-multiline                  | formatted-text |
+| type             | string              | Yes      | -       | Loại câu hỏi: "single", "multiple", "text" | select-dropdown                  | labels         |
+| options          | json                | Yes      | -       | Các lựa chọn (JSON format)                 | list (repeater) hoặc code-editor | raw            |
+| points           | integer             | Yes      | 1       | Điểm số câu hỏi                            | input                            | raw            |
+| sort             | integer             | No       | 0       | Thứ tự hiển thị                            | input                            | raw            |
+| question_bank_id | M2O → question_bank | No       | null    | Link tới ngân hàng câu hỏi gốc             | select-dropdown                  | related-values |
 
 **Indexes:**
 
@@ -585,6 +585,7 @@ Tiến độ học tập của từng bài học.
 **Relations:**
 
 - `quiz_id` → `quizzes` (Many-to-One)
+- `question_bank_id` → `question_bank` (Many-to-One, Optional)
 
 **Business Rules:**
 
@@ -678,14 +679,15 @@ Lần làm bài kiểm tra của user.
 
 Lộ trình học tập (chuỗi khóa học).
 
-| Field        | Type                 | Required | Default | Description                 | Interface       | Display        |
-| ------------ | -------------------- | -------- | ------- | --------------------------- | --------------- | -------------- |
-| id           | uuid                 | Yes      | Auto    | Primary key                 | -               | -              |
-| title        | string               | Yes      | -       | Tên lộ trình                | input           | raw            |
-| description  | text                 | No       | null    | Mô tả lộ trình              | input-multiline | formatted-text |
-| is_mandatory | boolean              | No       | false   | Lộ trình bắt buộc hay không | boolean         | boolean        |
-| user_created | M2O → directus_users | Yes      | Auto    | Người tạo                   | user            | user           |
-| date_created | timestamp            | Yes      | Auto    | Ngày tạo                    | datetime        | datetime       |
+| Field         | Type                 | Required | Default | Description                 | Interface       | Display        |
+| ------------- | -------------------- | -------- | ------- | --------------------------- | --------------- | -------------- |
+| id            | uuid                 | Yes      | Auto    | Primary key                 | -               | -              |
+| title         | string               | Yes      | -       | Tên lộ trình                | input           | raw            |
+| description   | text                 | No       | null    | Mô tả lộ trình              | input-multiline | formatted-text |
+| is_mandatory  | boolean              | No       | false   | Lộ trình bắt buộc hay không | boolean         | boolean        |
+| duration_days | integer              | No       | null    | Thời hạn hoàn thành (ngày)  | input           | raw            |
+| user_created  | M2O → directus_users | Yes      | Auto    | Người tạo                   | user            | user           |
+| date_created  | timestamp            | Yes      | Auto    | Ngày tạo                    | datetime        | datetime       |
 
 **Indexes:**
 

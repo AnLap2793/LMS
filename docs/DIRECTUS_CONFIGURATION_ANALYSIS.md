@@ -4,40 +4,54 @@
 
 ### 1.1. Trạng thái hiện tại
 
-| Component                                 | Trạng thái      | Ghi chú                |
-| ----------------------------------------- | --------------- | ---------------------- |
-| **userService.js**                        | Directus SDK    | Hoạt động với Directus |
-| **courseService.js**                      | Mock Data       | Chưa kết nối Directus  |
-| **enrollmentService.js**                  | Mock Data       | Chưa kết nối Directus  |
-| **Tags, Modules, Lessons, Quizzes, etc.** | Chưa có service | Cần tạo mới            |
+| Component                 | Trạng thái   | Ghi chú                                |
+| ------------------------- | ------------ | -------------------------------------- |
+| **Directus SDK Services** | Hoàn thành   | 8 services kết nối trực tiếp Directus  |
+| **Mock Data Services**    | Cần cập nhật | 10 services đang dùng mock data        |
+| **Collections Constants** | Hoàn thành   | Định nghĩa đầy đủ trong collections.js |
+| **React Query Hooks**     | Hoàn thành   | Tất cả hooks đã được tạo               |
 
 ### 1.2. Collections đã định nghĩa vs Services đã tạo
 
-| Collection               | Constant                             | Service                  | Hook                       | Trạng thái          |
-| ------------------------ | ------------------------------------ | ------------------------ | -------------------------- | ------------------- |
-| `directus_users`         | `COLLECTIONS.USERS`                  | `userService.js`         | `useUsers.js`              | Hoàn thành          |
-| `tags`                   | `COLLECTIONS.TAGS`                   | Chưa có                  | Chưa có                    | Cần tạo             |
-| `courses`                | `COLLECTIONS.COURSES`                | Mock                     | `useCourses.js` (mock)     | Cần cập nhật        |
-| `courses_tags`           | `COLLECTIONS.COURSES_TAGS`           | Chưa có                  | Chưa có                    | Junction table      |
-| `modules`                | `COLLECTIONS.MODULES`                | Chưa có                  | Chưa có                    | Cần tạo             |
-| `lessons`                | `COLLECTIONS.LESSONS`                | Chưa có                  | Chưa có                    | Cần tạo             |
-| `documents`              | `COLLECTIONS.DOCUMENTS`              | Chưa có                  | Chưa có                    | Cần tạo             |
-| `lessons_documents`      | `COLLECTIONS.LESSONS_DOCUMENTS`      | Chưa có                  | Chưa có                    | Junction table      |
-| `enrollments`            | `COLLECTIONS.ENROLLMENTS`            | Mock                     | `useEnrollments.js` (mock) | Cần cập nhật        |
-| `lesson_progress`        | `COLLECTIONS.LESSON_PROGRESS`        | Chưa có                  | Chưa có                    | Cần tạo             |
-| `quizzes`                | `COLLECTIONS.QUIZZES`                | Chưa có                  | Chưa có                    | Cần tạo             |
-| `quiz_questions`         | `COLLECTIONS.QUIZ_QUESTIONS`         | Chưa có                  | Chưa có                    | Cần tạo             |
-| `question_bank`          | `COLLECTIONS.QUESTION_BANK`          | `questionBankService.js` | `useQuestionBank.js`       | Hoàn thành (Mock)   |
-| `quiz_attempts`          | `COLLECTIONS.QUIZ_ATTEMPTS`          | `quizAttemptService.js`  | `useQuizAttempts.js`       | Hoàn thành (Mock)   |
-| `learning_paths`         | `COLLECTIONS.LEARNING_PATHS`         | Chưa có                  | Chưa có                    | Cần tạo             |
-| `learning_paths_courses` | `COLLECTIONS.LEARNING_PATHS_COURSES` | Chưa có                  | Chưa có                    | Junction table      |
-| `certificates`           | `COLLECTIONS.CERTIFICATES`           | Chưa có                  | Chưa có                    | Cần tạo             |
-| `certificate_templates`  | `COLLECTIONS.CERTIFICATE_TEMPLATES`  | Chưa có                  | Chưa có                    | Cần tạo             |
-| `user_notes`             | `COLLECTIONS.USER_NOTES`             | Chưa có                  | Chưa có                    | Cần tạo             |
-| `lesson_comments`        | `COLLECTIONS.LESSON_COMMENTS`        | Chưa có                  | Chưa có                    | Cần tạo             |
-| `course_reviews`         | `COLLECTIONS.COURSE_REVIEWS`         | Chưa có                  | Chưa có                    | Cần tạo             |
-| `directus_notifications` | -                                    | -                        | -                          | System Extension    |
-| `app_settings`           | `COLLECTIONS.APP_SETTINGS`           | `settingsService.js`     | `useSettings.js`           | Cần tạo (Singleton) |
+| Collection               | Constant                             | Service                     | Hook                   | Trạng thái           |
+| ------------------------ | ------------------------------------ | --------------------------- | ---------------------- | -------------------- |
+| `directus_users`         | `COLLECTIONS.USERS`                  | `userService.js`            | `useUsers.js`          | ✅ Directus SDK      |
+| `tags`                   | `COLLECTIONS.TAGS`                   | `tagService.js`             | `useTags.js`           | ⚠️ Mock Data         |
+| `courses`                | `COLLECTIONS.COURSES`                | `courseService.js`          | `useCourses.js`        | ⚠️ Mock Data         |
+| `courses_tags`           | `COLLECTIONS.COURSES_TAGS`           | (trong courseService)       | -                      | Junction table       |
+| `modules`                | `COLLECTIONS.MODULES`                | `moduleService.js`          | `useModules.js`        | ✅ Directus SDK      |
+| `lessons`                | `COLLECTIONS.LESSONS`                | `lessonService.js`          | `useLessons.js`        | ✅ Directus SDK      |
+| `documents`              | `COLLECTIONS.DOCUMENTS`              | `documentService.js`        | `useDocuments.js`      | ✅ Directus SDK      |
+| `lessons_documents`      | `COLLECTIONS.LESSONS_DOCUMENTS`      | (trong documentService)     | -                      | Junction table       |
+| `enrollments`            | `COLLECTIONS.ENROLLMENTS`            | `enrollmentService.js`      | `useEnrollments.js`    | ⚠️ Mock Data         |
+| `lesson_progress`        | `COLLECTIONS.LESSON_PROGRESS`        | `lessonProgressService.js`  | `useLessonProgress.js` | ⚠️ Mock Data         |
+| `quizzes`                | `COLLECTIONS.QUIZZES`                | `quizService.js`            | `useQuizzes.js`        | ⚠️ Mock Data         |
+| `quiz_questions`         | `COLLECTIONS.QUIZ_QUESTIONS`         | (trong quizService)         | -                      | ⚠️ Mock Data         |
+| `question_bank`          | `COLLECTIONS.QUESTION_BANK`          | `questionBankService.js`    | `useQuestionBank.js`   | ⚠️ Mock Data         |
+| `quiz_attempts`          | `COLLECTIONS.QUIZ_ATTEMPTS`          | `quizAttemptService.js`     | `useQuizAttempts.js`   | ⚠️ Mock Data         |
+| `learning_paths`         | `COLLECTIONS.LEARNING_PATHS`         | `learningPathService.js`    | `useLearningPaths.js`  | ⚠️ Mock Data         |
+| `learning_paths_courses` | `COLLECTIONS.LEARNING_PATHS_COURSES` | (trong learningPathService) | -                      | Junction table       |
+| `certificates`           | `COLLECTIONS.CERTIFICATES`           | `certificateService.js`     | `useCertificates.js`   | ⚠️ Mock Data         |
+| `certificate_templates`  | `COLLECTIONS.CERTIFICATE_TEMPLATES`  | (trong certificateService)  | -                      | ⚠️ Mock Data         |
+| `user_notes`             | `COLLECTIONS.USER_NOTES`             | `noteService.js`            | `useNotes.js`          | ✅ Directus SDK      |
+| `lesson_comments`        | `COLLECTIONS.LESSON_COMMENTS`        | `commentService.js`         | `useComments.js`       | ✅ Directus SDK      |
+| `course_reviews`         | `COLLECTIONS.COURSE_REVIEWS`         | `reviewService.js`          | `useReviews.js`        | ✅ Directus SDK      |
+| `directus_notifications` | -                                    | -                           | -                      | System Extension     |
+| `app_settings`           | `COLLECTIONS.APP_SETTINGS`           | `settingsService.js`        | `useSettings.js`       | ✅ Directus SDK      |
+| -                        | -                                    | `dashboardService.js`       | `useDashboard.js`      | ⚠️ Mock Data (Stats) |
+
+### 1.3. Tóm tắt tiến độ
+
+**✅ Directus SDK (8 services):**
+
+- `userService.js`, `moduleService.js`, `lessonService.js`, `documentService.js`
+- `settingsService.js`, `noteService.js`, `commentService.js`, `reviewService.js`
+
+**⚠️ Mock Data (10 services - cần migration):**
+
+- `tagService.js`, `courseService.js`, `enrollmentService.js`, `lessonProgressService.js`
+- `quizService.js`, `quizAttemptService.js`, `questionBankService.js`
+- `learningPathService.js`, `certificateService.js`, `dashboardService.js`
 
 ---
 
@@ -110,7 +124,10 @@ Primary Key: auto-increment integer
 | `courses_id` | uuid    | -         | M2O -> courses    |
 | `tags_id`    | uuid    | -         | M2O -> tags       |
 
-**Lưu ý:** Đây là junction table tự động được tạo khi setup M2M relation.
+**Lưu ý:**
+
+- Đây là junction table tự động được tạo khi setup M2M relation.
+- **Recommended:** Hidden in App Navigation.
 
 ---
 
@@ -146,23 +163,22 @@ Collection: lessons
 Primary Key: uuid (auto-generated)
 ```
 
-| Field             | Type        | Interface           | Options                                                             |
-| ----------------- | ----------- | ------------------- | ------------------------------------------------------------------- |
-| `id`              | uuid        | -                   | Primary Key, Auto                                                   |
-| `status`          | string      | select-dropdown     | Options: `draft`, `published`. Default: `published`                 |
-| `module_id`       | uuid        | select-dropdown-m2o | Required, M2O -> modules                                            |
-| `title`           | string      | input               | Required, Max 255                                                   |
-| `type`            | string      | select-dropdown     | Required. Options: `video`, `article`, `link`, `quiz`               |
-| `content`         | text        | input-rich-text-md  | Optional, For article type                                          |
-| `video_url`       | string      | input               | Optional, YouTube hoặc Google Drive URL                             |
-| `video_provider`  | string      | select-dropdown     | Options: `youtube`, `google_drive`                                  |
-| `video_id`        | string      | input               | Optional, Extracted from URL (YouTube ID hoặc Google Drive File ID) |
-| `external_link`   | string      | input               | Optional, For link type                                             |
-| `duration`        | integer     | input               | Optional, Minutes                                                   |
-| `is_required`     | boolean     | boolean             | Default: true                                                       |
-| `sort`            | integer     | input               | Default: 0                                                          |
-| `user_created`    | uuid        | user                | Auto                                                                |
-| `date_created`    | timestamp   | datetime            | Auto                                                                |
+| Field            | Type      | Interface           | Options                                                             |
+| ---------------- | --------- | ------------------- | ------------------------------------------------------------------- |
+| `id`             | uuid      | -                   | Primary Key, Auto                                                   |
+| `status`         | string    | select-dropdown     | Options: `draft`, `published`. Default: `published`                 |
+| `module_id`      | uuid      | select-dropdown-m2o | Required, M2O -> modules                                            |
+| `title`          | string    | input               | Required, Max 255                                                   |
+| `type`           | string    | select-dropdown     | Required. Options: `video`, `article`, `link`, `quiz`               |
+| `content`        | text      | input-rich-text-md  | Optional, For article type                                          |
+| `video_url`      | string    | input               | Optional, YouTube hoặc Google Drive URL                             |
+| `video_provider` | string    | select-dropdown     | Options: `youtube`, `google_drive`                                  |
+| `video_id`       | string    | input               | Optional, Extracted from URL (YouTube ID hoặc Google Drive File ID) |
+| `external_link`  | string    | input               | Optional, For link type                                             |
+| `duration`       | integer   | input               | Optional, Minutes                                                   |
+| `sort`           | integer   | input               | Default: 0                                                          |
+| `user_created`   | uuid      | user                | Auto                                                                |
+| `date_created`   | timestamp | datetime            | Auto                                                                |
 
 **Validation Rules (Conditional):**
 
@@ -253,6 +269,7 @@ Primary Key: auto-increment integer
 - Junction table cho M2M relation giữa lessons và documents
 - `sort` dùng để sắp xếp thứ tự tài liệu trong bài học
 - Unique constraint: Mỗi document chỉ được đính kèm 1 lần/lesson
+- **Recommended:** Hidden in App Navigation
 
 **Video URL Formats:**
 
@@ -322,10 +339,10 @@ Primary Key: uuid (auto-generated)
 | Field                 | Type      | Interface           | Options                                                                         |
 | --------------------- | --------- | ------------------- | ------------------------------------------------------------------------------- |
 | `id`                  | uuid      | -                   | Primary Key, Auto                                                               |
-| `user_id`             | uuid      | select-dropdown-m2o | Required, M2O -> directus_users                                                 |
+| `user_id`             | uuid      | user                | Required, M2O -> directus_users                                                 |
 | `course_id`           | uuid      | select-dropdown-m2o | Required, M2O -> courses                                                        |
-| `assigned_by`         | uuid      | select-dropdown-m2o | Optional, M2O -> directus_users                                                 |
-| `assignment_type`     | string    | select-dropdown     | Options: `individual`, `department`, `auto`. Default: `individual`              |
+| `assigned_by`         | uuid      | user                | Optional, M2O -> directus_users                                                 |
+| `assignment_type`     | string    | select-dropdown     | Options: `individual`, `learning_path`, `self`. Default: `individual`           |
 | `status`              | string    | select-dropdown     | Options: `assigned`, `in_progress`, `completed`, `expired`. Default: `assigned` |
 | `progress_percentage` | integer   | slider              | Default: 0, Range: 0-100                                                        |
 | `started_at`          | timestamp | datetime            | Optional                                                                        |
@@ -347,7 +364,7 @@ Primary Key: uuid (auto-generated)
 | Field                   | Type      | Interface           | Options                               |
 | ----------------------- | --------- | ------------------- | ------------------------------------- |
 | `id`                    | uuid      | -                   | Primary Key, Auto                     |
-| `user_id`               | uuid      | select-dropdown-m2o | Required, M2O -> directus_users       |
+| `user_id`               | uuid      | user                | Required, M2O -> directus_users       |
 | `lesson_id`             | uuid      | select-dropdown-m2o | Required, M2O -> lessons              |
 | `enrollment_id`         | uuid      | select-dropdown-m2o | Required, M2O -> enrollments          |
 | `completion_percentage` | integer   | slider              | Default: 0, Range: 0-100              |
@@ -358,6 +375,7 @@ Primary Key: uuid (auto-generated)
 | `date_updated`          | timestamp | datetime            | Auto                                  |
 
 **Unique Constraint:** `(user_id, lesson_id)` - Mỗi user chỉ có 1 progress record/lesson
+**Recommended:** Hidden in App Navigation
 
 ---
 
@@ -391,16 +409,17 @@ Collection: quiz_questions
 Primary Key: uuid (auto-generated)
 ```
 
-| Field         | Type    | Interface           | Options                                         |
-| ------------- | ------- | ------------------- | ----------------------------------------------- |
-| `id`          | uuid    | -                   | Primary Key, Auto                               |
-| `quiz_id`     | uuid    | select-dropdown-m2o | Required, M2O -> quizzes                        |
-| `question`    | text    | textarea            | Required                                        |
-| `type`        | string  | select-dropdown     | Required. Options: `single`, `multiple`, `text` |
-| `options`     | json    | code                | Required, See format below                      |
-| `explanation` | text    | textarea            | Optional                                        |
-| `points`      | integer | input               | Default: 1                                      |
-| `sort`        | integer | input               | Default: 0                                      |
+| Field              | Type    | Interface           | Options                                         |
+| ------------------ | ------- | ------------------- | ----------------------------------------------- |
+| `id`               | uuid    | -                   | Primary Key, Auto                               |
+| `quiz_id`          | uuid    | select-dropdown-m2o | Required, M2O -> quizzes                        |
+| `question`         | text    | textarea            | Required                                        |
+| `type`             | string  | select-dropdown     | Required. Options: `single`, `multiple`, `text` |
+| `options`          | json    | code                | Required, See format below                      |
+| `explanation`      | text    | textarea            | Optional                                        |
+| `points`           | integer | input               | Default: 1                                      |
+| `sort`             | integer | input               | Default: 0                                      |
+| `question_bank_id` | uuid    | select-dropdown-m2o | Optional, M2O -> question_bank                  |
 
 **Options JSON Format:**
 
@@ -414,29 +433,52 @@ Primary Key: uuid (auto-generated)
 }
 ```
 
+**Business Rules:**
+
+- **Snapshot Pattern:** Dữ liệu từ `question_bank` sẽ được **COPY** sang `quiz_questions` khi thêm vào đề thi.
+- Việc sửa đổi `question_bank` sau này sẽ **KHÔNG** ảnh hưởng đến các đề thi đã tạo (để bảo toàn lịch sử).
+- `question_bank_id` dùng để truy xuất nguồn gốc câu hỏi (nếu cần thống kê).
+- **Recommended:** Hidden in App Navigation
+
 ---
 
-### 2.10. Question_Bank
+### 2.10. Question_Categories
+
+```
+Collection: question_categories
+Primary Key: uuid (auto-generated)
+```
+
+| Field          | Type      | Interface | Options           |
+| -------------- | --------- | --------- | ----------------- |
+| `id`           | uuid      | -         | Primary Key, Auto |
+| `name`         | string    | input     | Required, Max 100 |
+| `description`  | text      | textarea  | Optional          |
+| `icon`         | string    | input     | Optional, Icon    |
+| `date_created` | timestamp | datetime  | Auto              |
+
+---
+
+### 2.11. Question_Bank
 
 ```
 Collection: question_bank
 Primary Key: uuid (auto-generated)
 ```
 
-| Field          | Type      | Interface       | Options                                                     |
-| -------------- | --------- | --------------- | ----------------------------------------------------------- |
-| `id`           | uuid      | -               | Primary Key, Auto                                           |
-| `question`     | text      | textarea        | Required                                                    |
-| `type`         | string    | select-dropdown | Required. Options: `single`, `multiple`, `text`             |
-| `options`      | json      | code            | Required for non-text types                                 |
-| `explanation`  | text      | textarea        | Optional                                                    |
-| `points`       | integer   | input           | Default: 1                                                  |
-| `difficulty`   | string    | select-dropdown | Options: `easy`, `medium`, `hard`                           |
-| `category`     | string    | select-dropdown | Options: `programming`, `database`, `design`, `soft_skills` |
-| `tags`         | json      | tags            | Optional                                                    |
-| `status`       | string    | select-dropdown | Options: `active`, `inactive`. Default: `active`            |
-| `user_created` | uuid      | user            | Auto                                                        |
-| `date_created` | timestamp | datetime        | Auto                                                        |
+| Field          | Type      | Interface           | Options                                          |
+| -------------- | --------- | ------------------- | ------------------------------------------------ |
+| `id`           | uuid      | -                   | Primary Key, Auto                                |
+| `question`     | text      | textarea            | Required                                         |
+| `type`         | string    | select-dropdown     | Required. Options: `single`, `multiple`, `text`  |
+| `options`      | json      | code                | Required for non-text types                      |
+| `explanation`  | text      | textarea            | Optional                                         |
+| `points`       | integer   | input               | Default: 1                                       |
+| `difficulty`   | string    | select-dropdown     | Options: `easy`, `medium`, `hard`                |
+| `category_id`  | uuid      | select-dropdown-m2o | Optional, M2O -> question_categories             |
+| `status`       | string    | select-dropdown     | Options: `active`, `inactive`. Default: `active` |
+| `user_created` | uuid      | user                | Auto                                             |
+| `date_created` | timestamp | datetime            | Auto                                             |
 
 **Lưu ý:**
 
@@ -445,7 +487,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.11. Quiz_Attempts
+### 2.12. Quiz_Attempts
 
 ```
 Collection: quiz_attempts
@@ -455,7 +497,7 @@ Primary Key: uuid (auto-generated)
 | Field           | Type      | Interface           | Options                           |
 | --------------- | --------- | ------------------- | --------------------------------- |
 | `id`            | uuid      | -                   | Primary Key, Auto                 |
-| `user_id`       | uuid      | select-dropdown-m2o | Required, M2O -> directus_users   |
+| `user_id`       | uuid      | user                | Required, M2O -> directus_users   |
 | `quiz_id`       | uuid      | select-dropdown-m2o | Required, M2O -> quizzes          |
 | `enrollment_id` | uuid      | select-dropdown-m2o | Optional, M2O -> enrollments      |
 | `answers`       | json      | code                | Required, User answers            |
@@ -464,9 +506,33 @@ Primary Key: uuid (auto-generated)
 | `started_at`    | timestamp | datetime            | Auto                              |
 | `submitted_at`  | timestamp | datetime            | Optional, Set when submitted      |
 
+**Answers JSON Format:**
+
+```json
+[
+    {
+        "question_id": "uuid-1",
+        "type": "single",
+        "answer": "A"
+    },
+    {
+        "question_id": "uuid-2",
+        "type": "multiple",
+        "answer": ["A", "C"]
+    },
+    {
+        "question_id": "uuid-3",
+        "type": "text",
+        "answer": "User answer text"
+    }
+]
+```
+
+**Recommended:** Hidden in App Navigation
+
 ---
 
-### 2.12. Learning_Paths
+### 2.13. Learning_Paths
 
 ```
 Collection: learning_paths
@@ -479,6 +545,7 @@ Primary Key: uuid (auto-generated)
 | `title`             | string    | input     | Required          |
 | `description`       | text      | textarea  | Optional          |
 | `is_mandatory`      | boolean   | boolean   | Default: false    |
+| `duration_days`     | integer   | input     | Optional, Days    |
 | `department_filter` | json      | tags      | Optional          |
 | `position_filter`   | json      | tags      | Optional          |
 | `user_created`      | uuid      | user      | Auto              |
@@ -486,7 +553,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.13. Learning_Paths_Courses (Junction Table)
+### 2.14. Learning_Paths_Courses (Junction Table)
 
 ```
 Collection: learning_paths_courses
@@ -499,9 +566,11 @@ Primary Key: auto-increment integer
 | `learning_path_id` | uuid    | -         | M2O -> learning_paths |
 | `course_id`        | uuid    | -         | M2O -> courses        |
 
+**Recommended:** Hidden in App Navigation
+
 ---
 
-### 2.14. Certificates
+### 2.15. Certificates
 
 ```
 Collection: certificates
@@ -511,7 +580,7 @@ Primary Key: uuid (auto-generated)
 | Field                | Type        | Interface           | Options                          |
 | -------------------- | ----------- | ------------------- | -------------------------------- |
 | `id`                 | uuid        | -                   | Primary Key, Auto                |
-| `user_id`            | uuid        | select-dropdown-m2o | Required, M2O -> directus_users  |
+| `user_id`            | uuid        | user                | Required, M2O -> directus_users  |
 | `course_id`          | uuid        | select-dropdown-m2o | Required, M2O -> courses         |
 | `certificate_number` | string      | input               | Required, Auto-generated, Unique |
 | `file`               | uuid (file) | file                | Required, PDF                    |
@@ -521,7 +590,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.15. Certificate_Templates
+### 2.16. Certificate_Templates
 
 ```
 Collection: certificate_templates
@@ -537,7 +606,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.16. User_Notes
+### 2.17. User_Notes
 
 ```
 Collection: user_notes
@@ -547,7 +616,7 @@ Primary Key: uuid (auto-generated)
 | Field          | Type      | Interface           | Options                              |
 | -------------- | --------- | ------------------- | ------------------------------------ |
 | `id`           | uuid      | -                   | Primary Key, Auto                    |
-| `user_id`      | uuid      | select-dropdown-m2o | Required, M2O -> directus_users      |
+| `user_id`      | uuid      | user                | Required, M2O -> directus_users      |
 | `lesson_id`    | uuid      | select-dropdown-m2o | Required, M2O -> lessons             |
 | `content`      | text      | textarea            | Required                             |
 | `timestamp`    | integer   | input               | Optional, Video timestamp in seconds |
@@ -561,7 +630,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.17. Lesson_Comments
+### 2.18. Lesson_Comments
 
 ```
 Collection: lesson_comments
@@ -571,7 +640,7 @@ Primary Key: uuid (auto-generated)
 | Field          | Type      | Interface           | Options                          |
 | -------------- | --------- | ------------------- | -------------------------------- |
 | `id`           | uuid      | -                   | Primary Key, Auto                |
-| `user_id`      | uuid      | select-dropdown-m2o | Required, M2O -> directus_users  |
+| `user_id`      | uuid      | user                | Required, M2O -> directus_users  |
 | `lesson_id`    | uuid      | select-dropdown-m2o | Required, M2O -> lessons         |
 | `parent_id`    | uuid      | select-dropdown-m2o | Optional, M2O -> lesson_comments |
 | `content`      | text      | textarea            | Required                         |
@@ -585,7 +654,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.18. Course_Reviews
+### 2.19. Course_Reviews
 
 ```
 Collection: course_reviews
@@ -595,9 +664,9 @@ Primary Key: uuid (auto-generated)
 | Field          | Type      | Interface           | Options                         |
 | -------------- | --------- | ------------------- | ------------------------------- |
 | `id`           | uuid      | -                   | Primary Key, Auto               |
-| `user_id`      | uuid      | select-dropdown-m2o | Required, M2O -> directus_users |
+| `user_id`      | uuid      | user                | Required, M2O -> directus_users |
 | `course_id`    | uuid      | select-dropdown-m2o | Required, M2O -> courses        |
-| `rating`       | integer   | star-rating         | Required, Range: 1-5            |
+| `rating`       | integer   | slider              | Required, Range: 1-5            |
 | `comment`      | text      | textarea            | Optional                        |
 | `is_public`    | boolean   | boolean             | Default: true                   |
 | `date_created` | timestamp | datetime            | Auto                            |
@@ -606,7 +675,7 @@ Primary Key: uuid (auto-generated)
 
 ---
 
-### 2.19. Notifications (System Collection Extension)
+### 2.20. Notifications (System Collection Extension)
 
 ```
 Collection: directus_notifications
@@ -629,7 +698,7 @@ Collection: directus_notifications
 
 ---
 
-### 2.20. App_Settings (Singleton)
+### 2.21. App_Settings (Singleton)
 
 ```
 Collection: app_settings (Singleton)
@@ -1161,35 +1230,53 @@ export const enrollmentService = {
 
 ### Phase 2: Frontend Services
 
-- [ ] Tạo `tagService.js`
-- [ ] Cập nhật `courseService.js` (thay mock)
-- [ ] Tạo `moduleService.js`
-- [ ] Tạo `lessonService.js`
-- [ ] Tạo `documentService.js` (thư viện tài liệu - hỗ trợ file và URL)
-- [ ] Cập nhật `enrollmentService.js` (thay mock)
-- [ ] Tạo `lessonProgressService.js`
-- [ ] Tạo `quizService.js`
-- [ ] Tạo `quizQuestionService.js`
-- [ ] Tạo `quizAttemptService.js`
-- [ ] Tạo `learningPathService.js`
-- [ ] Tạo `certificateService.js`
-- [ ] Tạo `settingsService.js`
+**✅ Đã hoàn thành (Directus SDK):**
+
+- [x] `userService.js` - Quản lý users
+- [x] `moduleService.js` - Quản lý modules
+- [x] `lessonService.js` - Quản lý lessons
+- [x] `documentService.js` - Thư viện tài liệu (file + URL)
+- [x] `settingsService.js` - App settings (singleton)
+- [x] `noteService.js` - Ghi chú học viên
+- [x] `commentService.js` - Bình luận bài học
+- [x] `reviewService.js` - Đánh giá khóa học
+
+**⚠️ Cần migration từ Mock sang Directus SDK:**
+
+- [ ] `tagService.js` - Đang dùng mock data
+- [ ] `courseService.js` - Đang dùng mock data
+- [ ] `enrollmentService.js` - Đang dùng mock data
+- [ ] `lessonProgressService.js` - Đang dùng mock data
+- [ ] `quizService.js` - Đang dùng mock data
+- [ ] `quizAttemptService.js` - Đang dùng mock data
+- [ ] `questionBankService.js` - Đang dùng mock data
+- [ ] `learningPathService.js` - Đang dùng mock data
+- [ ] `certificateService.js` - Đang dùng mock data
+- [ ] `dashboardService.js` - Đang dùng mock data (stats aggregation)
 
 ### Phase 3: Frontend Hooks
 
-- [ ] Tạo `useTags.js`
-- [ ] Cập nhật `useCourses.js`
-- [ ] Tạo `useModules.js`
-- [ ] Tạo `useLessons.js`
-- [ ] Tạo `useDocuments.js` (hooks cho thư viện tài liệu)
-- [ ] Cập nhật `useEnrollments.js`
-- [ ] Tạo `useLessonProgress.js`
-- [ ] Tạo `useQuizzes.js`
-- [ ] Tạo `useQuizQuestions.js`
-- [ ] Tạo `useQuizAttempts.js`
-- [ ] Tạo `useLearningPaths.js`
-- [ ] Tạo `useCertificates.js`
-- [ ] Tạo `useSettings.js`
+**✅ Đã hoàn thành (tất cả hooks đã được tạo):**
+
+- [x] `useUsers.js`
+- [x] `useTags.js`
+- [x] `useCourses.js`
+- [x] `useModules.js`
+- [x] `useLessons.js`
+- [x] `useDocuments.js`
+- [x] `useEnrollments.js`
+- [x] `useLessonProgress.js`
+- [x] `useQuizzes.js`
+- [x] `useQuizAttempts.js`
+- [x] `useQuestionBank.js`
+- [x] `useLearningPaths.js`
+- [x] `useCertificates.js`
+- [x] `useSettings.js`
+- [x] `useNotes.js`
+- [x] `useComments.js`
+- [x] `useReviews.js`
+- [x] `useDashboard.js`
+- [x] `usePermissions.js`
 
 ### Phase 4: Update Pages
 

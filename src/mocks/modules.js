@@ -195,7 +195,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-15T10:00:00Z',
@@ -213,7 +213,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-15T10:00:00Z',
@@ -230,7 +230,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: { id: 'f1', filename_download: 'so-tay-nhan-vien.pdf', type: 'application/pdf' },
         duration: null,
-        is_required: true,
+
         status: 'published',
         sort: 3,
         date_created: '2024-01-15T10:00:00Z',
@@ -248,7 +248,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 8,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-15T10:00:00Z',
@@ -265,7 +265,6 @@ export const mockLessons = [
         external_link: 'https://hr.company.com',
         file_attachment: null,
         duration: null,
-        is_required: false,
         status: 'published',
         sort: 2,
         date_created: '2024-01-15T10:00:00Z',
@@ -282,7 +281,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 3,
         date_created: '2024-01-15T10:00:00Z',
@@ -300,7 +299,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 20,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-02-10T10:00:00Z',
@@ -318,7 +317,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-02-10T10:00:00Z',
@@ -335,7 +334,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 25,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-02-10T10:00:00Z',
@@ -353,7 +352,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 20,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-02-10T10:00:00Z',
@@ -371,7 +370,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 20,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-20T10:00:00Z',
@@ -388,7 +387,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: { id: 'f2', filename_download: 'quy-dinh-an-toan.pdf', type: 'application/pdf' },
         duration: null,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-20T10:00:00Z',
@@ -405,7 +404,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-20T10:00:00Z',
@@ -423,7 +422,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-20T10:00:00Z',
@@ -440,7 +439,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 12,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-21T10:00:00Z',
@@ -457,7 +456,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 8,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-21T10:00:00Z',
@@ -475,7 +474,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 3,
         date_created: '2024-01-21T10:00:00Z',
@@ -492,7 +491,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-22T10:00:00Z',
@@ -509,7 +508,6 @@ export const mockLessons = [
         external_link: 'https://www.redcross.org/get-help/how-to-prepare-for-emergencies/types-of-emergencies',
         file_attachment: null,
         duration: null,
-        is_required: false,
         status: 'published',
         sort: 2,
         date_created: '2024-01-22T10:00:00Z',
@@ -526,7 +524,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 30,
-        is_required: true,
+
         status: 'published',
         sort: 3,
         date_created: '2024-01-22T10:00:00Z',
@@ -544,7 +542,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 18,
-        is_required: true,
+
         status: 'draft',
         sort: 1,
         date_created: '2024-02-01T10:00:00Z',
@@ -562,7 +560,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 12,
-        is_required: true,
+
         status: 'draft',
         sort: 2,
         date_created: '2024-02-01T10:00:00Z',
@@ -579,7 +577,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'draft',
         sort: 1,
         date_created: '2024-02-01T10:00:00Z',
@@ -597,7 +595,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 20,
-        is_required: true,
+
         status: 'draft',
         sort: 2,
         date_created: '2024-02-01T10:00:00Z',
@@ -615,7 +613,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 12,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-02-20T10:00:00Z',
@@ -633,7 +631,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 8,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-02-20T10:00:00Z',
@@ -650,7 +648,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-02-20T10:00:00Z',
@@ -665,9 +663,12 @@ export const mockLessons = [
         video_provider: null,
         video_id: null,
         external_link: null,
-        file_attachment: { id: 'f3', filename_download: 'todo-list-template.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        file_attachment: {
+            id: 'f3',
+            filename_download: 'todo-list-template.xlsx',
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
         duration: null,
-        is_required: false,
         status: 'published',
         sort: 2,
         date_created: '2024-02-20T10:00:00Z',
@@ -684,7 +685,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-02-21T10:00:00Z',
@@ -702,7 +703,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-02-21T10:00:00Z',
@@ -720,7 +721,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 20,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-10T10:00:00Z',
@@ -738,7 +739,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 12,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-10T10:00:00Z',
@@ -755,7 +756,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 18,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-10T10:00:00Z',
@@ -773,7 +774,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 15,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-10T10:00:00Z',
@@ -790,7 +791,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 22,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-11T10:00:00Z',
@@ -808,7 +809,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 10,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-11T10:00:00Z',
@@ -825,7 +826,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 16,
-        is_required: true,
+
         status: 'published',
         sort: 1,
         date_created: '2024-01-12T10:00:00Z',
@@ -843,7 +844,7 @@ export const mockLessons = [
         external_link: null,
         file_attachment: null,
         duration: 12,
-        is_required: true,
+
         status: 'published',
         sort: 2,
         date_created: '2024-01-12T10:00:00Z',
@@ -860,7 +861,6 @@ export const mockLessons = [
         external_link: null,
         file_attachment: { id: 'f4', filename_download: 'performance-review-template.pdf', type: 'application/pdf' },
         duration: null,
-        is_required: false,
         status: 'published',
         sort: 3,
         date_created: '2024-01-12T10:00:00Z',

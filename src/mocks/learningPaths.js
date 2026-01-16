@@ -9,6 +9,7 @@ export const mockLearningPaths = [
         description:
             'Lộ trình bắt buộc cho tất cả nhân viên mới, bao gồm các khóa học về công ty, quy trình và an toàn lao động.',
         is_mandatory: true,
+        duration_days: 30,
         department_filter: [],
         position_filter: [],
         status: 'published',
@@ -27,6 +28,7 @@ export const mockLearningPaths = [
         description:
             'Trang bị các kỹ năng quản lý đội nhóm, giao tiếp hiệu quả và giải quyết vấn đề cho các nhà quản lý.',
         is_mandatory: false,
+        duration_days: 90,
         department_filter: ['sales', 'hr', 'marketing'],
         position_filter: [],
         status: 'published',
@@ -45,6 +47,7 @@ export const mockLearningPaths = [
         title: 'Lộ trình Frontend Developer cơ bản',
         description: 'Lộ trình đào tạo kỹ thuật cho Frontend Developer, từ cơ bản đến nâng cao.',
         is_mandatory: true,
+        duration_days: 60,
         department_filter: ['it'],
         position_filter: ['frontend-developer', 'fullstack-developer'],
         status: 'published',
@@ -59,6 +62,7 @@ export const mockLearningPaths = [
         title: 'Kỹ năng văn phòng chuyên nghiệp',
         description: 'Nâng cao hiệu suất làm việc với bộ kỹ năng quản lý thời gian và công việc.',
         is_mandatory: false,
+        duration_days: 45,
         department_filter: [],
         position_filter: ['team-lead', 'manager'],
         status: 'published',
