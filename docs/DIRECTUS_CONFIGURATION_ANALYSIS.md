@@ -108,6 +108,10 @@ Primary Key: uuid (auto-generated)
 - `tags`: M2M -> `tags` via `courses_tags`
 - `modules`: O2M -> `modules`
 - `enrollments`: O2M -> `enrollments`
+- `learning_paths`: M2M -> `learning_paths` via `learning_paths_courses`
+- `quizzes`: O2M -> `quizzes` (Bài kiểm tra cuối khóa)
+- `certificates`: O2M -> `certificates`
+- `reviews`: O2M -> `course_reviews`
 
 ---
 
@@ -200,19 +204,17 @@ Collection: documents
 Primary Key: uuid (auto-generated)
 ```
 
-| Field          | Type        | Interface       | Options                                                     |
-| -------------- | ----------- | --------------- | ----------------------------------------------------------- |
-| `id`           | uuid        | -               | Primary Key, Auto                                           |
-| `type`         | string      | select-dropdown | Required. Options: `file`, `url`. Default: `file`           |
-| `title`        | string      | input           | Required, Max 255                                           |
-| `description`  | text        | textarea        | Optional                                                    |
-| `file`         | uuid (file) | file            | Conditional (required if type = 'file')                     |
-| `url`          | string      | input           | Conditional (required if type = 'url')                      |
-| `url_type`     | string      | select-dropdown | Options: `google_doc`, `google_sheet`, `notion`, `external` |
-| `status`       | string      | select-dropdown | Options: `active`, `archived`. Default: `active`            |
-| `user_created` | uuid        | user            | Auto                                                        |
-| `date_created` | timestamp   | datetime        | Auto                                                        |
-| `date_updated` | timestamp   | datetime        | Auto                                                        |
+| Field          | Type        | Interface       | Options                                           |
+| -------------- | ----------- | --------------- | ------------------------------------------------- |
+| `id`           | uuid        | -               | Primary Key, Auto                                 |
+| `type`         | string      | select-dropdown | Required. Options: `file`, `url`. Default: `file` |
+| `title`        | string      | input           | Required, Max 255                                 |
+| `file`         | uuid (file) | file            | Conditional (required if type = 'file')           |
+| `url`          | string      | input           | Conditional (required if type = 'url')            |
+| `status`       | string      | select-dropdown | Options: `active`, `archived`. Default: `active`  |
+| `user_created` | uuid        | user            | Auto                                              |
+| `date_created` | timestamp   | datetime        | Auto                                              |
+| `date_updated` | timestamp   | datetime        | Auto                                              |
 
 **Relations:**
 
@@ -229,15 +231,6 @@ Primary Key: uuid (auto-generated)
 - Một tài liệu có thể được tái sử dụng cho nhiều bài học khác nhau
 - Hỗ trợ cả file upload và URL bên ngoài (Google Docs, Notion, etc.)
 - `status = 'archived'`: Tài liệu bị ẩn khỏi thư viện nhưng vẫn hiển thị trong các bài học đã đính kèm
-
-**URL Types:**
-
-| url_type       | Description      | Example URL                                       |
-| -------------- | ---------------- | ------------------------------------------------- |
-| `google_doc`   | Google Docs      | `https://docs.google.com/document/d/xxx/edit`     |
-| `google_sheet` | Google Sheets    | `https://docs.google.com/spreadsheets/d/xxx/edit` |
-| `notion`       | Notion page      | `https://notion.so/xxx`                           |
-| `external`     | Any external URL | `https://example.com/resource`                    |
 
 ---
 
