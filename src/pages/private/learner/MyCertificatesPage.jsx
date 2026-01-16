@@ -12,8 +12,8 @@ import {
     ShareAltOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { certificateService } from '../../../../services/certificateService';
-import { queryKeys } from '../../../../constants/queryKeys';
+import { certificateService } from '../../../services/certificateService';
+import { queryKeys } from '../../../constants/queryKeys';
 
 const { Title, Text } = Typography;
 

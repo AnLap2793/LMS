@@ -4,7 +4,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboardService';
 import { CACHE_TIME } from '../constants/api';
-import { queryKeys } from '../constants/queryKeys';
 
 /**
  * Hook lấy thống kê tổng quan Admin
@@ -33,6 +32,28 @@ export function useDashboardCharts() {
             ]);
             return { monthly, status, popular, activity };
         },
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy hoạt động tuần này của learner
+ */
+export function useLearnerWeeklyActivity() {
+    return useQuery({
+        queryKey: ['learner', 'weekly-activity'],
+        queryFn: () => dashboardService.getLearnerWeeklyActivity(),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy streak của learner
+ */
+export function useLearnerStreak() {
+    return useQuery({
+        queryKey: ['learner', 'streak'],
+        queryFn: () => dashboardService.getLearnerStreak(),
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }

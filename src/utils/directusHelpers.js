@@ -107,6 +107,9 @@ export function getFullName(user) {
     return `${firstName} ${lastName}`.trim() || user.email || 'Người dùng';
 }
 
+// Alias for backward compatibility
+export const getUserFullName = getFullName;
+
 /**
  * Format thời lượng từ phút sang định dạng đọc được
  * @param {number} minutes - Số phút

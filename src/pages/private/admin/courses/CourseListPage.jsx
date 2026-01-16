@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Space, Tag, Popconfirm, Input, Select, Row, Col, Avatar, message, Tooltip } from 'antd';
+import { Button, Table, Space, Tag, Popconfirm, Input, Select, Row, Col, Avatar, Tooltip } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
@@ -13,6 +13,7 @@ import {
 import { PageHeader, StatusTag, DifficultyTag, EmptyState } from '../../../../components/common';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
 import { useAllCourses, useDeleteCourse, useTags } from '../../../../hooks/useCourses';
+import { useDebounce } from '../../../../hooks/useDebounce';
 
 /**
  * Course List Page
@@ -28,12 +29,11 @@ function CourseListPage() {
     const [tagFilter, setTagFilter] = useState(null);
 
     // Debounce search text
-    // If we don't have useDebounce, we can just pass searchText directly but it might cause many requests
-    // For now passing directly.
+    const debouncedSearch = useDebounce(searchText, 500);
 
     // Data Hooks
     const { data: courses = [], isLoading: coursesLoading } = useAllCourses({
-        search: searchText,
+        search: debouncedSearch,
         status: statusFilter,
         difficulty: difficultyFilter,
         tags: tagFilter ? [tagFilter] : undefined,

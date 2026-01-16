@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Modal, Form, Input, Select, InputNumber, Space, Radio, Divider, Button, List, Tag, Empty } from 'antd';
 import {
@@ -26,6 +26,7 @@ import DocumentSelectorModal from '../documents/DocumentSelectorModal';
 function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
     const [form] = Form.useForm();
     const isEditing = !!initialValues;
+    const prevOpenRef = useRef(false);
 
     // Derive lessonType from form values instead of separate state
     const lessonType = Form.useWatch('type', form) || 'video';
@@ -37,32 +38,39 @@ function LessonFormModal({ open, onCancel, onSubmit, initialValues }) {
     const [selectedDocuments, setSelectedDocuments] = useState([]);
     const [isDocSelectorOpen, setIsDocSelectorOpen] = useState(false);
 
-    // Reset form when modal opens/closes
+    // Reset form when modal opens (only on open transition)
     useEffect(() => {
-        if (open) {
-            if (initialValues) {
-                form.setFieldsValue(initialValues);
-                setArticleContent(initialValues.content || '');
+        const wasOpen = prevOpenRef.current;
+        prevOpenRef.current = open;
 
-                // Handle documents (with backward compatibility for file_attachment)
-                let docs = initialValues.documents || [];
-                if (docs.length === 0 && initialValues.file_attachment) {
-                    docs = [
-                        {
-                            id: initialValues.file_attachment.id || 'mock-file-id',
-                            title: initialValues.file_attachment.filename_download || 'Legacy File',
-                            type: 'file',
-                            file: initialValues.file_attachment,
-                        },
-                    ];
+        // Only run when modal opens (transition from closed to open)
+        if (open && !wasOpen) {
+            // Use requestAnimationFrame to defer state updates
+            requestAnimationFrame(() => {
+                if (initialValues) {
+                    form.setFieldsValue(initialValues);
+                    setArticleContent(initialValues.content || '');
+
+                    // Handle documents (with backward compatibility for file_attachment)
+                    let docs = initialValues.documents || [];
+                    if (docs.length === 0 && initialValues.file_attachment) {
+                        docs = [
+                            {
+                                id: initialValues.file_attachment.id || 'mock-file-id',
+                                title: initialValues.file_attachment.filename_download || 'Legacy File',
+                                type: 'file',
+                                file: initialValues.file_attachment,
+                            },
+                        ];
+                    }
+                    setSelectedDocuments(docs);
+                } else {
+                    form.resetFields();
+                    form.setFieldValue('type', 'video');
+                    setArticleContent('');
+                    setSelectedDocuments([]);
                 }
-                setSelectedDocuments(docs);
-            } else {
-                form.resetFields();
-                form.setFieldValue('type', 'video');
-                setArticleContent('');
-                setSelectedDocuments([]);
-            }
+            });
         }
     }, [open, initialValues, form]);
 

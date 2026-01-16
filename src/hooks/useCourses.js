@@ -12,7 +12,7 @@ import { showSuccess } from '../utils/errorHandler';
  */
 export function useAllCourses(params = {}) {
     return useQuery({
-        queryKey: queryKeys.courses.list(params),
+        queryKey: queryKeys.courses.adminList(params),
         queryFn: () => courseService.getAllCourses(params),
         staleTime: CACHE_TIME.STALE_TIME,
     });
@@ -67,7 +67,7 @@ export function useDeleteCourse() {
  */
 export function usePublishedCourses(params = {}) {
     return useQuery({
-        queryKey: queryKeys.courses.list(params),
+        queryKey: queryKeys.courses.learnerList(params),
         queryFn: () => courseService.getPublishedCourses(params),
         staleTime: CACHE_TIME.STALE_TIME,
     });
@@ -79,7 +79,7 @@ export function usePublishedCourses(params = {}) {
  */
 export function useCoursesCount(params = {}) {
     return useQuery({
-        queryKey: [...queryKeys.courses.lists(), 'count', params],
+        queryKey: [...queryKeys.courses.learnerLists(), 'count', params],
         queryFn: () => courseService.countPublishedCourses(params),
         staleTime: CACHE_TIME.STALE_TIME,
     });

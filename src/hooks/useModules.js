@@ -8,6 +8,15 @@ import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
 /**
+ * Helper to invalidate course detail
+ */
+const invalidateCourseDetail = (queryClient, courseId) => {
+    if (courseId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+    }
+};
+
+/**
  * Hook lấy tất cả modules
  * @param {Object} params - Filter params
  * @returns {Object} Query result
@@ -78,6 +87,7 @@ export function useCreateModule() {
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.modules.byCourse(variables.course_id),
                 });
+                invalidateCourseDetail(queryClient, variables.course_id);
             }
             showSuccess('Tạo module thành công!');
         },
@@ -103,6 +113,7 @@ export function useUpdateModule() {
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.modules.byCourse(data.course_id),
                 });
+                invalidateCourseDetail(queryClient, data.course_id);
             }
             showSuccess('Cập nhật module thành công!');
         },
@@ -138,6 +149,7 @@ export function useUpdateModuleOrder() {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.modules.byCourse(variables.courseId),
             });
+            invalidateCourseDetail(queryClient, variables.courseId);
         },
     });
 }

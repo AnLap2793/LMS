@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Space, Typography, Collapse, List, Tag, Tooltip, Popconfirm, Empty, Spin } from 'antd';
 import {
@@ -29,6 +29,7 @@ import { useCourseDetail } from '../../../../hooks/useCourses';
 import { useCreateModule, useUpdateModule, useDeleteModule, useUpdateModuleOrder } from '../../../../hooks/useModules';
 import { useCreateLesson, useUpdateLesson, useDeleteLesson, useUpdateLessonOrder } from '../../../../hooks/useLessons';
 import { LESSON_TYPE_MAP } from '../../../../constants/lms';
+import { showError } from '../../../../utils/errorHandler';
 
 const { Text } = Typography;
 
@@ -140,7 +141,7 @@ function SortableLessonItem({ lesson, onEdit, onDelete }) {
                     </Tooltip>
                     <Popconfirm
                         title="Xóa bài học này?"
-                        onConfirm={() => handleDeleteLesson(lesson.id, module.id)} // Pass moduleId
+                        onConfirm={() => onDelete(lesson.id)}
                         okText="Xóa"
                         cancelText="Hủy"
                         okButtonProps={{ danger: true }}
@@ -179,15 +180,18 @@ function CourseContentPage() {
     const updateLessonOrder = useUpdateLessonOrder();
 
     // State
-    const [modules, setModules] = useState([]);
+    const [localModules, setLocalModules] = useState([]);
     const [activeModuleId, setActiveModuleId] = useState(null);
 
-    // Sync state with data
-    useEffect(() => {
-        if (course?.modules) {
-            setModules(course.modules);
+    // Derive modules from course data or local state (for optimistic updates during drag)
+    const modules = useMemo(() => {
+        // If we have local modules set from drag operations, use those
+        // Otherwise use course.modules
+        if (localModules.length > 0) {
+            return localModules;
         }
-    }, [course]);
+        return course?.modules || [];
+    }, [course?.modules, localModules]);
 
     // Modal states
     const [moduleModalOpen, setModuleModalOpen] = useState(false);
@@ -209,17 +213,30 @@ function CourseContentPage() {
         const { active, over } = event;
 
         if (active.id !== over?.id) {
-            setModules(items => {
-                const oldIndex = items.findIndex(m => m.id === active.id);
-                const newIndex = items.findIndex(m => m.id === over.id);
-                const newItems = arrayMove(items, oldIndex, newIndex);
+            const currentModules = course?.modules || [];
+            const oldIndex = currentModules.findIndex(m => m.id === active.id);
+            const newIndex = currentModules.findIndex(m => m.id === over.id);
 
-                // Call API to update order
-                const orderedIds = newItems.map(m => m.id);
-                updateModuleOrder.mutate({ courseId, orderedIds });
+            // Save previous state for rollback
+            const previousModules = [...currentModules];
 
-                return newItems;
-            });
+            const newItems = arrayMove(currentModules, oldIndex, newIndex);
+
+            // Optimistic update
+            setLocalModules(newItems);
+
+            // Call API to update order
+            const orderedIds = newItems.map(m => m.id);
+            updateModuleOrder.mutate(
+                { courseId, orderedIds },
+                {
+                    onError: () => {
+                        // Rollback on error
+                        setLocalModules(previousModules);
+                        showError('Không thể cập nhật thứ tự module. Vui lòng thử lại.');
+                    },
+                }
+            );
         }
     };
 
@@ -228,25 +245,39 @@ function CourseContentPage() {
         const { active, over } = event;
 
         if (active.id !== over?.id) {
-            setModules(prevModules => {
-                const updatedModules = prevModules.map(module => {
-                    if (module.id !== moduleId) return module;
+            const currentModules = course?.modules || [];
 
-                    const oldIndex = module.lessons.findIndex(l => l.id === active.id);
-                    const newIndex = module.lessons.findIndex(l => l.id === over.id);
-                    const newLessons = arrayMove(module.lessons, oldIndex, newIndex);
+            // Save previous state for rollback (snapshot of the whole modules array)
+            const previousModules = [...currentModules];
 
-                    // Call API to update order
-                    const orderedIds = newLessons.map(l => l.id);
-                    updateLessonOrder.mutate({ moduleId, orderedIds });
+            const updatedModules = currentModules.map(module => {
+                if (module.id !== moduleId) return module;
 
-                    return {
-                        ...module,
-                        lessons: newLessons,
-                    };
-                });
-                return updatedModules;
+                const oldIndex = module.lessons.findIndex(l => l.id === active.id);
+                const newIndex = module.lessons.findIndex(l => l.id === over.id);
+                const newLessons = arrayMove(module.lessons, oldIndex, newIndex);
+
+                // Call API to update order
+                const orderedIds = newLessons.map(l => l.id);
+                updateLessonOrder.mutate(
+                    { moduleId, orderedIds },
+                    {
+                        onError: () => {
+                            // Rollback on error
+                            setLocalModules(previousModules);
+                            showError('Không thể cập nhật thứ tự bài học. Vui lòng thử lại.');
+                        },
+                    }
+                );
+
+                return {
+                    ...module,
+                    lessons: newLessons,
+                };
             });
+
+            // Optimistic update
+            setLocalModules(updatedModules);
         }
     };
 
@@ -267,9 +298,8 @@ function CourseContentPage() {
 
     const handleDeleteModule = async moduleId => {
         await deleteModule.mutateAsync(moduleId);
-        // Optimistic update handled by React Query invalidation
-        // But for DnD UI smoothness we might want to update local state too
-        setModules(prev => prev.filter(m => m.id !== moduleId));
+        // React Query will invalidate and refetch, clear local state to use fresh data
+        setLocalModules([]);
     };
 
     const handleModuleSubmit = async values => {
@@ -298,14 +328,10 @@ function CourseContentPage() {
         setLessonModalOpen(true);
     };
 
-    const handleDeleteLesson = async (lessonId, moduleId) => {
+    const handleDeleteLesson = async lessonId => {
         await deleteLesson.mutateAsync(lessonId);
-        // Optimistic update for UI
-        setModules(prev =>
-            prev.map(module =>
-                module.id === moduleId ? { ...module, lessons: module.lessons.filter(l => l.id !== lessonId) } : module
-            )
-        );
+        // React Query will invalidate and refetch, clear local state to use fresh data
+        setLocalModules([]);
     };
 
     const handleLessonSubmit = async values => {

@@ -204,6 +204,7 @@ export const courseService = {
      * @returns {Promise<Object>} Chi tiết khóa học
      */
     getCourseDetail: async courseId => {
+        // Fetch course with nested modules and lessons in ONE query
         const course = await directus.request(
             readItem(COLLECTIONS.COURSES, courseId, {
                 fields: [
@@ -214,10 +215,27 @@ export const courseService = {
                     'tags.tags_id.id',
                     'tags.tags_id.name',
                     'tags.tags_id.color',
-                    // Fetch nested modules and lessons
-                    'modules.*',
-                    'modules.lessons.*',
+                    // Fetch nested modules and their lessons
+                    'modules.id',
+                    'modules.title',
+                    'modules.description',
+                    'modules.sort',
+                    'modules.status',
+                    'modules.lessons.id',
+                    'modules.lessons.title',
+                    'modules.lessons.type',
+                    'modules.lessons.status',
+                    'modules.lessons.duration',
+                    'modules.lessons.sort',
                 ],
+                deep: {
+                    modules: {
+                        _sort: ['sort'],
+                        lessons: {
+                            _sort: ['sort'],
+                        },
+                    },
+                },
             })
         );
 
@@ -225,33 +243,26 @@ export const courseService = {
             throw new Error('Course not found');
         }
 
-        // Sort modules and lessons
-        const sortedModules = (course.modules || [])
-            // Admin needs to see all modules, filtering should be done in UI for learners
-            .sort((a, b) => (a.sort || 0) - (b.sort || 0))
-            .map(m => ({
-                id: m.id,
-                title: m.title,
-                description: m.description,
-                sort_order: m.sort,
-                status: m.status,
-                lessons: (m.lessons || [])
-                    // Admin needs to see all lessons
-                    .sort((a, b) => (a.sort || 0) - (b.sort || 0))
-                    .map(l => ({
-                        id: l.id,
-                        title: l.title,
-                        type: l.type,
-                        status: l.status, // Include status for filtering
-                        duration_minutes: l.duration,
-                        sort_order: l.sort,
-                        is_preview: false, // Default to false for now
-                    })),
-            }));
+        // Transform data structure if needed
+        const sortedModules = (course.modules || []).map(m => ({
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            sort_order: m.sort,
+            status: m.status,
+            lessons: (m.lessons || []).map(l => ({
+                id: l.id,
+                title: l.title,
+                type: l.type,
+                status: l.status,
+                duration_minutes: l.duration,
+                sort_order: l.sort,
+                is_preview: false,
+            })),
+        }));
 
         return {
             ...course,
-            // Keep original thumbnail ID for editing
             thumbnail: course.thumbnail,
             duration_hours: course.duration ? Math.round(course.duration / 60) : 0,
             instructor: course.user_created
@@ -259,7 +270,7 @@ export const courseService = {
                       id: course.user_created.id,
                       first_name: course.user_created.first_name,
                       last_name: course.user_created.last_name,
-                      avatar: null, // Avatar logic if needed
+                      avatar: null,
                       title: 'Instructor',
                   }
                 : null,

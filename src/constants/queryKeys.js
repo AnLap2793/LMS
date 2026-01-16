@@ -30,8 +30,13 @@ export const queryKeys = {
      */
     courses: {
         all: ['courses'],
-        lists: () => [...queryKeys.courses.all, 'list'],
-        list: filters => [...queryKeys.courses.lists(), { filters }],
+        // Admin queries - tất cả courses
+        adminLists: () => [...queryKeys.courses.all, 'admin', 'list'],
+        adminList: filters => [...queryKeys.courses.adminLists(), { filters }],
+        // Learner queries - chỉ published courses
+        learnerLists: () => [...queryKeys.courses.all, 'learner', 'list'],
+        learnerList: filters => [...queryKeys.courses.learnerLists(), { filters }],
+        // Detail query - dùng chung
         details: () => [...queryKeys.courses.all, 'detail'],
         detail: id => [...queryKeys.courses.details(), id],
     },
