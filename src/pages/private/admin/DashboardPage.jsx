@@ -1,4 +1,4 @@
-import { Row, Col, Card, Statistic, Progress, List, Avatar, Typography, Space } from 'antd';
+import { Row, Col, Card, Statistic, Progress, List, Avatar, Typography, Space, Spin, Empty } from 'antd';
 import {
     BookOutlined,
     TeamOutlined,
@@ -28,15 +28,7 @@ import {
     Bar,
 } from 'recharts';
 import { PageHeader } from '../../../components/common';
-import {
-    mockDashboardStats,
-    mockPopularCourses,
-    mockAtRiskLearners,
-    mockRecentActivity,
-    mockMonthlyProgress,
-    mockDepartmentProgress,
-    mockCoursesByStatus,
-} from '../../../mocks';
+import { useAdminDashboardStats, useDashboardCharts } from '../../../hooks/useDashboard';
 
 const { Text } = Typography;
 
@@ -45,20 +37,22 @@ const { Text } = Typography;
  * Trang tổng quan cho Admin LMS
  */
 function DashboardPage() {
-    const stats = mockDashboardStats;
-    const popularCourses = mockPopularCourses;
-    const atRiskLearners = mockAtRiskLearners;
-    const recentActivity = mockRecentActivity;
+    const { data: stats, isLoading: statsLoading } = useAdminDashboardStats();
+    const { data: charts, isLoading: chartsLoading } = useDashboardCharts();
 
-    // Helper để format deadline
-    const formatDeadline = days => {
-        if (days < 0) {
-            return <Text type="danger">Quá hạn {Math.abs(days)} ngày</Text>;
-        } else if (days <= 2) {
-            return <Text type="warning">Còn {days} ngày</Text>;
-        }
-        return <Text>Còn {days} ngày</Text>;
-    };
+    const loading = statsLoading || chartsLoading;
+
+    if (loading) {
+        return (
+            <div style={{ padding: 24, textAlign: 'center' }}>
+                <Spin size="large" tip="Đang tải dữ liệu tổng quan..." />
+            </div>
+        );
+    }
+
+    // Fallback if data is missing
+    const safeStats = stats || {};
+    const safeCharts = charts || { monthly: [], status: [], popular: [], activity: [] };
 
     // Helper để lấy icon cho activity
     const getActivityIcon = type => {
@@ -82,27 +76,17 @@ function DashboardPage() {
                     <Card>
                         <Statistic
                             title="Tổng khóa học"
-                            value={stats.totalCourses}
+                            value={safeStats.totalCourses || 0}
                             prefix={<BookOutlined style={{ color: '#1890ff' }} />}
-                            suffix={
-                                <Text type="success" style={{ fontSize: 14 }}>
-                                    +{stats.coursesThisWeek} tuần này
-                                </Text>
-                            }
                         />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Học viên đang học"
-                            value={stats.totalLearners}
+                            title="Học viên"
+                            value={safeStats.totalLearners || 0}
                             prefix={<TeamOutlined style={{ color: '#722ed1' }} />}
-                            suffix={
-                                <Text type="success" style={{ fontSize: 14 }}>
-                                    +{stats.learnersThisWeek} tuần này
-                                </Text>
-                            }
                         />
                     </Card>
                 </Col>
@@ -110,13 +94,8 @@ function DashboardPage() {
                     <Card>
                         <Statistic
                             title="Đã hoàn thành"
-                            value={stats.completedEnrollments}
+                            value={safeStats.completedEnrollments || 0}
                             prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                            suffix={
-                                <Text type="success" style={{ fontSize: 14 }}>
-                                    +{stats.completedThisWeek} tuần này
-                                </Text>
-                            }
                         />
                     </Card>
                 </Col>
@@ -124,15 +103,9 @@ function DashboardPage() {
                     <Card>
                         <Statistic
                             title="Tỷ lệ hoàn thành"
-                            value={stats.completionRate}
+                            value={safeStats.completionRate || 0}
                             prefix={<RiseOutlined style={{ color: '#faad14' }} />}
-                            valueStyle={{ color: stats.rateChange >= 0 ? '#52c41a' : '#ff4d4f' }}
-                            suffix={
-                                <Text type={stats.rateChange >= 0 ? 'success' : 'danger'} style={{ fontSize: 12 }}>
-                                    {stats.completionRate}% ({stats.rateChange >= 0 ? '+' : ''}
-                                    {stats.rateChange}% so với tháng trước)
-                                </Text>
-                            }
+                            suffix="%"
                         />
                     </Card>
                 </Col>
@@ -146,13 +119,13 @@ function DashboardPage() {
                         title={
                             <Space>
                                 <LineChartOutlined style={{ color: '#ea4544' }} />
-                                <span>Xu hướng học tập theo tháng</span>
+                                <span>Xu hướng học tập</span>
                             </Space>
                         }
                         style={{ height: '100%' }}
                     >
                         <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={mockMonthlyProgress}>
+                            <AreaChart data={safeCharts.monthly}>
                                 <defs>
                                     <linearGradient id="colorEnrollments" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#1890ff" stopOpacity={0.8} />
@@ -166,13 +139,7 @@ function DashboardPage() {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                                 <YAxis tick={{ fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{
-                                        borderRadius: 8,
-                                        border: '1px solid #f0f0f0',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                    }}
-                                />
+                                <Tooltip />
                                 <Legend />
                                 <Area
                                     type="monotone"
@@ -209,29 +176,21 @@ function DashboardPage() {
                         <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
                                 <Pie
-                                    data={mockCoursesByStatus}
+                                    data={safeCharts.status}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
                                     outerRadius={100}
                                     paddingAngle={5}
-                                    dataKey="count"
+                                    dataKey="value"
                                     nameKey="label"
-                                    label={({ label, percent }) => `${label}: ${(percent * 100).toFixed(0)}%`}
-                                    labelLine={false}
+                                    label={({ label, percent }) => `${(percent * 100).toFixed(0)}%`}
                                 >
-                                    {mockCoursesByStatus.map((entry, index) => (
+                                    {safeCharts.status.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
-                                <Tooltip
-                                    formatter={(value, name) => [`${value} khóa học`, name]}
-                                    contentStyle={{
-                                        borderRadius: 8,
-                                        border: '1px solid #f0f0f0',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                    }}
-                                />
+                                <Tooltip />
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
@@ -239,55 +198,7 @@ function DashboardPage() {
                 </Col>
             </Row>
 
-            {/* Bar Chart - Department Performance */}
-            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-                <Col span={24}>
-                    <Card
-                        title={
-                            <Space>
-                                <BarChartOutlined style={{ color: '#ea4544' }} />
-                                <span>Hiệu suất theo phòng ban</span>
-                            </Space>
-                        }
-                    >
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={mockDepartmentProgress} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
-                                <YAxis type="category" dataKey="department" tick={{ fontSize: 12 }} width={100} />
-                                <Tooltip
-                                    formatter={(value, name) => {
-                                        if (name === 'completionRate') return [`${value}%`, 'Tỷ lệ hoàn thành'];
-                                        if (name === 'completed') return [value, 'Hoàn thành'];
-                                        if (name === 'enrolled') return [value, 'Đã đăng ký'];
-                                        return [value, name];
-                                    }}
-                                    contentStyle={{
-                                        borderRadius: 8,
-                                        border: '1px solid #f0f0f0',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                    }}
-                                />
-                                <Legend
-                                    formatter={value => {
-                                        if (value === 'completionRate') return 'Tỷ lệ hoàn thành (%)';
-                                        return value;
-                                    }}
-                                />
-                                <Bar
-                                    dataKey="completionRate"
-                                    name="completionRate"
-                                    fill="#ea4544"
-                                    radius={[0, 4, 4, 0]}
-                                    barSize={20}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* Popular Courses and At-Risk Learners */}
+            {/* Popular Courses and Recent Activity */}
             <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
                 {/* Popular Courses */}
                 <Col xs={24} lg={12}>
@@ -301,7 +212,7 @@ function DashboardPage() {
                         style={{ height: '100%' }}
                     >
                         <List
-                            dataSource={popularCourses}
+                            dataSource={safeCharts.popular}
                             renderItem={(item, index) => (
                                 <List.Item>
                                     <div style={{ flex: 1 }}>
@@ -311,14 +222,6 @@ function DashboardPage() {
                                             </Text>
                                             <Text>{item.title}</Text>
                                         </Space>
-                                        <div style={{ marginTop: 8 }}>
-                                            <Progress
-                                                percent={item.completionRate}
-                                                size="small"
-                                                strokeColor="#ea4544"
-                                                format={percent => `${percent}% hoàn thành`}
-                                            />
-                                        </div>
                                     </div>
                                 </List.Item>
                             )}
@@ -326,54 +229,8 @@ function DashboardPage() {
                     </Card>
                 </Col>
 
-                {/* At-Risk Learners */}
+                {/* Recent Activity */}
                 <Col xs={24} lg={12}>
-                    <Card
-                        title={
-                            <Space>
-                                <WarningOutlined style={{ color: '#faad14' }} />
-                                <span>Học viên cần chú ý</span>
-                            </Space>
-                        }
-                        style={{ height: '100%' }}
-                    >
-                        <List
-                            dataSource={atRiskLearners}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        avatar={
-                                            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#ea4544' }} />
-                                        }
-                                        title={item.name}
-                                        description={
-                                            <div>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    {item.course}
-                                                </Text>
-                                                <br />
-                                                {formatDeadline(item.daysUntilDeadline)}
-                                            </div>
-                                        }
-                                    />
-                                    <div style={{ textAlign: 'right' }}>
-                                        <Progress
-                                            type="circle"
-                                            percent={item.progress}
-                                            size={40}
-                                            strokeColor={item.daysUntilDeadline < 0 ? '#ff4d4f' : '#ea4544'}
-                                        />
-                                    </div>
-                                </List.Item>
-                            )}
-                        />
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* Recent Activity */}
-            <Row style={{ marginTop: 16 }}>
-                <Col span={24}>
                     <Card
                         title={
                             <Space>
@@ -381,9 +238,10 @@ function DashboardPage() {
                                 <span>Hoạt động gần đây</span>
                             </Space>
                         }
+                        style={{ height: '100%' }}
                     >
                         <List
-                            dataSource={recentActivity}
+                            dataSource={safeCharts.activity}
                             renderItem={item => (
                                 <List.Item>
                                     <List.Item.Meta

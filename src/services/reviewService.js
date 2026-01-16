@@ -1,13 +1,20 @@
 /**
  * Review Service - Quản lý đánh giá khóa học
- * Collection: course_reviews
- * Unique constraint: mỗi user chỉ có 1 review/course
+ * Directus Implementation
  */
 import { directus } from './directus';
-import { readItems, createItem, updateItem, deleteItem } from '@directus/sdk';
+import { readItems, createItem, updateItem, deleteItem, aggregate, readMe } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const reviewService = {
+    /**
+     * Lấy user ID hiện tại
+     */
+    getCurrentUserId: async () => {
+        const user = await directus.request(readMe({ fields: ['id'] }));
+        return user.id;
+    },
+
     /**
      * Lấy reviews của một khóa học
      * @param {string} courseId - ID khóa học
@@ -17,15 +24,9 @@ export const reviewService = {
     getByCourse: async (courseId, params = {}) => {
         return await directus.request(
             readItems(COLLECTIONS.COURSE_REVIEWS, {
-                fields: [
-                    '*',
-                    'user_created.id',
-                    'user_created.first_name',
-                    'user_created.last_name',
-                    'user_created.avatar',
-                ],
                 filter: { course_id: { _eq: courseId } },
                 sort: ['-date_created'],
+                fields: ['*', 'user_created.first_name', 'user_created.last_name', 'user_created.avatar'],
                 ...params,
             })
         );
@@ -37,10 +38,13 @@ export const reviewService = {
      * @returns {Promise<Object|null>} Review hoặc null
      */
     getMyReview: async courseId => {
+        const userId = await reviewService.getCurrentUserId();
         const result = await directus.request(
             readItems(COLLECTIONS.COURSE_REVIEWS, {
-                fields: ['*'],
-                filter: { course_id: { _eq: courseId } },
+                filter: {
+                    course_id: { _eq: courseId },
+                    user_created: { _eq: userId },
+                },
                 limit: 1,
             })
         );
@@ -53,9 +57,12 @@ export const reviewService = {
      * @returns {Promise<Object>} { averageRating, totalReviews, ratingDistribution }
      */
     getCourseStats: async courseId => {
-        const reviews = await reviewService.getByCourse(courseId, {
-            fields: ['rating'],
-        });
+        const reviews = await directus.request(
+            readItems(COLLECTIONS.COURSE_REVIEWS, {
+                filter: { course_id: { _eq: courseId } },
+                fields: ['rating'],
+            })
+        );
 
         if (reviews.length === 0) {
             return {
@@ -65,7 +72,7 @@ export const reviewService = {
             };
         }
 
-        const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+        const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
         const averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
 
         // Calculate distribution
@@ -89,21 +96,11 @@ export const reviewService = {
      * @returns {Promise<Object|null>} Chi tiết review
      */
     getById: async id => {
-        const result = await directus.request(
-            readItems(COLLECTIONS.COURSE_REVIEWS, {
-                fields: [
-                    '*',
-                    'user_created.id',
-                    'user_created.first_name',
-                    'user_created.last_name',
-                    'course_id.id',
-                    'course_id.title',
-                ],
-                filter: { id: { _eq: id } },
-                limit: 1,
+        return await directus.request(
+            readItem(COLLECTIONS.COURSE_REVIEWS, id, {
+                fields: ['*', 'user_created.first_name', 'user_created.last_name', 'course_id.title'],
             })
         );
-        return result[0] || null;
     },
 
     /**
@@ -164,15 +161,8 @@ export const reviewService = {
     getAll: async (params = {}) => {
         return await directus.request(
             readItems(COLLECTIONS.COURSE_REVIEWS, {
-                fields: [
-                    '*',
-                    'user_created.id',
-                    'user_created.first_name',
-                    'user_created.last_name',
-                    'course_id.id',
-                    'course_id.title',
-                ],
                 sort: ['-date_created'],
+                fields: ['*', 'user_created.first_name', 'user_created.last_name', 'course_id.title'],
                 ...params,
             })
         );
@@ -183,10 +173,12 @@ export const reviewService = {
      * @returns {Promise<Array>} Danh sách reviews của user
      */
     getMyReviews: async () => {
+        const userId = await reviewService.getCurrentUserId();
         return await directus.request(
             readItems(COLLECTIONS.COURSE_REVIEWS, {
-                fields: ['*', 'course_id.id', 'course_id.title', 'course_id.thumbnail'],
+                filter: { user_created: { _eq: userId } },
                 sort: ['-date_created'],
+                fields: ['*', 'course_id.title', 'course_id.thumbnail'],
             })
         );
     },
@@ -199,17 +191,15 @@ export const reviewService = {
     getRecent: async (limit = 10) => {
         return await directus.request(
             readItems(COLLECTIONS.COURSE_REVIEWS, {
+                sort: ['-date_created'],
+                limit,
                 fields: [
                     '*',
-                    'user_created.id',
                     'user_created.first_name',
                     'user_created.last_name',
                     'user_created.avatar',
-                    'course_id.id',
                     'course_id.title',
                 ],
-                sort: ['-date_created'],
-                limit,
             })
         );
     },
@@ -220,34 +210,26 @@ export const reviewService = {
      * @returns {Promise<Array>} Courses với rating cao nhất
      */
     getTopRatedCourses: async (limit = 10) => {
-        // Lấy tất cả reviews và aggregate
-        const reviews = await directus.request(
-            readItems(COLLECTIONS.COURSE_REVIEWS, {
-                fields: ['course_id', 'rating'],
+        // Fetch aggregated data
+        const result = await directus.request(
+            aggregate(COLLECTIONS.COURSE_REVIEWS, {
+                aggregate: { avg: 'rating', count: '*' },
+                groupBy: ['course_id'],
+                limit,
             })
         );
 
-        // Group by course_id và tính average
-        const courseRatings = {};
-        reviews.forEach(r => {
-            const courseId = r.course_id;
-            if (!courseRatings[courseId]) {
-                courseRatings[courseId] = { total: 0, count: 0 };
-            }
-            courseRatings[courseId].total += r.rating;
-            courseRatings[courseId].count++;
-        });
+        // Result structure: [{ course_id: X, avg: { rating: 4.5 }, count: { '*': 10 } }]
+        // We'd need to fetch course titles separately or use fields if supported in aggregate (usually not)
 
-        // Calculate averages và sort
-        const sortedCourses = Object.entries(courseRatings)
-            .map(([courseId, data]) => ({
-                courseId,
-                averageRating: Math.round((data.total / data.count) * 10) / 10,
-                totalReviews: data.count,
+        const topCourses = result
+            .map(r => ({
+                courseId: r.course_id,
+                averageRating: Number(r.avg?.rating) || 0,
+                totalReviews: Number(r.count) || 0,
             }))
-            .sort((a, b) => b.averageRating - a.averageRating)
-            .slice(0, limit);
+            .sort((a, b) => b.averageRating - a.averageRating);
 
-        return sortedCourses;
+        return topCourses;
     },
 };

@@ -28,4 +28,7 @@ export const COLLECTIONS = {
     LESSON_COMMENTS: 'lesson_comments',
     COURSE_REVIEWS: 'course_reviews',
     APP_SETTINGS: 'app_settings',
+    DEPARTMENTS: 'bo_phan',
+    POSITIONS: 'thong_tin_vi_tri',
+    HR_INFO: 'thong_tin_nhan_su',
 };

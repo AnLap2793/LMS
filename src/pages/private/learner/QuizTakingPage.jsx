@@ -25,7 +25,8 @@ import {
     ExclamationCircleOutlined,
     QuestionCircleOutlined,
 } from '@ant-design/icons';
-import { mockQuizzes } from '../../../mocks';
+import { useQuizWithQuestions } from '../../../hooks/useQuizzes';
+import { useSubmitQuiz } from '../../../hooks/useQuizAttempts';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -36,112 +37,51 @@ const { Title, Text, Paragraph } = Typography;
 function QuizTakingPage() {
     const { quizId } = useParams();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
+
+    // Data hooks
+    const { data: quizData, isLoading: quizLoading } = useQuizWithQuestions(quizId);
+    const submitQuizMutation = useSubmitQuiz();
+
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
     const [timeLeft, setTimeLeft] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+    const [startedAt] = useState(new Date().toISOString());
 
-    // Get quiz data
-    const quiz = useMemo(() => {
-        return mockQuizzes.find(q => q.id === quizId);
-    }, [quizId]);
-
-    // Mock questions for this quiz
+    // Questions from API
     const questions = useMemo(() => {
-        return [
-            {
-                id: 'q1',
-                question: 'React là gì?',
-                type: 'single',
-                options: [
-                    { id: 'a', text: 'Một thư viện JavaScript để xây dựng giao diện người dùng' },
-                    { id: 'b', text: 'Một framework backend' },
-                    { id: 'c', text: 'Một cơ sở dữ liệu' },
-                    { id: 'd', text: 'Một ngôn ngữ lập trình mới' },
-                ],
-                correctAnswer: 'a',
-            },
-            {
-                id: 'q2',
-                question: 'Hook nào được sử dụng để quản lý state trong functional component?',
-                type: 'single',
-                options: [
-                    { id: 'a', text: 'useEffect' },
-                    { id: 'b', text: 'useState' },
-                    { id: 'c', text: 'useContext' },
-                    { id: 'd', text: 'useRef' },
-                ],
-                correctAnswer: 'b',
-            },
-            {
-                id: 'q3',
-                question: 'Chọn các hook hợp lệ trong React (chọn nhiều đáp án):',
-                type: 'multiple',
-                options: [
-                    { id: 'a', text: 'useState' },
-                    { id: 'b', text: 'useEffect' },
-                    { id: 'c', text: 'useClass' },
-                    { id: 'd', text: 'useMemo' },
-                ],
-                correctAnswer: ['a', 'b', 'd'],
-            },
-            {
-                id: 'q4',
-                question: 'Virtual DOM trong React giúp tối ưu hiệu suất bằng cách nào?',
-                type: 'single',
-                options: [
-                    { id: 'a', text: 'Loại bỏ hoàn toàn DOM thực' },
-                    { id: 'b', text: 'So sánh và chỉ cập nhật các phần thay đổi' },
-                    { id: 'c', text: 'Tăng tốc độ mạng' },
-                    { id: 'd', text: 'Giảm kích thước file' },
-                ],
-                correctAnswer: 'b',
-            },
-            {
-                id: 'q5',
-                question: 'JSX là gì?',
-                type: 'single',
-                options: [
-                    { id: 'a', text: 'Một ngôn ngữ lập trình mới' },
-                    { id: 'b', text: 'Cú pháp mở rộng cho JavaScript cho phép viết HTML trong JS' },
-                    { id: 'c', text: 'Một framework CSS' },
-                    { id: 'd', text: 'Một thư viện animation' },
-                ],
-                correctAnswer: 'b',
-            },
-        ];
-    }, []);
+        return quizData?.questions || [];
+    }, [quizData]);
 
     const currentQuestion = questions[currentQuestionIndex];
     const totalQuestions = questions.length;
     const answeredCount = Object.keys(answers).length;
-    const progress = Math.round((answeredCount / totalQuestions) * 100);
+    const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
     // Initialize timer
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setLoading(false);
+        if (quizData) {
             // Set time limit (in seconds)
-            if (quiz?.time_limit) {
-                setTimeLeft(quiz.time_limit * 60);
+            if (quizData.time_limit) {
+                setTimeLeft(quizData.time_limit * 60);
             } else {
-                setTimeLeft(30 * 60); // Default 30 minutes
+                setTimeLeft(null); // No limit
             }
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [quiz]);
+        }
+    }, [quizData]);
 
     // Countdown timer
     useEffect(() => {
-        if (timeLeft === null || timeLeft <= 0) return;
+        if (timeLeft === null) return;
+        if (timeLeft <= 0) {
+            handleAutoSubmit();
+            return;
+        }
 
         const interval = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    handleAutoSubmit();
                     return 0;
                 }
                 return prev - 1;
@@ -207,44 +147,85 @@ function QuizTakingPage() {
         }
     };
 
-    const doSubmit = () => {
-        setIsSubmitting(true);
-
-        // Calculate score
+    const doSubmit = async () => {
+        // Calculate score locally for immediate feedback (and for Directus field)
         let correctCount = 0;
+
         questions.forEach(q => {
             const userAnswer = answers[q.id];
+            if (!userAnswer) return;
+
+            // Helper to check correctness based on Directus data structure
+            // Assuming q.options is JSON: { options: [...], correct: 'key' or ['key'] }
+            // OR q.options is just array of objects and we need to check how 'correct' is stored.
+            // Let's assume standard structure: q.type, q.options (JSON)
+
+            // Standardizing options parsing
+            let options = q.options;
+            if (typeof options === 'string') {
+                try {
+                    options = JSON.parse(options);
+                } catch (e) {
+                    options = {};
+                }
+            }
+
             if (q.type === 'multiple') {
-                const isCorrect =
+                const correctArr = options?.correct || []; // Array of IDs
+                if (
                     Array.isArray(userAnswer) &&
-                    userAnswer.length === q.correctAnswer.length &&
-                    userAnswer.every(a => q.correctAnswer.includes(a));
-                if (isCorrect) correctCount++;
+                    userAnswer.length === correctArr.length &&
+                    userAnswer.every(a => correctArr.includes(a))
+                ) {
+                    correctCount++;
+                }
             } else {
-                if (userAnswer === q.correctAnswer) correctCount++;
+                // Single choice
+                // options.correct might be string ID or array with 1 ID
+                const correctId = Array.isArray(options?.correct) ? options.correct[0] : options?.correct;
+                if (userAnswer === correctId) correctCount++;
             }
         });
 
         const score = Math.round((correctCount / totalQuestions) * 100);
-        const passed = score >= (quiz?.pass_score || 70);
+        const passed = score >= (quizData?.passing_score || 70);
 
-        // Navigate to result page
-        setTimeout(() => {
+        try {
+            await submitQuizMutation.mutateAsync({
+                quiz_id: quizId,
+                answers: answers,
+                score: score,
+                is_passed: passed,
+                started_at: startedAt,
+                time_taken: quizData?.time_limit ? quizData.time_limit * 60 - (timeLeft || 0) : 0,
+            });
+
+            // Navigate to result
             navigate(`/quiz/${quizId}/result`, {
                 state: {
                     score,
                     passed,
                     correctCount,
                     totalQuestions,
+                    timeTaken: quizData?.time_limit ? quizData.time_limit * 60 - (timeLeft || 0) : 0,
                     answers,
-                    questions,
-                    timeTaken: quiz?.time_limit ? quiz.time_limit * 60 - timeLeft : 0,
+                    questions, // Pass questions to avoid refetching on result page
                 },
             });
-        }, 500);
+        } catch (error) {
+            // Error handled by global handler
+        }
     };
 
-    if (!quiz) {
+    if (quizLoading) {
+        return (
+            <div style={{ textAlign: 'center', padding: 100 }}>
+                <Spin size="large" tip="Đang tải bài kiểm tra..." />
+            </div>
+        );
+    }
+
+    if (!quizData) {
         return (
             <Result
                 status="404"
@@ -258,13 +239,24 @@ function QuizTakingPage() {
         );
     }
 
-    if (loading) {
-        return (
-            <div style={{ textAlign: 'center', padding: 100 }}>
-                <Spin size="large" tip="Đang tải bài kiểm tra..." />
-            </div>
-        );
-    }
+    // Helper to parse options
+    const getOptions = question => {
+        let opts = question.options;
+        if (typeof opts === 'string') {
+            try {
+                opts = JSON.parse(opts);
+            } catch (e) {
+                opts = [];
+            }
+        }
+        // Assuming options structure is array of { id, text } inside the JSON or direct array
+        // Or if it's the structure from our Mock: options: [ {id, text}, ... ]
+        // Let's handle both array and object wrapper
+        if (Array.isArray(opts)) return opts;
+        return opts?.options || [];
+    };
+
+    const currentOptions = currentQuestion ? getOptions(currentQuestion) : [];
 
     return (
         <div style={{ minHeight: '100vh', background: '#f5f5f5', padding: '24px' }}>
@@ -284,7 +276,7 @@ function QuizTakingPage() {
                         >
                             <div>
                                 <Title level={4} style={{ margin: 0 }}>
-                                    {quiz.title}
+                                    {quizData.title}
                                 </Title>
                                 <Text type="secondary">
                                     Câu {currentQuestionIndex + 1} / {totalQuestions}
@@ -292,29 +284,31 @@ function QuizTakingPage() {
                             </div>
                             <Space size="large">
                                 {/* Timer */}
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        padding: '8px 16px',
-                                        background: timeLeft <= 60 ? '#fff1f0' : '#f6ffed',
-                                        borderRadius: 8,
-                                        border: `1px solid ${getTimeColor()}`,
-                                    }}
-                                >
-                                    <ClockCircleOutlined style={{ color: getTimeColor(), fontSize: 20 }} />
-                                    <Text
-                                        strong
+                                {timeLeft !== null && (
+                                    <div
                                         style={{
-                                            fontSize: 24,
-                                            color: getTimeColor(),
-                                            fontFamily: 'monospace',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            padding: '8px 16px',
+                                            background: timeLeft <= 60 ? '#fff1f0' : '#f6ffed',
+                                            borderRadius: 8,
+                                            border: `1px solid ${getTimeColor()}`,
                                         }}
                                     >
-                                        {formatTime(timeLeft)}
-                                    </Text>
-                                </div>
+                                        <ClockCircleOutlined style={{ color: getTimeColor(), fontSize: 20 }} />
+                                        <Text
+                                            strong
+                                            style={{
+                                                fontSize: 24,
+                                                color: getTimeColor(),
+                                                fontFamily: 'monospace',
+                                            }}
+                                        >
+                                            {formatTime(timeLeft)}
+                                        </Text>
+                                    </div>
+                                )}
                             </Space>
                         </div>
                         <Progress
@@ -346,7 +340,7 @@ function QuizTakingPage() {
                                     style={{ width: '100%' }}
                                 >
                                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                        {currentQuestion.options.map(option => (
+                                        {currentOptions.map(option => (
                                             <Radio
                                                 key={option.id}
                                                 value={option.id}
@@ -371,7 +365,7 @@ function QuizTakingPage() {
                                     style={{ width: '100%' }}
                                 >
                                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                        {currentQuestion.options.map(option => (
+                                        {currentOptions.map(option => (
                                             <Checkbox
                                                 key={option.id}
                                                 value={option.id}
@@ -412,7 +406,7 @@ function QuizTakingPage() {
                                     size="large"
                                     icon={<CheckOutlined />}
                                     onClick={handleSubmit}
-                                    loading={isSubmitting}
+                                    loading={submitQuizMutation.isPending}
                                 >
                                     Nộp bài
                                 </Button>
@@ -477,7 +471,7 @@ function QuizTakingPage() {
                                 size="large"
                                 icon={<CheckOutlined />}
                                 onClick={handleSubmit}
-                                loading={isSubmitting}
+                                loading={submitQuizMutation.isPending}
                                 style={{ marginTop: 16 }}
                             >
                                 Nộp bài
@@ -501,6 +495,7 @@ function QuizTakingPage() {
                 okText="Nộp bài"
                 cancelText="Tiếp tục làm"
                 okButtonProps={{ danger: true }}
+                confirmLoading={submitQuizMutation.isPending}
             >
                 <Paragraph>
                     Bạn còn{' '}

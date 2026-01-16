@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { Modal, Form, Input, Select, Row, Col, Divider } from 'antd';
 import { UserOutlined, MailOutlined, PhoneOutlined, IdcardOutlined } from '@ant-design/icons';
-import { mockDepartments, mockPositions } from '../../../mocks';
+import { useQuery } from '@tanstack/react-query';
+import { departmentService } from '../../../services/departmentService';
+import { positionService } from '../../../services/positionService';
+import { queryKeys } from '../../../constants/queryKeys';
 
 /**
  * User Form Modal
@@ -10,6 +13,20 @@ import { mockDepartments, mockPositions } from '../../../mocks';
 function UserFormModal({ open, onCancel, onSave, initialValues, loading }) {
     const [form] = Form.useForm();
     const isEdit = !!initialValues;
+
+    // Fetch Departments
+    const { data: departments = [] } = useQuery({
+        queryKey: queryKeys.departments.lists(),
+        queryFn: departmentService.getAll,
+        enabled: open,
+    });
+
+    // Fetch Positions
+    const { data: positions = [] } = useQuery({
+        queryKey: queryKeys.positions.lists(),
+        queryFn: positionService.getAll,
+        enabled: open,
+    });
 
     // Reset form when modal opens
     useEffect(() => {
@@ -20,8 +37,8 @@ function UserFormModal({ open, onCancel, onSave, initialValues, loading }) {
                     last_name: initialValues.last_name,
                     email: initialValues.email,
                     phone: initialValues.phone || '',
-                    department: initialValues.department?.code,
-                    position: initialValues.position?.code,
+                    department: initialValues.department?.code || initialValues.department?.id,
+                    position: initialValues.position?.code || initialValues.position?.id,
                     status: initialValues.status || 'active',
                     employee_id: initialValues.employee_id || '',
                 });
@@ -139,9 +156,9 @@ function UserFormModal({ open, onCancel, onSave, initialValues, loading }) {
                         >
                             <Select
                                 placeholder="Chọn phòng ban"
-                                options={mockDepartments.map(d => ({
-                                    value: d.code,
-                                    label: d.name,
+                                options={departments.map(d => ({
+                                    value: d.id, // Use ID as value relation
+                                    label: `${d.ten_bo_phan} (${d.ma_bo_phan})`,
                                 }))}
                                 showSearch
                                 optionFilterProp="label"
@@ -156,9 +173,9 @@ function UserFormModal({ open, onCancel, onSave, initialValues, loading }) {
                         >
                             <Select
                                 placeholder="Chọn vị trí"
-                                options={mockPositions.map(p => ({
-                                    value: p.code,
-                                    label: p.name,
+                                options={positions.map(p => ({
+                                    value: p.id, // Use ID as value relation
+                                    label: `${p.ten_vi_tri} (${p.ma_vi_tri})`,
                                 }))}
                                 showSearch
                                 optionFilterProp="label"

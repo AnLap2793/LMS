@@ -1,8 +1,12 @@
 import { useEffect, useMemo } from 'react';
 import { Modal, Form, Select, DatePicker, Row, Col, Divider, Alert, Typography, Avatar, Space } from 'antd';
 import { UserOutlined, BookOutlined, CalendarOutlined } from '@ant-design/icons';
-import { mockCourses, mockUsers, getUserFullName } from '../../../mocks';
+import { useQuery } from '@tanstack/react-query';
 import { ENROLLMENT_STATUS_OPTIONS } from '../../../constants/lms';
+import { courseService } from '../../../services/courseService';
+import { userService } from '../../../services/userService';
+import { queryKeys } from '../../../constants/queryKeys';
+import { getAvatarUrl, getAssetUrl, getUserFullName } from '../../../utils/directusHelpers';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -15,15 +19,29 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
     const [form] = Form.useForm();
     const isEdit = !!initialValues;
 
-    // Get available courses (published only)
-    const availableCourses = useMemo(() => {
-        return mockCourses.filter(c => c.status === 'published');
-    }, []);
+    // Fetch available courses (published only)
+    const { data: availableCourses = [] } = useQuery({
+        queryKey: queryKeys.courses.list({ status: 'published' }),
+        queryFn: () =>
+            courseService.getAll({
+                filter: { status: { _eq: 'published' } },
+                limit: -1,
+                fields: ['id', 'title', 'thumbnail', 'duration'],
+            }),
+        enabled: open,
+    });
 
-    // Get available users (active only)
-    const availableUsers = useMemo(() => {
-        return mockUsers.filter(u => u.status === 'active');
-    }, []);
+    // Fetch available users (active only)
+    const { data: availableUsers = [] } = useQuery({
+        queryKey: queryKeys.users.list({ status: 'active' }),
+        queryFn: () =>
+            userService.getAll({
+                filter: { status: { _eq: 'active' } },
+                limit: -1,
+                fields: ['id', 'first_name', 'last_name', 'email', 'avatar'],
+            }),
+        enabled: open,
+    });
 
     // Reset form when modal opens
     useEffect(() => {
@@ -65,7 +83,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
         <Space>
             <Avatar
                 size={32}
-                src={course.thumbnail}
+                src={getAssetUrl(course.thumbnail)}
                 icon={!course.thumbnail && <BookOutlined />}
                 shape="square"
                 style={{
@@ -76,7 +94,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
                 <span style={{ fontWeight: 500 }}>{course.title}</span>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    {course.duration} phút • {course.modules_count || 0} modules
+                    {course.duration} phút
                 </Text>
             </div>
         </Space>
@@ -87,7 +105,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
         <Space>
             <Avatar
                 size={32}
-                src={user.avatar}
+                src={getAvatarUrl(user.avatar)}
                 icon={!user.avatar && <UserOutlined />}
                 style={{ backgroundColor: !user.avatar ? '#ea4544' : undefined }}
             />
@@ -121,7 +139,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
             >
                 <Avatar
                     size={20}
-                    src={user.avatar}
+                    src={getAvatarUrl(user.avatar)}
                     icon={!user.avatar && <UserOutlined />}
                     style={{ backgroundColor: !user.avatar ? '#ea4544' : undefined }}
                 />

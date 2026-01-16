@@ -198,8 +198,12 @@ export function useUpdateQuizQuestion() {
 
     return useMutation({
         mutationFn: ({ questionId, data }) => quizService.updateQuestion(questionId, data),
-        onSuccess: () => {
+        onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizQuestions.all });
+            // Ideally invalidate by quizId, but we might not have it here unless we fetch or it's returned
+            if (data?.quiz_id) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(data.quiz_id) });
+            }
             showSuccess('Cập nhật câu hỏi thành công!');
         },
     });
@@ -212,10 +216,14 @@ export function useDeleteQuizQuestion() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: quizService.deleteQuestion,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.quizQuestions.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
+        mutationFn: ({ questionId, quizId }) => quizService.deleteQuestion(questionId),
+        onSuccess: (_, variables) => {
+            if (variables.quizId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.quizQuestions.byQuiz(variables.quizId) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(variables.quizId) });
+            } else {
+                queryClient.invalidateQueries({ queryKey: queryKeys.quizQuestions.all });
+            }
             showSuccess('Xóa câu hỏi thành công!');
         },
     });

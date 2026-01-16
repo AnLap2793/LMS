@@ -1,15 +1,11 @@
 /**
  * Question Bank Service
  * Service layer cho Ngân hàng Câu hỏi
- * Sử dụng mock data trong giai đoạn development
+ * Directus Implementation
  */
-import { mockQuestionBank, getFilteredQuestions, getQuestionById, getQuestionStats } from '../mocks/questionBank';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
-
-// In-memory store để simulate CRUD (vì mock data là immutable)
-let questionStore = [...mockQuestionBank];
+import { directus } from './directus';
+import { readItems, createItem, updateItem, deleteItem, aggregate, readItem } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 
 export const questionBankService = {
     /**
@@ -18,41 +14,47 @@ export const questionBankService = {
      * @returns {Promise<Object>} { data: Array, total: number, page: number, limit: number }
      */
     getAll: async (params = {}) => {
-        await delay();
-
         const { category, difficulty, type, search, status = 'active', page = 1, limit = 10 } = params;
 
-        // Filter questions
-        let filtered = questionStore.filter(q => {
-            if (status && q.status !== status) return false;
-            if (category && q.category !== category) return false;
-            if (difficulty && q.difficulty !== difficulty) return false;
-            if (type && q.type !== type) return false;
+        const filter = {
+            status: { _eq: status },
+        };
 
-            if (search) {
-                const searchLower = search.toLowerCase();
-                const matchQuestion = q.question.toLowerCase().includes(searchLower);
-                const matchTags = q.tags?.some(tag => tag.toLowerCase().includes(searchLower));
-                if (!matchQuestion && !matchTags) return false;
-            }
+        if (category) filter.category = { _eq: category };
+        if (difficulty) filter.difficulty = { _eq: difficulty };
+        if (type) filter.type = { _eq: type };
 
-            return true;
-        });
+        if (search) {
+            filter._or = [
+                { question: { _icontains: search } },
+                // Tags searching might require M2M filter depending on structure
+                // Assuming simple text tags field or M2M relation 'tags'
+                // { tags: { tags_id: { name: { _icontains: search } } } }
+            ];
+        }
 
-        // Sort by date_created descending
-        filtered.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+        const items = await directus.request(
+            readItems(COLLECTIONS.QUESTION_BANK, {
+                filter,
+                limit,
+                page,
+                sort: ['-date_created'],
+            })
+        );
 
-        // Pagination
-        const total = filtered.length;
-        const offset = (page - 1) * limit;
-        const data = filtered.slice(offset, offset + limit);
+        const totalResult = await directus.request(
+            aggregate(COLLECTIONS.QUESTION_BANK, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
 
         return {
-            data,
-            total,
+            data: items,
+            total: Number(totalResult[0]?.count) || 0,
             page,
             limit,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil((Number(totalResult[0]?.count) || 0) / limit),
         };
     },
 
@@ -62,14 +64,7 @@ export const questionBankService = {
      * @returns {Promise<Object>} Question object
      */
     getById: async id => {
-        await delay(200);
-        const question = questionStore.find(q => q.id === id);
-
-        if (!question) {
-            throw new Error('Question not found');
-        }
-
-        return question;
+        return await directus.request(readItem(COLLECTIONS.QUESTION_BANK, id));
     },
 
     /**
@@ -78,18 +73,12 @@ export const questionBankService = {
      * @returns {Promise<Object>} Created question
      */
     create: async data => {
-        await delay();
-
-        const newQuestion = {
-            id: `qb-${Date.now()}`,
-            ...data,
-            status: data.status || 'active',
-            date_created: new Date().toISOString(),
-            user_created: 'current-user', // TODO: Get from auth context
-        };
-
-        questionStore = [newQuestion, ...questionStore];
-        return newQuestion;
+        return await directus.request(
+            createItem(COLLECTIONS.QUESTION_BANK, {
+                ...data,
+                status: data.status || 'active',
+            })
+        );
     },
 
     /**
@@ -99,21 +88,7 @@ export const questionBankService = {
      * @returns {Promise<Object>} Updated question
      */
     update: async (id, data) => {
-        await delay();
-
-        const index = questionStore.findIndex(q => q.id === id);
-        if (index === -1) {
-            throw new Error('Question not found');
-        }
-
-        const updatedQuestion = {
-            ...questionStore[index],
-            ...data,
-            date_updated: new Date().toISOString(),
-        };
-
-        questionStore[index] = updatedQuestion;
-        return updatedQuestion;
+        return await directus.request(updateItem(COLLECTIONS.QUESTION_BANK, id, data));
     },
 
     /**
@@ -122,14 +97,7 @@ export const questionBankService = {
      * @returns {Promise<boolean>} Success
      */
     delete: async id => {
-        await delay();
-
-        const index = questionStore.findIndex(q => q.id === id);
-        if (index === -1) {
-            throw new Error('Question not found');
-        }
-
-        questionStore = questionStore.filter(q => q.id !== id);
+        await directus.request(deleteItem(COLLECTIONS.QUESTION_BANK, id));
         return true;
     },
 
@@ -139,12 +107,8 @@ export const questionBankService = {
      * @returns {Promise<number>} Number of deleted questions
      */
     deleteMany: async ids => {
-        await delay();
-
-        const initialLength = questionStore.length;
-        questionStore = questionStore.filter(q => !ids.includes(q.id));
-
-        return initialLength - questionStore.length;
+        await directus.request(deleteItem(COLLECTIONS.QUESTION_BANK, ids));
+        return ids.length;
     },
 
     /**
@@ -152,57 +116,95 @@ export const questionBankService = {
      * @returns {Promise<Object>} Statistics
      */
     getStats: async () => {
-        await delay(100);
+        // Run aggregations
+        const totalResult = await directus.request(aggregate(COLLECTIONS.QUESTION_BANK, { aggregate: { count: '*' } }));
+        const activeResult = await directus.request(
+            aggregate(COLLECTIONS.QUESTION_BANK, {
+                aggregate: { count: '*' },
+                query: { filter: { status: { _eq: 'active' } } },
+            })
+        );
 
-        const active = questionStore.filter(q => q.status === 'active');
+        // Grouping logic would ideally be done via aggregate groupBy, but let's do simplified fetch for distribution if dataset small,
+        // OR rely on multiple aggregate calls.
+        // For efficiency in Directus, separate aggregate calls for distributions:
+
+        const [byCategory, byDifficulty, byType] = await Promise.all([
+            directus.request(
+                aggregate(COLLECTIONS.QUESTION_BANK, { aggregate: { count: '*' }, groupBy: ['category'] })
+            ),
+            directus.request(
+                aggregate(COLLECTIONS.QUESTION_BANK, { aggregate: { count: '*' }, groupBy: ['difficulty'] })
+            ),
+            directus.request(aggregate(COLLECTIONS.QUESTION_BANK, { aggregate: { count: '*' }, groupBy: ['type'] })),
+        ]);
+
+        const mapCounts = (arr, key) =>
+            arr.reduce((acc, item) => {
+                if (item[key]) acc[item[key]] = Number(item.count);
+                return acc;
+            }, {});
 
         return {
-            total: questionStore.length,
-            active: active.length,
-            byCategory: {
-                programming: active.filter(q => q.category === 'programming').length,
-                database: active.filter(q => q.category === 'database').length,
-                design: active.filter(q => q.category === 'design').length,
-                soft_skills: active.filter(q => q.category === 'soft_skills').length,
-            },
-            byDifficulty: {
-                easy: active.filter(q => q.difficulty === 'easy').length,
-                medium: active.filter(q => q.difficulty === 'medium').length,
-                hard: active.filter(q => q.difficulty === 'hard').length,
-            },
-            byType: {
-                single: active.filter(q => q.type === 'single').length,
-                multiple: active.filter(q => q.type === 'multiple').length,
-                text: active.filter(q => q.type === 'text').length,
-            },
+            total: Number(totalResult[0]?.count) || 0,
+            active: Number(activeResult[0]?.count) || 0,
+            byCategory: mapCounts(byCategory, 'category'),
+            byDifficulty: mapCounts(byDifficulty, 'difficulty'),
+            byType: mapCounts(byType, 'type'),
         };
     },
 
     /**
      * Copy câu hỏi từ Question Bank sang Quiz
-     * Tạo bản sao độc lập với quiz_id
+     * Tạo bản sao độc lập với quiz_id (trong collection QUIZ_QUESTIONS)
      * @param {Array<string>} questionIds - Array of question IDs từ Question Bank
      * @param {string} quizId - Target Quiz ID
      * @returns {Promise<Array>} Copied questions với quiz_id
      */
     copyToQuiz: async (questionIds, quizId) => {
-        await delay();
+        // 1. Fetch questions from bank
+        const questionsToCopy = await directus.request(
+            readItems(COLLECTIONS.QUESTION_BANK, {
+                filter: { id: { _in: questionIds } },
+            })
+        );
 
-        const questionsToCopy = questionStore.filter(q => questionIds.includes(q.id));
+        // 2. Get current max sort in quiz
+        // We'd need to call quiz service or aggregate here.
+        // Assuming we start appending at the end.
+        const currentQuestions = await directus.request(
+            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
+                filter: { quiz_id: { _eq: quizId } },
+                aggregate: { max: 'sort' },
+            })
+        );
+        // readItems with aggregate might not work directly, use aggregate()
+        // But for simplicity let's assume we fetch max sort via aggregate:
+        const maxSortResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_QUESTIONS, {
+                aggregate: { max: 'sort' },
+                query: { filter: { quiz_id: { _eq: quizId } } },
+            })
+        );
+        let currentSort = Number(maxSortResult[0]?.max?.sort) || 0;
 
-        const copiedQuestions = questionsToCopy.map((q, index) => ({
-            id: `qq-${Date.now()}-${index}`,
-            quiz_id: quizId,
-            question: q.question,
-            type: q.type,
-            options: q.options ? { ...q.options } : null,
-            explanation: q.explanation,
-            points: q.points,
-            sort: index + 1,
-            // Không copy: difficulty, category, tags (những field này chỉ có trong Question Bank)
-            source_question_id: q.id, // Reference đến câu hỏi gốc (optional, để tracking)
-        }));
+        // 3. Create new quiz questions
+        const createPromises = questionsToCopy.map(q => {
+            currentSort++;
+            return directus.request(
+                createItem(COLLECTIONS.QUIZ_QUESTIONS, {
+                    quiz_id: quizId,
+                    question: q.question,
+                    type: q.type,
+                    options: q.options, // Assuming structure matches
+                    explanation: q.explanation,
+                    points: q.points || 1, // Default points
+                    sort: currentSort,
+                    // Note: source_question_id tracking optional
+                })
+            );
+        });
 
-        return copiedQuestions;
+        return await Promise.all(createPromises);
     },
 };

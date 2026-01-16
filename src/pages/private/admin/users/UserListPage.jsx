@@ -29,32 +29,48 @@ import {
     StopOutlined,
     ReloadOutlined,
 } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader, EmptyState } from '../../../../components/common';
-import { mockUsers, mockDepartments, getUserFullName } from '../../../../mocks';
+import { getUserFullName } from '../../../../utils/directusHelpers';
 import UserFormModal from '../../../../components/admin/users/UserFormModal';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '../../../../hooks/useUsers';
+import { departmentService } from '../../../../services/departmentService';
+import { queryKeys } from '../../../../constants/queryKeys';
 
 /**
  * User List Page
  * Quản lý danh sách người dùng/nhân viên
  */
 function UserListPage() {
-    const [users, setUsers] = useState(mockUsers);
     const [searchText, setSearchText] = useState('');
     const [departmentFilter, setDepartmentFilter] = useState(null);
     const [statusFilter, setStatusFilter] = useState(null);
-    const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+    // Hooks
+    const { data: users = [], isLoading, refetch } = useUsers({ limit: -1 }); // Fetch all for client-side filtering for now
+    const createUser = useCreateUser();
+    const updateUser = useUpdateUser();
+    const deleteUser = useDeleteUser();
+
+    // Fetch departments for filter
+    const { data: departments = [] } = useQuery({
+        queryKey: queryKeys.departments.lists(),
+        queryFn: departmentService.getAll,
+    });
+
+    const loading = isLoading || createUser.isPending || updateUser.isPending || deleteUser.isPending;
 
     // Statistics
     const stats = useMemo(() => {
         const total = users.length;
         const active = users.filter(u => u.status === 'active').length;
-        const inactive = users.filter(u => u.status === 'inactive').length;
-        const departments = [...new Set(users.map(u => u.department?.code))].length;
-        return { total, active, inactive, departments };
-    }, [users]);
+        const inactive = users.filter(u => u.status !== 'active').length;
+        const deptCount = departments.length;
+        return { total, active, inactive, departments: deptCount };
+    }, [users, departments]);
 
     // Filtered users
     const filteredUsers = useMemo(() => {
@@ -63,9 +79,11 @@ function UserListPage() {
             const matchSearch =
                 !searchText.trim() ||
                 fullName.includes(searchText.toLowerCase()) ||
-                user.email.toLowerCase().includes(searchText.toLowerCase());
+                user.email?.toLowerCase().includes(searchText.toLowerCase());
 
-            const matchDepartment = !departmentFilter || user.department?.code === departmentFilter;
+            // Handle department: check both ID and object structure
+            const userDeptId = user.department?.id || user.department;
+            const matchDepartment = !departmentFilter || userDeptId === departmentFilter;
 
             const matchStatus = !statusFilter || user.status === statusFilter;
 
@@ -81,87 +99,53 @@ function UserListPage() {
 
     // Handle edit user
     const handleEdit = user => {
-        setEditingUser(user);
+        // Ensure we pass IDs for edit form if data is populated as objects
+        const safeUser = {
+            ...user,
+            department: user.department?.id || user.department,
+            position: user.position?.id || user.position,
+        };
+        setEditingUser(safeUser);
         setModalVisible(true);
     };
 
     // Handle delete user
-    const handleDelete = id => {
-        setLoading(true);
-        setTimeout(() => {
-            setUsers(prev => prev.filter(u => u.id !== id));
-            message.success('Đã xóa người dùng');
-            setLoading(false);
-        }, 500);
+    const handleDelete = async id => {
+        await deleteUser.mutateAsync(id);
     };
 
     // Handle toggle status
-    const handleToggleStatus = user => {
-        setLoading(true);
-        setTimeout(() => {
-            setUsers(prev =>
-                prev.map(u => (u.id === user.id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u))
-            );
-            message.success(`Đã ${user.status === 'active' ? 'khóa' : 'kích hoạt'} tài khoản`);
-            setLoading(false);
-        }, 500);
+    const handleToggleStatus = async user => {
+        const newStatus = user.status === 'active' ? 'suspended' : 'active';
+        await updateUser.mutateAsync({ id: user.id, data: { status: newStatus } });
+        message.success(`Đã cập nhật trạng thái tài khoản`);
     };
 
     // Handle modal save
-    const handleModalSave = values => {
-        setLoading(true);
-        setTimeout(() => {
-            if (editingUser) {
-                // Update existing user
-                setUsers(prev =>
-                    prev.map(u =>
-                        u.id === editingUser.id
-                            ? {
-                                  ...u,
-                                  ...values,
-                                  department: mockDepartments.find(d => d.code === values.department),
-                              }
-                            : u
-                    )
-                );
-                message.success('Đã cập nhật thông tin người dùng');
-            } else {
-                // Create new user
-                const newUser = {
-                    id: `u${Date.now()}`,
-                    ...values,
-                    department: mockDepartments.find(d => d.code === values.department),
-                    position: { code: values.position, name: values.position },
-                    avatar: null,
-                    date_created: new Date().toISOString(),
-                };
-                setUsers(prev => [newUser, ...prev]);
-                message.success('Đã thêm người dùng mới');
-            }
-            setModalVisible(false);
-            setLoading(false);
-        }, 500);
+    const handleModalSave = async values => {
+        if (editingUser) {
+            await updateUser.mutateAsync({ id: editingUser.id, data: values });
+        } else {
+            await createUser.mutateAsync(values);
+        }
+        setModalVisible(false);
     };
 
     // Handle bulk delete
-    const handleBulkDelete = () => {
-        setLoading(true);
-        setTimeout(() => {
-            setUsers(prev => prev.filter(u => !selectedRowKeys.includes(u.id)));
+    const handleBulkDelete = async () => {
+        try {
+            await Promise.all(selectedRowKeys.map(id => deleteUser.mutateAsync(id)));
             setSelectedRowKeys([]);
             message.success(`Đã xóa ${selectedRowKeys.length} người dùng`);
-            setLoading(false);
-        }, 500);
+        } catch {
+            // Error handled by global handler
+        }
     };
 
     // Handle refresh
     const handleRefresh = () => {
-        setLoading(true);
-        setTimeout(() => {
-            setUsers(mockUsers);
-            message.success('Đã làm mới danh sách');
-            setLoading(false);
-        }, 500);
+        refetch();
+        message.success('Đã làm mới danh sách');
     };
 
     // Row actions dropdown
@@ -218,19 +202,19 @@ function UserListPage() {
         },
         {
             title: 'Phòng ban',
-            dataIndex: ['department', 'name'],
+            dataIndex: ['department', 'ten_bo_phan'], // Assuming populated
             key: 'department',
             width: 180,
-            render: name => name || '-',
-            filters: mockDepartments.map(d => ({ text: d.name, value: d.code })),
-            onFilter: (value, record) => record.department?.code === value,
+            render: (text, record) => record.department?.ten_bo_phan || '-',
+            filters: departments.map(d => ({ text: d.ten_bo_phan, value: d.id })),
+            onFilter: (value, record) => (record.department?.id || record.department) === value,
         },
         {
             title: 'Vị trí',
-            dataIndex: ['position', 'name'],
+            dataIndex: ['position', 'ten_vi_tri'], // Assuming populated
             key: 'position',
             width: 180,
-            render: name => name || '-',
+            render: (text, record) => record.position?.ten_vi_tri || '-',
         },
         {
             title: 'Trạng thái',
@@ -350,7 +334,7 @@ function UserListPage() {
                             onChange={setDepartmentFilter}
                             options={[
                                 { value: null, label: 'Tất cả phòng ban' },
-                                ...mockDepartments.map(d => ({ value: d.code, label: d.name })),
+                                ...departments.map(d => ({ value: d.id, label: d.ten_bo_phan })),
                             ]}
                             style={{ width: '100%' }}
                             allowClear
@@ -394,7 +378,7 @@ function UserListPage() {
             </Card>
 
             {/* Table */}
-            {filteredUsers.length > 0 ? (
+            {filteredUsers.length > 0 || loading ? (
                 <Table
                     columns={columns}
                     dataSource={filteredUsers}

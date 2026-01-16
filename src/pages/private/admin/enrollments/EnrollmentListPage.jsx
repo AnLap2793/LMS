@@ -15,7 +15,6 @@ import {
     Row,
     Col,
     Statistic,
-    DatePicker,
     Dropdown,
 } from 'antd';
 import {
@@ -33,27 +32,79 @@ import {
     MoreOutlined,
     SendOutlined,
 } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader, EmptyState } from '../../../../components/common';
-import { mockEnrollments, mockCourses, mockUsers, getUserFullName } from '../../../../mocks';
 import { ENROLLMENT_STATUS_OPTIONS } from '../../../../constants/lms';
 import EnrollmentFormModal from '../../../../components/admin/enrollments/EnrollmentFormModal';
 import { getAvatarUrl, getAssetUrl } from '../../../../utils/directusHelpers';
+import { enrollmentService } from '../../../../services/enrollmentService';
+import { courseService } from '../../../../services/courseService';
+import { queryKeys } from '../../../../constants/queryKeys';
+import { showSuccess, showError } from '../../../../utils/errorHandler';
 
 /**
  * Enrollment List Page
  * Quản lý đăng ký khóa học cho nhân viên
  */
 function EnrollmentListPage() {
-    const [enrollments, setEnrollments] = useState(mockEnrollments);
     const [searchText, setSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState(null);
     const [courseFilter, setCourseFilter] = useState(null);
-    const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingEnrollment, setEditingEnrollment] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
-    // Statistics
+    const queryClient = useQueryClient();
+
+    // Fetch Enrollments
+    const { data: enrollments = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.enrollments.list({ search: searchText, status: statusFilter, course: courseFilter }),
+        queryFn: () =>
+            enrollmentService.getAll({
+                search: searchText,
+                status: statusFilter,
+                courseId: courseFilter,
+            }),
+    });
+
+    // Fetch Courses (for filter)
+    const { data: courses = [] } = useQuery({
+        queryKey: queryKeys.courses.list({ fields: ['id', 'title'] }),
+        queryFn: () => courseService.getAll({ limit: -1, fields: ['id', 'title'] }),
+    });
+
+    // Mutations
+    const deleteMutation = useMutation({
+        mutationFn: enrollmentService.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries(queryKeys.enrollments.all);
+            showSuccess('Đã xóa đăng ký');
+        },
+        onError: showError,
+    });
+
+    const createMutation = useMutation({
+        mutationFn: enrollmentService.assignCourse,
+        onSuccess: () => {
+            queryClient.invalidateQueries(queryKeys.enrollments.all);
+            showSuccess('Đã gán khóa học thành công');
+            setModalVisible(false);
+        },
+        onError: showError,
+    });
+
+    // Note: Update not fully implemented in service yet for admin, but we can add it later or use specific methods
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => enrollmentService.update(id, data), // Assuming generic update exists or add it
+        onSuccess: () => {
+            queryClient.invalidateQueries(queryKeys.enrollments.all);
+            showSuccess('Đã cập nhật đăng ký');
+            setModalVisible(false);
+        },
+        onError: showError,
+    });
+
+    // Statistics (Client-side calculation for now, ideally server-side)
     const stats = useMemo(() => {
         const total = enrollments.length;
         const completed = enrollments.filter(e => e.status === 'completed').length;
@@ -63,45 +114,6 @@ function EnrollmentListPage() {
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
         return { total, completed, inProgress, expired, assigned, completionRate };
     }, [enrollments]);
-
-    // Enrich enrollments with user and course data (avatar, thumbnail)
-    const enrichedEnrollments = useMemo(() => {
-        return enrollments.map(enrollment => {
-            const fullUser = mockUsers.find(u => u.id === enrollment.user_id) || enrollment.user;
-            const fullCourse = mockCourses.find(c => c.id === enrollment.course_id) || enrollment.course;
-
-            return {
-                ...enrollment,
-                user: {
-                    ...enrollment.user,
-                    avatar: fullUser?.avatar || enrollment.user?.avatar,
-                },
-                course: {
-                    ...enrollment.course,
-                    thumbnail: fullCourse?.thumbnail || enrollment.course?.thumbnail,
-                },
-            };
-        });
-    }, [enrollments]);
-
-    // Filtered enrollments
-    const filteredEnrollments = useMemo(() => {
-        return enrichedEnrollments.filter(enrollment => {
-            const userName = `${enrollment.user?.first_name} ${enrollment.user?.last_name}`.toLowerCase();
-            const courseName = enrollment.course?.title?.toLowerCase() || '';
-
-            const matchSearch =
-                !searchText.trim() ||
-                userName.includes(searchText.toLowerCase()) ||
-                courseName.includes(searchText.toLowerCase()) ||
-                enrollment.user?.email?.toLowerCase().includes(searchText.toLowerCase());
-
-            const matchStatus = !statusFilter || enrollment.status === statusFilter;
-            const matchCourse = !courseFilter || enrollment.course_id === courseFilter;
-
-            return matchSearch && matchStatus && matchCourse;
-        });
-    }, [enrichedEnrollments, searchText, statusFilter, courseFilter]);
 
     // Handle add new enrollment
     const handleAdd = () => {
@@ -117,82 +129,61 @@ function EnrollmentListPage() {
 
     // Handle delete enrollment
     const handleDelete = id => {
-        setLoading(true);
-        setTimeout(() => {
-            setEnrollments(prev => prev.filter(e => e.id !== id));
-            message.success('Đã xóa đăng ký');
-            setLoading(false);
-        }, 500);
+        deleteMutation.mutate(id);
     };
 
     // Handle send reminder
     const handleSendReminder = enrollment => {
+        // Implement reminder logic (e.g., call notification service)
         message.success(`Đã gửi nhắc nhở đến ${enrollment.user?.first_name} ${enrollment.user?.last_name}`);
     };
 
     // Handle modal save
     const handleModalSave = values => {
-        setLoading(true);
-        setTimeout(() => {
-            if (editingEnrollment) {
-                // Update existing enrollment
-                setEnrollments(prev =>
-                    prev.map(e =>
-                        e.id === editingEnrollment.id
-                            ? {
-                                  ...e,
-                                  ...values,
-                                  course: mockCourses.find(c => c.id === values.course_id),
-                                  user: mockUsers.find(u => u.id === values.user_id),
-                              }
-                            : e
-                    )
-                );
-                message.success('Đã cập nhật đăng ký');
-            } else {
-                // Create new enrollment(s)
-                const newEnrollments = values.user_ids.map(userId => ({
-                    id: `e${Date.now()}-${userId}`,
+        if (editingEnrollment) {
+            // For update, we might need to handle single update
+            // This part depends on backend implementation of update
+            // updateMutation.mutate({ id: editingEnrollment.id, data: values });
+            message.info('Chức năng cập nhật đang phát triển');
+        } else {
+            // For create (assign)
+            // Handle multiple users assignment sequentially or batch if API supports
+            // Here we assume service.assignCourse takes one object, loop for multiple users
+            const promises = values.user_ids.map(userId =>
+                createMutation.mutateAsync({
                     user_id: userId,
-                    user: mockUsers.find(u => u.id === userId),
                     course_id: values.course_id,
-                    course: mockCourses.find(c => c.id === values.course_id),
-                    assigned_by: { id: 'admin', first_name: 'Admin', last_name: 'User' },
+                    due_date: values.due_date,
                     assignment_type: 'individual',
-                    status: 'assigned',
-                    progress_percentage: 0,
-                    started_at: null,
-                    completed_at: null,
-                    due_date: values.due_date?.toISOString() || null,
-                    date_created: new Date().toISOString(),
-                }));
-                setEnrollments(prev => [...newEnrollments, ...prev]);
-                message.success(`Đã gán khóa học cho ${newEnrollments.length} người`);
-            }
-            setModalVisible(false);
-            setLoading(false);
-        }, 500);
+                })
+            );
+
+            Promise.all(promises)
+                .then(() => {
+                    setModalVisible(false);
+                    queryClient.invalidateQueries(queryKeys.enrollments.all);
+                })
+                .catch(showError);
+        }
     };
 
     // Handle bulk delete
     const handleBulkDelete = () => {
-        setLoading(true);
-        setTimeout(() => {
-            setEnrollments(prev => prev.filter(e => !selectedRowKeys.includes(e.id)));
-            setSelectedRowKeys([]);
-            message.success(`Đã xóa ${selectedRowKeys.length} đăng ký`);
-            setLoading(false);
-        }, 500);
+        // Sequentially delete or use deleteMany if available
+        const promises = selectedRowKeys.map(id => deleteMutation.mutateAsync(id));
+        Promise.all(promises)
+            .then(() => {
+                setSelectedRowKeys([]);
+                queryClient.invalidateQueries(queryKeys.enrollments.all);
+                showSuccess(`Đã xóa ${selectedRowKeys.length} đăng ký`);
+            })
+            .catch(showError);
     };
 
     // Handle refresh
     const handleRefresh = () => {
-        setLoading(true);
-        setTimeout(() => {
-            setEnrollments(mockEnrollments);
-            message.success('Đã làm mới danh sách');
-            setLoading(false);
-        }, 500);
+        queryClient.invalidateQueries(queryKeys.enrollments.all);
+        message.success('Đã làm mới danh sách');
     };
 
     // Get status color
@@ -364,6 +355,7 @@ function EnrollmentListPage() {
                     individual: { label: 'Cá nhân', color: 'blue' },
                     department: { label: 'Phòng ban', color: 'green' },
                     auto: { label: 'Tự động', color: 'purple' },
+                    self: { label: 'Tự đăng ký', color: 'orange' },
                 };
                 const config = typeMap[type] || { label: type, color: 'default' };
                 return <Tag color={config.color}>{config.label}</Tag>;
@@ -494,7 +486,7 @@ function EnrollmentListPage() {
                             onChange={setCourseFilter}
                             options={[
                                 { value: null, label: 'Tất cả khóa học' },
-                                ...mockCourses.map(c => ({ value: c.id, label: c.title })),
+                                ...courses.map(c => ({ value: c.id, label: c.title })),
                             ]}
                             style={{ width: '100%' }}
                             allowClear
@@ -534,10 +526,10 @@ function EnrollmentListPage() {
             </Card>
 
             {/* Table */}
-            {filteredEnrollments.length > 0 ? (
+            {enrollments.length > 0 || loading ? (
                 <Table
                     columns={columns}
-                    dataSource={filteredEnrollments}
+                    dataSource={enrollments}
                     rowKey="id"
                     loading={loading}
                     rowSelection={rowSelection}
@@ -564,7 +556,7 @@ function EnrollmentListPage() {
                 onCancel={() => setModalVisible(false)}
                 onSave={handleModalSave}
                 initialValues={editingEnrollment}
-                loading={loading}
+                loading={createMutation.isPending || deleteMutation.isPending}
             />
         </div>
     );

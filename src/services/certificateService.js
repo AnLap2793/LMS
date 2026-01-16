@@ -1,21 +1,10 @@
 /**
- * Certificate Service - Mock data cho chứng chỉ
- * Sử dụng mock data thay vì Directus API
+ * Certificate Service - Quản lý chứng chỉ
+ * Directus Implementation
  */
-import {
-    mockCertificates,
-    mockCertificateTemplates,
-    getCertificatesByUserId,
-    getCertificatesByCourseId,
-    getActiveTemplate,
-    generateCertificateNumber,
-} from '../mocks/certificates';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Simulate current user ID
-const CURRENT_USER_ID = 'u5';
+import { directus } from './directus';
+import { readItems, createItem, updateItem, deleteItem, readMe, aggregate } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 
 export const certificateService = {
     /**
@@ -24,71 +13,54 @@ export const certificateService = {
      * @returns {Promise<Array>} Danh sách certificates
      */
     getAll: async (params = {}) => {
-        await delay();
         const { search, course_id, user_id, page = 1, limit = 10 } = params;
 
-        let filteredCerts = [...mockCertificates];
+        const filter = {};
 
-        // Filter by search
+        if (course_id) filter.course_id = { _eq: course_id };
+        if (user_id) filter.user_id = { _eq: user_id };
+
+        // Search logic might need adjustment based on Directus configuration for relational search
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredCerts = filteredCerts.filter(
-                c =>
-                    c.certificate_number.toLowerCase().includes(searchLower) ||
-                    c.user?.first_name?.toLowerCase().includes(searchLower) ||
-                    c.user?.last_name?.toLowerCase().includes(searchLower) ||
-                    c.course?.title?.toLowerCase().includes(searchLower)
-            );
+            filter.certificate_number = { _icontains: search };
         }
 
-        // Filter by course
-        if (course_id) {
-            filteredCerts = filteredCerts.filter(c => c.course_id === course_id);
-        }
-
-        // Filter by user
-        if (user_id) {
-            filteredCerts = filteredCerts.filter(c => c.user_id === user_id);
-        }
-
-        // Sort by issued_at desc
-        filteredCerts.sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at));
-
-        // Pagination
-        const offset = (page - 1) * limit;
-        return filteredCerts.slice(offset, offset + limit);
+        return await directus.request(
+            readItems(COLLECTIONS.CERTIFICATES, {
+                filter,
+                fields: [
+                    '*',
+                    'user.id',
+                    'user.first_name',
+                    'user.last_name',
+                    'user.email',
+                    'course.id',
+                    'course.title',
+                ],
+                sort: ['-issued_at'],
+                limit,
+                page,
+            })
+        );
     },
 
     /**
      * Đếm tổng số certificates
-     * @param {Object} params - Filter params
-     * @returns {Promise<number>} Tổng số
      */
     count: async (params = {}) => {
-        await delay(100);
         const { search, course_id, user_id } = params;
+        const filter = {};
+        if (course_id) filter.course_id = { _eq: course_id };
+        if (user_id) filter.user_id = { _eq: user_id };
+        if (search) filter.certificate_number = { _icontains: search };
 
-        let filteredCerts = [...mockCertificates];
-
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filteredCerts = filteredCerts.filter(
-                c =>
-                    c.certificate_number.toLowerCase().includes(searchLower) ||
-                    c.user?.first_name?.toLowerCase().includes(searchLower) ||
-                    c.user?.last_name?.toLowerCase().includes(searchLower)
-            );
-        }
-
-        if (course_id) {
-            filteredCerts = filteredCerts.filter(c => c.course_id === course_id);
-        }
-
-        if (user_id) {
-            filteredCerts = filteredCerts.filter(c => c.user_id === user_id);
-        }
-
-        return filteredCerts.length;
+        const result = await directus.request(
+            aggregate(COLLECTIONS.CERTIFICATES, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
+        return Number(result[0]?.count) || 0;
     },
 
     /**
@@ -96,8 +68,15 @@ export const certificateService = {
      * @returns {Promise<Array>} Danh sách certificates
      */
     getMyCertificates: async () => {
-        await delay();
-        return getCertificatesByUserId(CURRENT_USER_ID).sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at));
+        const user = await directus.request(readMe());
+
+        return await directus.request(
+            readItems(COLLECTIONS.CERTIFICATES, {
+                filter: { user_id: { _eq: user.id } },
+                fields: ['*', 'course.id', 'course.title'],
+                sort: ['-issued_at'],
+            })
+        );
     },
 
     /**
@@ -106,111 +85,86 @@ export const certificateService = {
      * @returns {Promise<Object>} Chi tiết certificate
      */
     getById: async certificateId => {
-        await delay();
-        const cert = mockCertificates.find(c => c.id === certificateId);
-
-        if (!cert) {
-            throw new Error('Certificate not found');
-        }
-
-        return cert;
+        return await directus
+            .request(
+                readItems(COLLECTIONS.CERTIFICATES, {
+                    filter: { id: { _eq: certificateId } },
+                    fields: ['*', 'user.*', 'course.*'],
+                    limit: 1,
+                })
+            )
+            .then(res => res[0]);
     },
 
     /**
      * Lấy certificate theo mã số
-     * @param {string} certificateNumber - Mã số certificate
-     * @returns {Promise<Object|null>} Certificate hoặc null
      */
     getByNumber: async certificateNumber => {
-        await delay();
-        return mockCertificates.find(c => c.certificate_number === certificateNumber) || null;
-    },
-
-    /**
-     * Lấy certificates theo user ID
-     * @param {string} userId - ID user
-     * @returns {Promise<Array>} Danh sách certificates
-     */
-    getByUserId: async userId => {
-        await delay();
-        return getCertificatesByUserId(userId);
-    },
-
-    /**
-     * Lấy certificates theo course ID
-     * @param {string} courseId - ID khóa học
-     * @returns {Promise<Array>} Danh sách certificates
-     */
-    getByCourseId: async courseId => {
-        await delay();
-        return getCertificatesByCourseId(courseId);
-    },
-
-    /**
-     * Kiểm tra user có certificate cho course không
-     * @param {string} courseId - ID khóa học
-     * @returns {Promise<Object|null>} Certificate hoặc null
-     */
-    checkMyCertificate: async courseId => {
-        await delay();
-        return mockCertificates.find(c => c.user_id === CURRENT_USER_ID && c.course_id === courseId) || null;
+        const result = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATES, {
+                filter: { certificate_number: { _eq: certificateNumber } },
+                fields: ['*', 'user.first_name', 'user.last_name', 'course.title'],
+                limit: 1,
+            })
+        );
+        return result[0] || null;
     },
 
     /**
      * Cấp certificate mới
      * @param {Object} data - Dữ liệu { user_id, course_id }
-     * @returns {Promise<Object>} Certificate đã cấp
      */
     issue: async data => {
-        await delay(500);
+        // Check existing
+        const existing = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATES, {
+                filter: {
+                    user_id: { _eq: data.user_id },
+                    course_id: { _eq: data.course_id },
+                },
+                limit: 1,
+            })
+        );
 
-        // Check if certificate already exists
-        const existing = mockCertificates.find(c => c.user_id === data.user_id && c.course_id === data.course_id);
-
-        if (existing) {
+        if (existing.length > 0) {
             throw new Error('Certificate already issued for this course');
         }
 
-        const template = getActiveTemplate();
-        const newCert = {
-            id: `cert${Date.now()}`,
-            user_id: data.user_id,
-            user: data.user || { id: data.user_id },
-            course_id: data.course_id,
-            course: data.course || { id: data.course_id },
-            certificate_number: generateCertificateNumber(),
-            file: template?.file || null,
-            issued_at: new Date().toISOString(),
-        };
+        // Get active template
+        const templates = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
+                filter: { is_active: { _eq: true } },
+                limit: 1,
+            })
+        );
+        const template = templates[0];
 
-        mockCertificates.push(newCert);
-        return newCert;
+        // Generate number (simple timestamp based for now, ideally backend logic)
+        const certNumber = `CERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        return await directus.request(
+            createItem(COLLECTIONS.CERTIFICATES, {
+                user_id: data.user_id,
+                course_id: data.course_id,
+                certificate_number: certNumber,
+                template_id: template?.id,
+                issued_at: new Date().toISOString(),
+            })
+        );
     },
 
     /**
      * Thu hồi certificate
-     * @param {string} certificateId - ID certificate
-     * @returns {Promise<void>}
      */
     revoke: async certificateId => {
-        await delay(500);
-        const index = mockCertificates.findIndex(c => c.id === certificateId);
-
-        if (index === -1) {
-            throw new Error('Certificate not found');
-        }
-
-        mockCertificates.splice(index, 1);
+        return await directus.request(deleteItem(COLLECTIONS.CERTIFICATES, certificateId));
     },
 
     /**
      * Xác thực certificate
-     * @param {string} certificateNumber - Mã số certificate
-     * @returns {Promise<Object>} Kết quả xác thực
      */
     verify: async certificateNumber => {
-        await delay();
-        const cert = mockCertificates.find(c => c.certificate_number === certificateNumber);
+        const cert = await certificateService.getByNumber(certificateNumber);
 
         if (!cert) {
             return {
@@ -232,78 +186,60 @@ export const certificateService = {
 
     /**
      * Lấy danh sách certificate templates
-     * @returns {Promise<Array>} Danh sách templates
      */
     getTemplates: async () => {
-        await delay();
-        return mockCertificateTemplates;
+        return await directus.request(
+            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
+                sort: ['-date_created'],
+            })
+        );
     },
 
     /**
-     * Lấy template đang active
-     * @returns {Promise<Object|null>} Template hoặc null
+     * Tạo template mới
      */
-    getActiveTemplate: async () => {
-        await delay();
-        return getActiveTemplate();
+    createTemplate: async data => {
+        return await directus.request(createItem(COLLECTIONS.CERTIFICATE_TEMPLATES, data));
+    },
+
+    /**
+     * Cập nhật template
+     */
+    updateTemplate: async (id, data) => {
+        return await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, id, data));
+    },
+
+    /**
+     * Xóa template
+     */
+    deleteTemplate: async id => {
+        return await directus.request(deleteItem(COLLECTIONS.CERTIFICATE_TEMPLATES, id));
     },
 
     /**
      * Cập nhật template active
-     * @param {string} templateId - ID template
-     * @returns {Promise<Object>} Template đã cập nhật
      */
     setActiveTemplate: async templateId => {
-        await delay(500);
+        // This logic is tricky. Need to unset others.
+        // Directus doesn't support batch update with different values easily in one go for this "radio" logic without a custom endpoint or flow.
+        // For client-side simulation:
 
-        // Deactivate all templates
-        mockCertificateTemplates.forEach(t => {
-            t.is_active = false;
-        });
+        // 1. Get all active templates
+        const activeTemplates = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
+                filter: { is_active: { _eq: true } },
+                fields: ['id'],
+            })
+        );
 
-        // Activate selected template
-        const index = mockCertificateTemplates.findIndex(t => t.id === templateId);
-        if (index === -1) {
-            throw new Error('Template not found');
+        // 2. Deactivate them
+        for (const t of activeTemplates) {
+            if (t.id !== templateId) {
+                await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, t.id, { is_active: false }));
+            }
         }
 
-        mockCertificateTemplates[index].is_active = true;
-        return mockCertificateTemplates[index];
-    },
-
-    /**
-     * Lấy thống kê certificates
-     * @returns {Promise<Object>} Thống kê
-     */
-    getStats: async () => {
-        await delay(200);
-
-        const now = new Date();
-        const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const thisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-
-        const thisMonthCerts = mockCertificates.filter(c => new Date(c.issued_at) >= thisMonth);
-        const thisWeekCerts = mockCertificates.filter(c => new Date(c.issued_at) >= thisWeek);
-
-        // Count by course
-        const courseCounts = {};
-        mockCertificates.forEach(c => {
-            courseCounts[c.course_id] = (courseCounts[c.course_id] || 0) + 1;
-        });
-
-        const topCourse = Object.entries(courseCounts).sort((a, b) => b[1] - a[1])[0];
-
-        return {
-            totalIssued: mockCertificates.length,
-            issuedThisMonth: thisMonthCerts.length,
-            issuedThisWeek: thisWeekCerts.length,
-            topCourse: topCourse
-                ? {
-                      id: topCourse[0],
-                      title: mockCertificates.find(c => c.course_id === topCourse[0])?.course?.title || 'N/A',
-                      count: topCourse[1],
-                  }
-                : null,
-        };
+        // 3. Activate target
+        return await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, templateId, { is_active: true }));
     },
 };

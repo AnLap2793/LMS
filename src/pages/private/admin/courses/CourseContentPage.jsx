@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Space, Typography, Collapse, List, Tag, Tooltip, Popconfirm, Empty, message } from 'antd';
+import { Card, Button, Space, Typography, Collapse, List, Tag, Tooltip, Popconfirm, Empty, Spin } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
@@ -25,7 +25,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { PageHeader } from '../../../../components/common';
 import ModuleFormModal from '../../../../components/admin/courses/ModuleFormModal';
 import LessonFormModal from '../../../../components/admin/courses/LessonFormModal';
-import { mockCourses, getModulesWithLessons } from '../../../../mocks';
+import { useCourseDetail } from '../../../../hooks/useCourses';
+import { useCreateModule, useUpdateModule, useDeleteModule, useUpdateModuleOrder } from '../../../../hooks/useModules';
+import { useCreateLesson, useUpdateLesson, useDeleteLesson, useUpdateLessonOrder } from '../../../../hooks/useLessons';
 import { LESSON_TYPE_MAP } from '../../../../constants/lms';
 
 const { Text } = Typography;
@@ -138,7 +140,7 @@ function SortableLessonItem({ lesson, onEdit, onDelete }) {
                     </Tooltip>
                     <Popconfirm
                         title="Xóa bài học này?"
-                        onConfirm={() => onDelete(lesson.id)}
+                        onConfirm={() => handleDeleteLesson(lesson.id, module.id)} // Pass moduleId
                         okText="Xóa"
                         cancelText="Hủy"
                         okButtonProps={{ danger: true }}
@@ -161,12 +163,31 @@ function CourseContentPage() {
     const { id: courseId } = useParams();
     const navigate = useNavigate();
 
-    // Find course
-    const course = mockCourses.find(c => c.id === courseId) || { title: 'Khóa học' };
+    // Data Hooks
+    const { data: course, isLoading } = useCourseDetail(courseId);
+
+    // Mutation Hooks - Modules
+    const createModule = useCreateModule();
+    const updateModule = useUpdateModule();
+    const deleteModule = useDeleteModule();
+    const updateModuleOrder = useUpdateModuleOrder();
+
+    // Mutation Hooks - Lessons
+    const createLesson = useCreateLesson();
+    const updateLesson = useUpdateLesson();
+    const deleteLesson = useDeleteLesson();
+    const updateLessonOrder = useUpdateLessonOrder();
 
     // State
-    const [modules, setModules] = useState(() => getModulesWithLessons(courseId));
+    const [modules, setModules] = useState([]);
     const [activeModuleId, setActiveModuleId] = useState(null);
+
+    // Sync state with data
+    useEffect(() => {
+        if (course?.modules) {
+            setModules(course.modules);
+        }
+    }, [course]);
 
     // Modal states
     const [moduleModalOpen, setModuleModalOpen] = useState(false);
@@ -191,9 +212,14 @@ function CourseContentPage() {
             setModules(items => {
                 const oldIndex = items.findIndex(m => m.id === active.id);
                 const newIndex = items.findIndex(m => m.id === over.id);
-                return arrayMove(items, oldIndex, newIndex);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Call API to update order
+                const orderedIds = newItems.map(m => m.id);
+                updateModuleOrder.mutate({ courseId, orderedIds });
+
+                return newItems;
             });
-            message.success('Đã cập nhật thứ tự module');
         }
     };
 
@@ -202,23 +228,25 @@ function CourseContentPage() {
         const { active, over } = event;
 
         if (active.id !== over?.id) {
-            setModules(prevModules =>
-                prevModules.map(module => {
+            setModules(prevModules => {
+                const updatedModules = prevModules.map(module => {
                     if (module.id !== moduleId) return module;
 
                     const oldIndex = module.lessons.findIndex(l => l.id === active.id);
                     const newIndex = module.lessons.findIndex(l => l.id === over.id);
+                    const newLessons = arrayMove(module.lessons, oldIndex, newIndex);
+
+                    // Call API to update order
+                    const orderedIds = newLessons.map(l => l.id);
+                    updateLessonOrder.mutate({ moduleId, orderedIds });
 
                     return {
                         ...module,
-                        lessons: arrayMove(module.lessons, oldIndex, newIndex).map((lesson, index) => ({
-                            ...lesson,
-                            sort: index + 1,
-                        })),
+                        lessons: newLessons,
                     };
-                })
-            );
-            message.success('Đã cập nhật thứ tự bài học');
+                });
+                return updatedModules;
+            });
         }
     };
 
@@ -237,27 +265,22 @@ function CourseContentPage() {
         setModuleModalOpen(true);
     };
 
-    const handleDeleteModule = moduleId => {
+    const handleDeleteModule = async moduleId => {
+        await deleteModule.mutateAsync(moduleId);
+        // Optimistic update handled by React Query invalidation
+        // But for DnD UI smoothness we might want to update local state too
         setModules(prev => prev.filter(m => m.id !== moduleId));
-        message.success('Đã xóa module');
     };
 
-    const handleModuleSubmit = values => {
+    const handleModuleSubmit = async values => {
         if (editingModule) {
-            setModules(prev => prev.map(m => (m.id === editingModule.id ? { ...m, ...values } : m)));
-            message.success('Đã cập nhật module');
+            await updateModule.mutateAsync({ id: editingModule.id, data: values });
         } else {
-            const newModule = {
-                id: `m${Date.now()}`,
+            await createModule.mutateAsync({
                 course_id: courseId,
                 ...values,
                 sort: modules.length + 1,
-                lessons: [],
-                date_created: new Date().toISOString(),
-            };
-            setModules(prev => [...prev, newModule]);
-            setActiveModuleId(newModule.id);
-            message.success('Đã thêm module mới');
+            });
         }
         setModuleModalOpen(false);
         setEditingModule(null);
@@ -275,45 +298,50 @@ function CourseContentPage() {
         setLessonModalOpen(true);
     };
 
-    const handleDeleteLesson = lessonId => {
+    const handleDeleteLesson = async (lessonId, moduleId) => {
+        await deleteLesson.mutateAsync(lessonId);
+        // Optimistic update for UI
         setModules(prev =>
-            prev.map(module => ({
-                ...module,
-                lessons: module.lessons.filter(l => l.id !== lessonId),
-            }))
+            prev.map(module =>
+                module.id === moduleId ? { ...module, lessons: module.lessons.filter(l => l.id !== lessonId) } : module
+            )
         );
-        message.success('Đã xóa bài học');
     };
 
-    const handleLessonSubmit = values => {
+    const handleLessonSubmit = async values => {
         if (editingLesson) {
-            setModules(prev =>
-                prev.map(module => ({
-                    ...module,
-                    lessons: module.lessons.map(l => (l.id === editingLesson.id ? { ...l, ...values } : l)),
-                }))
-            );
-            message.success('Đã cập nhật bài học');
+            await updateLesson.mutateAsync({ id: editingLesson.id, data: values });
         } else {
+            // Find current max sort
             const targetModule = modules.find(m => m.id === selectedModuleId);
-            const newLesson = {
-                id: `l${Date.now()}`,
+            const currentMaxSort = targetModule?.lessons?.length || 0;
+
+            await createLesson.mutateAsync({
                 module_id: selectedModuleId,
                 ...values,
-                sort: (targetModule?.lessons?.length || 0) + 1,
-                date_created: new Date().toISOString(),
-            };
-            setModules(prev =>
-                prev.map(module =>
-                    module.id === selectedModuleId ? { ...module, lessons: [...module.lessons, newLesson] } : module
-                )
-            );
-            message.success('Đã thêm bài học mới');
+                sort: currentMaxSort + 1,
+            });
         }
         setLessonModalOpen(false);
         setEditingLesson(null);
         setSelectedModuleId(null);
     };
+
+    if (isLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
+
+    if (!course) {
+        return (
+            <Empty description="Không tìm thấy khóa học" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+                <Button onClick={() => navigate('/admin/courses')}>Quay lại danh sách</Button>
+            </Empty>
+        );
+    }
 
     // Render module panel logic removed as it's now handled by SortableModuleItem
 
@@ -416,7 +444,9 @@ function CourseContentPage() {
                                                                     key={lesson.id}
                                                                     lesson={lesson}
                                                                     onEdit={handleEditLesson}
-                                                                    onDelete={handleDeleteLesson}
+                                                                    onDelete={lessonId =>
+                                                                        handleDeleteLesson(lessonId, module.id)
+                                                                    } // Wrap to pass moduleId
                                                                 />
                                                             ))}
                                                         </SortableContext>

@@ -1,11 +1,10 @@
 /**
- * Tag Service - Mock data cho quản lý tags
- * Sử dụng mock data thay vì Directus API
+ * Tag Service - Quản lý tags
+ * Directus Implementation
  */
-import { mockTags } from '../mocks/tags';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+import { directus } from './directus';
+import { readItems, createItem, updateItem, deleteItem, aggregate } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 
 export const tagService = {
     /**
@@ -14,23 +13,22 @@ export const tagService = {
      * @returns {Promise<Array>} Danh sách tags
      */
     getAll: async (params = {}) => {
-        await delay();
         const { search, page = 1, limit = 50 } = params;
 
-        let filteredTags = [...mockTags];
+        const filter = {};
 
-        // Filter by search
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredTags = filteredTags.filter(t => t.name.toLowerCase().includes(searchLower));
+            filter.name = { _icontains: search };
         }
 
-        // Sort by name
-        filteredTags.sort((a, b) => a.name.localeCompare(b.name));
-
-        // Pagination
-        const offset = (page - 1) * limit;
-        return filteredTags.slice(offset, offset + limit);
+        return await directus.request(
+            readItems(COLLECTIONS.TAGS, {
+                filter,
+                sort: ['name'],
+                limit,
+                page,
+            })
+        );
     },
 
     /**
@@ -39,17 +37,22 @@ export const tagService = {
      * @returns {Promise<number>} Tổng số tags
      */
     count: async (params = {}) => {
-        await delay(100);
         const { search } = params;
 
-        let filteredTags = [...mockTags];
+        const filter = {};
 
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredTags = filteredTags.filter(t => t.name.toLowerCase().includes(searchLower));
+            filter.name = { _icontains: search };
         }
 
-        return filteredTags.length;
+        const result = await directus.request(
+            aggregate(COLLECTIONS.TAGS, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
+
+        return Number(result[0]?.count) || 0;
     },
 
     /**
@@ -58,14 +61,14 @@ export const tagService = {
      * @returns {Promise<Object>} Chi tiết tag
      */
     getById: async tagId => {
-        await delay();
-        const tag = mockTags.find(t => t.id === tagId);
-
-        if (!tag) {
-            throw new Error('Tag not found');
-        }
-
-        return tag;
+        return await directus
+            .request(
+                readItems(COLLECTIONS.TAGS, {
+                    filter: { id: { _eq: tagId } },
+                    limit: 1,
+                })
+            )
+            .then(res => res[0]);
     },
 
     /**
@@ -74,23 +77,24 @@ export const tagService = {
      * @returns {Promise<Object>} Tag đã tạo
      */
     create: async data => {
-        await delay(500);
-
         // Check duplicate name
-        const existing = mockTags.find(t => t.name.toLowerCase() === data.name.toLowerCase());
-        if (existing) {
+        const existing = await directus.request(
+            readItems(COLLECTIONS.TAGS, {
+                filter: { name: { _eq: data.name } },
+                limit: 1,
+            })
+        );
+
+        if (existing.length > 0) {
             throw new Error('Tag với tên này đã tồn tại');
         }
 
-        const newTag = {
-            id: `tag${Date.now()}`,
-            name: data.name,
-            color: data.color || '#1890ff',
-            date_created: new Date().toISOString(),
-        };
-
-        mockTags.push(newTag);
-        return newTag;
+        return await directus.request(
+            createItem(COLLECTIONS.TAGS, {
+                ...data,
+                color: data.color || '#1890ff',
+            })
+        );
     },
 
     /**
@@ -100,23 +104,23 @@ export const tagService = {
      * @returns {Promise<Object>} Tag đã cập nhật
      */
     update: async (id, data) => {
-        await delay(500);
-        const index = mockTags.findIndex(t => t.id === id);
-
-        if (index === -1) {
-            throw new Error('Tag not found');
-        }
-
-        // Check duplicate name
         if (data.name) {
-            const existing = mockTags.find(t => t.id !== id && t.name.toLowerCase() === data.name.toLowerCase());
-            if (existing) {
+            const existing = await directus.request(
+                readItems(COLLECTIONS.TAGS, {
+                    filter: {
+                        name: { _eq: data.name },
+                        id: { _neq: id },
+                    },
+                    limit: 1,
+                })
+            );
+
+            if (existing.length > 0) {
                 throw new Error('Tag với tên này đã tồn tại');
             }
         }
 
-        mockTags[index] = { ...mockTags[index], ...data };
-        return mockTags[index];
+        return await directus.request(updateItem(COLLECTIONS.TAGS, id, data));
     },
 
     /**
@@ -125,14 +129,7 @@ export const tagService = {
      * @returns {Promise<void>}
      */
     delete: async id => {
-        await delay(500);
-        const index = mockTags.findIndex(t => t.id === id);
-
-        if (index === -1) {
-            throw new Error('Tag not found');
-        }
-
-        mockTags.splice(index, 1);
+        return await directus.request(deleteItem(COLLECTIONS.TAGS, id));
     },
 
     /**
@@ -141,14 +138,7 @@ export const tagService = {
      * @returns {Promise<void>}
      */
     deleteMany: async ids => {
-        await delay(500);
-
-        ids.forEach(id => {
-            const index = mockTags.findIndex(t => t.id === id);
-            if (index !== -1) {
-                mockTags.splice(index, 1);
-            }
-        });
+        return await directus.request(deleteItem(COLLECTIONS.TAGS, ids));
     },
 
     /**
@@ -157,9 +147,14 @@ export const tagService = {
      * @returns {Promise<Array>} Danh sách tags
      */
     getPopular: async (limit = 10) => {
-        await delay();
-        // For mock, just return first N tags
-        return mockTags.slice(0, limit);
+        // Directus aggregate requires junction table aggregation which is complex
+        // Fallback: just return top tags for now
+        return await directus.request(
+            readItems(COLLECTIONS.TAGS, {
+                limit,
+                sort: ['name'], // Ideally sort by usage count if field exists
+            })
+        );
     },
 
     /**
@@ -167,12 +162,19 @@ export const tagService = {
      * @returns {Promise<Object>} Thống kê
      */
     getStats: async () => {
-        await delay(200);
+        const result = await directus.request(
+            aggregate(COLLECTIONS.TAGS, {
+                aggregate: { count: '*' },
+                groupBy: ['color'],
+            })
+        );
+
+        const totalResult = await directus.request(aggregate(COLLECTIONS.TAGS, { aggregate: { count: '*' } }));
+
         return {
-            total: mockTags.length,
-            // Group by color
-            byColor: mockTags.reduce((acc, tag) => {
-                acc[tag.color] = (acc[tag.color] || 0) + 1;
+            total: Number(totalResult[0]?.count) || 0,
+            byColor: result.reduce((acc, item) => {
+                acc[item.color || '#1890ff'] = Number(item.count);
                 return acc;
             }, {}),
         };

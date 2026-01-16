@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Modal, Form, Input, InputNumber, Switch, Select } from 'antd';
-import { mockCourses } from '../../../mocks';
+import { useQuery } from '@tanstack/react-query';
+import { courseService } from '../../../services/courseService';
+import { queryKeys } from '../../../constants/queryKeys';
 
 const { TextArea } = Input;
 
@@ -9,9 +11,16 @@ const { TextArea } = Input;
  * QuizFormModal Component
  * Modal form để tạo/sửa bài kiểm tra
  */
-function QuizFormModal({ open, onCancel, onSubmit, initialValues }) {
+function QuizFormModal({ open, onCancel, onSubmit, initialValues, loading }) {
     const [form] = Form.useForm();
     const isEditing = !!initialValues;
+
+    // Fetch courses for selection
+    const { data: courses = [] } = useQuery({
+        queryKey: queryKeys.courses.list({ fields: ['id', 'title'] }),
+        queryFn: () => courseService.getAll({ limit: -1, fields: ['id', 'title'] }),
+        enabled: open,
+    });
 
     // Reset form when modal opens/closes
     useEffect(() => {
@@ -48,6 +57,7 @@ function QuizFormModal({ open, onCancel, onSubmit, initialValues }) {
             onCancel={onCancel}
             okText={isEditing ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
+            confirmLoading={loading}
             destroyOnClose
             width="90%"
             style={{ maxWidth: 600 }}
@@ -72,7 +82,7 @@ function QuizFormModal({ open, onCancel, onSubmit, initialValues }) {
                 >
                     <Select
                         placeholder="Chọn khóa học"
-                        options={mockCourses.map(c => ({ value: c.id, label: c.title }))}
+                        options={courses.map(c => ({ value: c.id, label: c.title }))}
                         showSearch
                         filterOption={(input, option) =>
                             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -121,6 +131,7 @@ QuizFormModal.propTypes = {
     onCancel: PropTypes.func.isRequired,
     onSubmit: PropTypes.func.isRequired,
     initialValues: PropTypes.object,
+    loading: PropTypes.bool,
 };
 
 export default QuizFormModal;

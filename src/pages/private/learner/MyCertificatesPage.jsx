@@ -11,7 +11,9 @@ import {
     BookOutlined,
     ShareAltOutlined,
 } from '@ant-design/icons';
-import { mockCertificates } from '../../../mocks';
+import { useQuery } from '@tanstack/react-query';
+import { certificateService } from '../../../../services/certificateService';
+import { queryKeys } from '../../../../constants/queryKeys';
 
 const { Title, Text } = Typography;
 
@@ -25,9 +27,11 @@ function MyCertificatesPage() {
     const [previewVisible, setPreviewVisible] = useState(false);
     const [selectedCertificate, setSelectedCertificate] = useState(null);
 
-    // Simulate current user's certificates (based on mock data for user u5)
-    const currentUserId = 'u5';
-    const userCertificates = mockCertificates.filter(c => c.user_id === currentUserId);
+    // Fetch user's certificates
+    const { data: userCertificates = [], isLoading } = useQuery({
+        queryKey: queryKeys.certificates.mine(),
+        queryFn: () => certificateService.getMyCertificates(),
+    });
 
     // Filtered certificates
     const filteredCertificates = useMemo(() => {
@@ -48,6 +52,8 @@ function MyCertificatesPage() {
     // Handle download
     const handleDownload = certificate => {
         message.success(`Đang tải xuống: ${certificate.certificate_number}.pdf`);
+        // Logic to download file from Directus assets would go here
+        // window.open(getAssetUrl(certificate.file), '_blank');
     };
 
     // Handle share
@@ -71,7 +77,7 @@ function MyCertificatesPage() {
             {/* Stats */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={12} sm={8}>
-                    <Card size="small">
+                    <Card size="small" loading={isLoading}>
                         <Statistic
                             title="Tổng chứng chỉ"
                             value={userCertificates.length}
@@ -80,7 +86,7 @@ function MyCertificatesPage() {
                     </Card>
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Card size="small">
+                    <Card size="small" loading={isLoading}>
                         <Statistic
                             title="Năm nay"
                             value={
@@ -93,7 +99,7 @@ function MyCertificatesPage() {
                     </Card>
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Card size="small">
+                    <Card size="small" loading={isLoading}>
                         <Statistic
                             title="Khóa học hoàn thành"
                             value={userCertificates.length}
@@ -215,21 +221,23 @@ function MyCertificatesPage() {
                     ))}
                 </Row>
             ) : (
-                <Card>
-                    <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={
-                            searchText
-                                ? 'Không tìm thấy chứng chỉ phù hợp'
-                                : 'Bạn chưa có chứng chỉ nào. Hãy hoàn thành các khóa học để nhận chứng chỉ!'
-                        }
-                    >
-                        {!searchText && (
-                            <Button type="primary" onClick={() => navigate('/my-courses')}>
-                                Xem khóa học của tôi
-                            </Button>
-                        )}
-                    </Empty>
+                <Card loading={isLoading}>
+                    {!isLoading && (
+                        <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description={
+                                searchText
+                                    ? 'Không tìm thấy chứng chỉ phù hợp'
+                                    : 'Bạn chưa có chứng chỉ nào. Hãy hoàn thành các khóa học để nhận chứng chỉ!'
+                            }
+                        >
+                            {!searchText && (
+                                <Button type="primary" onClick={() => navigate('/my-courses')}>
+                                    Xem khóa học của tôi
+                                </Button>
+                            )}
+                        </Empty>
+                    )}
                 </Card>
             )}
 
@@ -290,7 +298,8 @@ function MyCertificatesPage() {
 
                             <Text style={{ fontSize: 16 }}>Chứng nhận</Text>
                             <Title level={2} style={{ margin: '8px 0', color: '#ea4544' }}>
-                                {selectedCertificate.user?.first_name} {selectedCertificate.user?.last_name}
+                                {selectedCertificate.user?.first_name || 'User'}{' '}
+                                {selectedCertificate.user?.last_name || ''}
                             </Title>
 
                             <Text style={{ fontSize: 16 }}>Đã hoàn thành khóa học</Text>
@@ -326,7 +335,7 @@ function MyCertificatesPage() {
                                 <Col span={12}>
                                     <Text type="secondary">Email học viên:</Text>
                                     <br />
-                                    <Text>{selectedCertificate.user?.email}</Text>
+                                    <Text>{selectedCertificate.user?.email || 'N/A'}</Text>
                                 </Col>
                                 <Col span={12}>
                                     <Text type="secondary">Link xác thực:</Text>

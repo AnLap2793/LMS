@@ -1,59 +1,67 @@
 /**
  * Quiz Attempt Service
  * Service layer cho lịch sử làm bài kiểm tra
- * Sử dụng mock data trong giai đoạn development
+ * Directus Implementation
  */
-import { mockQuizAttempts, mockQuizzes, mockQuizQuestions } from '../mocks/quizzes';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
-
-// In-memory store để simulate CRUD
-let attemptStore = [...mockQuizAttempts];
-
-// Mock current user ID (normally from AuthContext)
-const CURRENT_USER_ID = 'u1';
+import { directus } from './directus';
+import { readItems, readItem, createItem, readMe, aggregate } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 
 export const quizAttemptService = {
+    /**
+     * Lấy user ID hiện tại
+     */
+    getCurrentUserId: async () => {
+        const user = await directus.request(readMe({ fields: ['id'] }));
+        return user.id;
+    },
+
     /**
      * Lấy lịch sử làm bài của user hiện tại (Learner)
      * @param {Object} params - Filter params { search, passed, page, limit }
      * @returns {Promise<Object>} { data, total, page, limit }
      */
     getMyAttempts: async (params = {}) => {
-        await delay();
-
         const { search, passed, page = 1, limit = 10 } = params;
+        const userId = await quizAttemptService.getCurrentUserId();
 
-        // Filter by current user
-        let filtered = attemptStore.filter(a => a.user_id === CURRENT_USER_ID);
+        const filter = {
+            user_id: { _eq: userId },
+        };
 
-        // Filter by passed status
         if (passed !== undefined && passed !== null && passed !== '') {
-            const isPassed = passed === 'true' || passed === true;
-            filtered = filtered.filter(a => a.is_passed === isPassed);
+            filter.is_passed = { _eq: passed === 'true' || passed === true };
         }
 
-        // Filter by search (quiz title)
         if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter(a => a.quiz?.title?.toLowerCase().includes(searchLower));
+            filter.quiz_id = {
+                title: { _icontains: search },
+            };
         }
 
-        // Sort by submitted_at descending
-        filtered.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+        const items = await directus.request(
+            readItems(COLLECTIONS.QUIZ_ATTEMPTS, {
+                filter,
+                limit,
+                page,
+                sort: ['-submitted_at'],
+                fields: ['*', 'quiz_id.id', 'quiz_id.title', 'quiz_id.passing_score', 'quiz_id.total_score'],
+            })
+        );
 
-        // Pagination
-        const total = filtered.length;
-        const offset = (page - 1) * limit;
-        const data = filtered.slice(offset, offset + limit);
+        const totalResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
 
         return {
-            data,
-            total,
+            data: items,
+            total: Number(totalResult[0]?.count) || 0,
             page,
             limit,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil((Number(totalResult[0]?.count) || 0) / limit),
         };
     },
 
@@ -63,73 +71,49 @@ export const quizAttemptService = {
      * @returns {Promise<Object>} { data, total, page, limit }
      */
     getAll: async (params = {}) => {
-        await delay();
-
         const { search, quizId, userId, passed, page = 1, limit = 10 } = params;
 
-        let filtered = [...attemptStore];
+        const filter = {};
 
-        // Filter by quiz
-        if (quizId) {
-            filtered = filtered.filter(a => a.quiz_id === quizId);
-        }
+        if (quizId) filter.quiz_id = { _eq: quizId };
+        if (userId) filter.user_id = { _eq: userId };
 
-        // Filter by user
-        if (userId) {
-            filtered = filtered.filter(a => a.user_id === userId);
-        }
-
-        // Filter by passed status
         if (passed !== undefined && passed !== null && passed !== '') {
-            const isPassed = passed === 'true' || passed === true;
-            filtered = filtered.filter(a => a.is_passed === isPassed);
+            filter.is_passed = { _eq: passed === 'true' || passed === true };
         }
 
-        // Filter by search (user name or quiz title)
         if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter(
-                a =>
-                    a.quiz?.title?.toLowerCase().includes(searchLower) ||
-                    `${a.user?.first_name} ${a.user?.last_name}`.toLowerCase().includes(searchLower)
-            );
+            filter._or = [
+                { quiz_id: { title: { _icontains: search } } },
+                { user_id: { first_name: { _icontains: search } } },
+                { user_id: { last_name: { _icontains: search } } },
+            ];
         }
 
-        // Sort by submitted_at descending
-        filtered.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+        const items = await directus.request(
+            readItems(COLLECTIONS.QUIZ_ATTEMPTS, {
+                filter,
+                limit,
+                page,
+                sort: ['-submitted_at'],
+                fields: ['*', 'user_id.first_name', 'user_id.last_name', 'quiz_id.title'],
+            })
+        );
 
-        // Pagination
-        const total = filtered.length;
-        const offset = (page - 1) * limit;
-        const data = filtered.slice(offset, offset + limit);
+        const totalResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
 
         return {
-            data,
-            total,
+            data: items,
+            total: Number(totalResult[0]?.count) || 0,
             page,
             limit,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil((Number(totalResult[0]?.count) || 0) / limit),
         };
-    },
-
-    /**
-     * Lấy attempts theo quiz ID (Admin)
-     * @param {string} quizId - Quiz ID
-     * @param {Object} params - Filter params
-     * @returns {Promise<Object>} { data, total, ... }
-     */
-    getByQuiz: async (quizId, params = {}) => {
-        return quizAttemptService.getAll({ ...params, quizId });
-    },
-
-    /**
-     * Lấy attempts theo user ID (Admin)
-     * @param {string} userId - User ID
-     * @param {Object} params - Filter params
-     * @returns {Promise<Object>} { data, total, ... }
-     */
-    getByUser: async (userId, params = {}) => {
-        return quizAttemptService.getAll({ ...params, userId });
     },
 
     /**
@@ -138,23 +122,25 @@ export const quizAttemptService = {
      * @returns {Promise<Object>} Attempt với đầy đủ thông tin
      */
     getById: async attemptId => {
-        await delay(200);
+        const attempt = await directus.request(
+            readItem(COLLECTIONS.QUIZ_ATTEMPTS, attemptId, {
+                fields: ['*', 'user_id.first_name', 'user_id.last_name', 'quiz_id.*'],
+            })
+        );
 
-        const attempt = attemptStore.find(a => a.id === attemptId);
+        if (!attempt) throw new Error('Attempt not found');
 
-        if (!attempt) {
-            throw new Error('Attempt not found');
-        }
-
-        // Get quiz details
-        const quiz = mockQuizzes.find(q => q.id === attempt.quiz_id);
-
-        // Get questions for this quiz
-        const questions = mockQuizQuestions.filter(q => q.quiz_id === attempt.quiz_id).sort((a, b) => a.sort - b.sort);
+        // Fetch questions for this quiz to map answers
+        const questions = await directus.request(
+            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
+                filter: { quiz_id: { _eq: attempt.quiz_id.id } },
+                sort: ['sort'],
+            })
+        );
 
         return {
             ...attempt,
-            quiz,
+            quiz: attempt.quiz_id,
             questions,
         };
     },
@@ -165,19 +151,15 @@ export const quizAttemptService = {
      * @returns {Promise<Object>} Created attempt
      */
     create: async data => {
-        await delay();
+        const userId = await quizAttemptService.getCurrentUserId();
 
-        const newAttempt = {
-            id: `qa-${Date.now()}`,
-            user_id: CURRENT_USER_ID,
-            user: { id: CURRENT_USER_ID, first_name: 'Nguyễn', last_name: 'Văn A' }, // Mock user
-            ...data,
-            started_at: data.started_at || new Date().toISOString(),
-            submitted_at: new Date().toISOString(),
-        };
-
-        attemptStore = [newAttempt, ...attemptStore];
-        return newAttempt;
+        return await directus.request(
+            createItem(COLLECTIONS.QUIZ_ATTEMPTS, {
+                ...data,
+                user_id: userId,
+                submitted_at: new Date().toISOString(),
+            })
+        );
     },
 
     /**
@@ -186,8 +168,21 @@ export const quizAttemptService = {
      * @returns {Promise<number>} Số lượt đã làm
      */
     countMyAttempts: async quizId => {
-        await delay(100);
-        return attemptStore.filter(a => a.user_id === CURRENT_USER_ID && a.quiz_id === quizId).length;
+        const userId = await quizAttemptService.getCurrentUserId();
+
+        const result = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
+                aggregate: { count: '*' },
+                query: {
+                    filter: {
+                        user_id: { _eq: userId },
+                        quiz_id: { _eq: quizId },
+                    },
+                },
+            })
+        );
+
+        return Number(result[0]?.count) || 0;
     },
 
     /**
@@ -195,47 +190,68 @@ export const quizAttemptService = {
      * @returns {Promise<Object>} Statistics
      */
     getStats: async () => {
-        await delay(100);
+        const totalResult = await directus.request(aggregate(COLLECTIONS.QUIZ_ATTEMPTS, { aggregate: { count: '*' } }));
+        const total = Number(totalResult[0]?.count) || 0;
 
-        const total = attemptStore.length;
-        const passed = attemptStore.filter(a => a.is_passed).length;
-        const totalScore = attemptStore.reduce((sum, a) => sum + (a.score || 0), 0);
+        const passedResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
+                aggregate: { count: '*' },
+                query: { filter: { is_passed: { _eq: true } } },
+            })
+        );
+        const passed = Number(passedResult[0]?.count) || 0;
+
+        const scoreResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, { aggregate: { avg: 'score' } })
+        );
+        const avgScore = Number(scoreResult[0]?.avg?.score) || 0;
+
+        const quizzesResult = await directus.request(aggregate(COLLECTIONS.QUIZZES, { aggregate: { count: '*' } }));
 
         return {
             totalAttempts: total,
             passedAttempts: passed,
             failedAttempts: total - passed,
             passRate: total > 0 ? Math.round((passed / total) * 100) : 0,
-            averageScore: total > 0 ? Math.round(totalScore / total) : 0,
-            totalQuizzes: mockQuizzes.length,
+            averageScore: Math.round(avgScore),
+            totalQuizzes: Number(quizzesResult[0]?.count) || 0,
         };
     },
 
     /**
      * Lấy danh sách quizzes cho filter dropdown
-     * @returns {Promise<Array>} List of quizzes
      */
     getQuizzesForFilter: async () => {
-        await delay(100);
-        return mockQuizzes.map(q => ({
-            id: q.id,
-            title: q.title,
-        }));
+        return await directus.request(
+            readItems(COLLECTIONS.QUIZZES, {
+                fields: ['id', 'title'],
+                sort: ['title'],
+            })
+        );
     },
 
     /**
-     * Lấy phân tích chi tiết câu hỏi cho một bài kiểm tra
-     * @param {string} quizId - Quiz ID
-     * @returns {Promise<Object>} Analysis data
+     * Lấy phân tích chi tiết câu hỏi
      */
     getQuizAnalysis: async quizId => {
-        await delay(300);
-
         // 1. Get questions
-        const questions = mockQuizQuestions.filter(q => q.quiz_id === quizId);
+        const questions = await directus.request(
+            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
+                filter: { quiz_id: { _eq: quizId } },
+                sort: ['sort'],
+            })
+        );
 
-        // 2. Get attempts
-        const attempts = attemptStore.filter(a => a.quiz_id === quizId);
+        // 2. Get attempts (limit to 100 recent for analysis performance)
+        const attempts = await directus.request(
+            readItems(COLLECTIONS.QUIZ_ATTEMPTS, {
+                filter: { quiz_id: { _eq: quizId } },
+                limit: 100,
+                sort: ['-submitted_at'],
+                fields: ['score', 'is_passed', 'answers'],
+            })
+        );
+
         const totalAttempts = attempts.length;
 
         if (totalAttempts === 0) {
@@ -245,7 +261,7 @@ export const quizAttemptService = {
             };
         }
 
-        // 3. Calculate summary stats
+        // 3. Process data
         const totalScore = attempts.reduce((sum, a) => sum + (a.score || 0), 0);
         const passedCount = attempts.filter(a => a.is_passed).length;
 
@@ -255,32 +271,26 @@ export const quizAttemptService = {
             passRate: Math.round((passedCount / totalAttempts) * 100),
         };
 
-        // 4. Analyze per question
         const questionAnalysis = questions.map(q => {
             let correctCount = 0;
-            const answerDistribution = {}; // { 'A': 10, 'B': 5 ... }
+            const answerDistribution = {};
 
-            // Initialize distribution keys based on question type
-            if (q.type === 'single' || q.type === 'multiple') {
-                if (q.options) {
-                    Object.keys(q.options).forEach(key => {
-                        if (key !== 'correct') answerDistribution[key] = 0;
-                    });
-                }
+            if (q.options && typeof q.options === 'object') {
+                Object.keys(q.options).forEach(key => {
+                    if (key !== 'correct') answerDistribution[key] = 0;
+                });
             }
 
             attempts.forEach(attempt => {
                 const userAnswer = attempt.answers?.[q.id];
-                if (!userAnswer) return; // Skip if unanswered
+                if (!userAnswer) return;
 
-                // Check correctness
                 let isCorrect = false;
+
                 if (q.type === 'single') {
                     if (q.options?.correct && userAnswer === q.options.correct[0]) isCorrect = true;
-                    // Count distribution
                     answerDistribution[userAnswer] = (answerDistribution[userAnswer] || 0) + 1;
                 } else if (q.type === 'multiple') {
-                    // For multiple, exact match of array
                     const correctArr = q.options?.correct || [];
                     if (
                         Array.isArray(userAnswer) &&
@@ -289,23 +299,17 @@ export const quizAttemptService = {
                     ) {
                         isCorrect = true;
                     }
-                    // Count distribution (each selected option counts)
                     if (Array.isArray(userAnswer)) {
                         userAnswer.forEach(opt => {
                             answerDistribution[opt] = (answerDistribution[opt] || 0) + 1;
                         });
                     }
-                } else {
-                    // Text - simplistic check for mock
-                    if (userAnswer) isCorrect = true; // Assume graded correct if exists in mock
                 }
 
                 if (isCorrect) correctCount++;
             });
 
             const correctRate = Math.round((correctCount / totalAttempts) * 100);
-
-            // Determine status
             let status = 'normal';
             if (correctRate < 40) status = 'hard';
             if (correctRate > 90) status = 'easy';
@@ -322,9 +326,6 @@ export const quizAttemptService = {
             };
         });
 
-        return {
-            summary,
-            questions: questionAnalysis,
-        };
+        return { summary, questions: questionAnalysis };
     },
 };

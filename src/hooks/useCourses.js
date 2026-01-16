@@ -1,10 +1,65 @@
 /**
  * React Query Hooks cho Courses (Learner features)
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { courseService } from '../services/courseService';
 import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
+import { showSuccess } from '../utils/errorHandler';
+
+/**
+ * Hook lấy tất cả khóa học (Admin)
+ */
+export function useAllCourses(params = {}) {
+    return useQuery({
+        queryKey: queryKeys.courses.list(params),
+        queryFn: () => courseService.getAllCourses(params),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook tạo khóa học
+ */
+export function useCreateCourse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: courseService.create,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+            showSuccess('Tạo khóa học thành công!');
+        },
+    });
+}
+
+/**
+ * Hook cập nhật khóa học
+ */
+export function useUpdateCourse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }) => courseService.update(id, data),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(variables.id) });
+            showSuccess('Cập nhật khóa học thành công!');
+        },
+    });
+}
+
+/**
+ * Hook xóa khóa học
+ */
+export function useDeleteCourse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: courseService.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+            showSuccess('Xóa khóa học thành công!');
+        },
+    });
+}
 
 /**
  * Hook lấy danh sách khóa học published cho catalog

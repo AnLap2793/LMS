@@ -14,7 +14,6 @@ import {
     Modal,
     Form,
     Input,
-    Image,
     Statistic,
 } from 'antd';
 import {
@@ -27,8 +26,11 @@ import {
     EyeOutlined,
     ReloadOutlined,
 } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../../../components/common';
-import { mockCertificateTemplates } from '../../../../mocks';
+import { certificateService } from '../../../../services/certificateService';
+import { queryKeys } from '../../../../constants/queryKeys';
+import { showSuccess, showError } from '../../../../utils/errorHandler';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -38,23 +40,61 @@ const { TextArea } = Input;
  * Quản lý mẫu chứng chỉ
  */
 function CertificateTemplatesPage() {
-    const [templates, setTemplates] = useState(mockCertificateTemplates);
-    const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
     const [previewTemplate, setPreviewTemplate] = useState(null);
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [form] = Form.useForm();
+    const queryClient = useQueryClient();
+
+    // Fetch templates
+    const { data: templates = [], isLoading: loading } = useQuery({
+        queryKey: ['certificate-templates'], // Add to queryKeys if not present
+        queryFn: certificateService.getTemplates,
+    });
+
+    // Mutations
+    const createMutation = useMutation({
+        mutationFn: certificateService.createTemplate,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['certificate-templates']);
+            showSuccess('Đã thêm template mới');
+            setModalVisible(false);
+        },
+        onError: showError,
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => certificateService.updateTemplate(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['certificate-templates']);
+            showSuccess('Đã cập nhật template');
+            setModalVisible(false);
+        },
+        onError: showError,
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: certificateService.deleteTemplate,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['certificate-templates']);
+            showSuccess('Đã xóa template');
+        },
+        onError: showError,
+    });
+
+    const setActiveMutation = useMutation({
+        mutationFn: certificateService.setActiveTemplate,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['certificate-templates']);
+            showSuccess('Đã cập nhật template mặc định');
+        },
+        onError: showError,
+    });
 
     // Handle set active template
     const handleSetActive = templateId => {
-        setTemplates(prev =>
-            prev.map(t => ({
-                ...t,
-                is_active: t.id === templateId,
-            }))
-        );
-        message.success('Đã cập nhật template mặc định');
+        setActiveMutation.mutate(templateId);
     };
 
     // Handle delete
@@ -64,8 +104,7 @@ function CertificateTemplatesPage() {
             message.error('Không thể xóa template đang được sử dụng');
             return;
         }
-        setTemplates(prev => prev.filter(t => t.id !== templateId));
-        message.success('Đã xóa template');
+        deleteMutation.mutate(templateId);
     };
 
     // Handle preview
@@ -95,36 +134,21 @@ function CertificateTemplatesPage() {
     const handleModalSave = async () => {
         try {
             const values = await form.validateFields();
-            setLoading(true);
 
-            setTimeout(() => {
-                if (editingTemplate) {
-                    // Update
-                    setTemplates(prev =>
-                        prev.map(t =>
-                            t.id === editingTemplate.id
-                                ? { ...t, name: values.name, description: values.description }
-                                : t
-                        )
-                    );
-                    message.success('Đã cập nhật template');
-                } else {
-                    // Create
-                    const newTemplate = {
-                        id: `tpl${Date.now()}`,
-                        name: values.name,
-                        description: values.description,
-                        file: { id: 'new-file', filename_download: 'new-template.pdf', type: 'application/pdf' },
-                        is_active: false,
-                        preview_url: null,
-                        date_created: new Date().toISOString(),
-                    };
-                    setTemplates(prev => [...prev, newTemplate]);
-                    message.success('Đã thêm template mới');
-                }
-                setModalVisible(false);
-                setLoading(false);
-            }, 500);
+            if (editingTemplate) {
+                updateMutation.mutate({
+                    id: editingTemplate.id,
+                    data: { name: values.name, description: values.description },
+                });
+            } else {
+                // For simplified logic, assuming file upload is handled separately or we create placeholder
+                createMutation.mutate({
+                    name: values.name,
+                    description: values.description,
+                    is_active: false,
+                    // In real implementation, handle file upload to directus_files first
+                });
+            }
         } catch (error) {
             console.error('Validation failed:', error);
         }
@@ -132,12 +156,8 @@ function CertificateTemplatesPage() {
 
     // Handle refresh
     const handleRefresh = () => {
-        setLoading(true);
-        setTimeout(() => {
-            setTemplates(mockCertificateTemplates);
-            message.success('Đã làm mới danh sách');
-            setLoading(false);
-        }, 500);
+        queryClient.invalidateQueries(['certificate-templates']);
+        message.success('Đã làm mới danh sách');
     };
 
     // Upload props
@@ -155,9 +175,8 @@ function CertificateTemplatesPage() {
                 message.error('File phải nhỏ hơn 10MB!');
                 return false;
             }
-            // For demo, just show success message
-            message.success(`Đã upload file: ${file.name}`);
-            return false; // Prevent actual upload
+            message.success(`Đã chọn file: ${file.name}`);
+            return false; // Prevent auto upload
         },
     };
 
@@ -182,7 +201,7 @@ function CertificateTemplatesPage() {
             {/* Statistics */}
             <Row gutter={16} style={{ marginBottom: 24 }}>
                 <Col xs={12} sm={8}>
-                    <Card size="small">
+                    <Card size="small" loading={loading}>
                         <Statistic
                             title="Tổng template"
                             value={templates.length}
@@ -191,7 +210,7 @@ function CertificateTemplatesPage() {
                     </Card>
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Card size="small">
+                    <Card size="small" loading={loading}>
                         <Statistic
                             title="Đang sử dụng"
                             value={templates.filter(t => t.is_active).length}
@@ -203,7 +222,7 @@ function CertificateTemplatesPage() {
             </Row>
 
             {/* Template Cards */}
-            {templates.length > 0 ? (
+            {templates.length > 0 || loading ? (
                 <Row gutter={[16, 16]}>
                     {templates.map(template => (
                         <Col xs={24} sm={12} lg={8} key={template.id}>
@@ -270,7 +289,12 @@ function CertificateTemplatesPage() {
                                             cancelText="Hủy"
                                             okButtonProps={{ danger: true }}
                                         >
-                                            <Button type="text" danger icon={<DeleteOutlined />}>
+                                            <Button
+                                                type="text"
+                                                danger
+                                                icon={<DeleteOutlined />}
+                                                loading={deleteMutation.isPending}
+                                            >
                                                 Xóa
                                             </Button>
                                         </Popconfirm>
@@ -302,6 +326,7 @@ function CertificateTemplatesPage() {
                                                     <Button
                                                         type="link"
                                                         size="small"
+                                                        loading={setActiveMutation.isPending}
                                                         onClick={() => handleSetActive(template.id)}
                                                     >
                                                         Đặt làm mặc định
@@ -355,7 +380,7 @@ function CertificateTemplatesPage() {
                 onOk={handleModalSave}
                 okText={editingTemplate ? 'Cập nhật' : 'Thêm mới'}
                 cancelText="Hủy"
-                confirmLoading={loading}
+                confirmLoading={createMutation.isPending || updateMutation.isPending}
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -421,7 +446,7 @@ function CertificateTemplatesPage() {
                         </div>
                         {previewTemplate && (
                             <div style={{ marginTop: 16 }}>
-                                <Tag color="blue">{previewTemplate.file?.filename_download}</Tag>
+                                <Tag color="blue">{previewTemplate.file?.filename_download || 'sample.pdf'}</Tag>
                             </div>
                         )}
                     </div>

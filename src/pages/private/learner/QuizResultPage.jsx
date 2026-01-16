@@ -68,14 +68,50 @@ function QuizResultPage() {
 
     // Check answer correctness
     const isCorrect = (question, userAnswer) => {
+        let options = question.options;
+        if (typeof options === 'string') {
+            try {
+                options = JSON.parse(options);
+            } catch (e) {
+                options = {};
+            }
+        }
+
+        // Handle options wrapper if necessary
+        if (!Array.isArray(options) && options?.options) {
+            options = options; // it's the wrapper
+        }
+
+        const correctArr = options.correct; // Might be array or string
+
         if (question.type === 'multiple') {
+            const correctIds = Array.isArray(correctArr) ? correctArr : [correctArr];
             return (
                 Array.isArray(userAnswer) &&
-                userAnswer.length === question.correctAnswer.length &&
-                userAnswer.every(a => question.correctAnswer.includes(a))
+                userAnswer.length === correctIds.length &&
+                userAnswer.every(a => correctIds.includes(a))
             );
         }
-        return userAnswer === question.correctAnswer;
+
+        // Single
+        const correctId = Array.isArray(correctArr) ? correctArr[0] : correctArr;
+        return userAnswer === correctId;
+    };
+
+    // Helper to get options array from question
+    const getOptions = question => {
+        let opts = question.options;
+        if (typeof opts === 'string') {
+            try {
+                opts = JSON.parse(opts);
+            } catch (e) {
+                opts = [];
+            }
+        }
+        // Handle wrapper
+        if (!Array.isArray(opts) && opts?.options) return opts.options;
+        if (Array.isArray(opts)) return opts;
+        return [];
     };
 
     return (
@@ -192,6 +228,10 @@ function QuizResultPage() {
                                 const userAnswer = answers[question.id];
                                 const correct = isCorrect(question, userAnswer);
 
+                                const optionsList = getOptions(question);
+                                const correctArr = question.options?.correct || question.options?.options?.correct; // handle wrapper
+                                const correctIds = Array.isArray(correctArr) ? correctArr : [correctArr];
+
                                 return (
                                     <Collapse.Panel
                                         key={question.id}
@@ -211,16 +251,13 @@ function QuizResultPage() {
                                         }
                                     >
                                         <List
-                                            dataSource={question.options}
+                                            dataSource={optionsList}
                                             renderItem={option => {
                                                 const isUserAnswer =
                                                     question.type === 'multiple'
                                                         ? userAnswer?.includes(option.id)
                                                         : userAnswer === option.id;
-                                                const isCorrectAnswer =
-                                                    question.type === 'multiple'
-                                                        ? question.correctAnswer.includes(option.id)
-                                                        : question.correctAnswer === option.id;
+                                                const isCorrectAnswer = correctIds.includes(option.id);
 
                                                 let background = '#fff';
                                                 let borderColor = '#d9d9d9';

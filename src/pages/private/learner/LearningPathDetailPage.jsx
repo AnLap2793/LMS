@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Typography, Space, Tag, Button, Steps, Row, Col, Statistic, Result, Divider, message } from 'antd';
+import { Card, Typography, Space, Tag, Button, Steps, Row, Col, Statistic, Result, Divider, message, Spin } from 'antd';
 import {
     RocketOutlined,
     ClockCircleOutlined,
@@ -10,7 +10,11 @@ import {
     BookOutlined,
     ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { mockLearningPaths, mockCourses, mockEnrollments } from '../../../mocks';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { learningPathService } from '../../../services/learningPathService';
+import { enrollmentService } from '../../../services/enrollmentService';
+import { queryKeys } from '../../../constants/queryKeys';
+import { showSuccess, showError } from '../../../utils/errorHandler';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -21,52 +25,66 @@ const { Title, Text, Paragraph } = Typography;
 function LearningPathDetailPage() {
     const { pathId } = useParams();
     const navigate = useNavigate();
-    const [enrolling, setEnrolling] = useState(false);
 
-    // Get path data
-    const path = useMemo(() => {
-        return mockLearningPaths.find(p => p.id === pathId);
-    }, [pathId]);
+    // Fetch path data with courses
+    const { data: path, isLoading } = useQuery({
+        queryKey: queryKeys.learningPaths.detail(pathId),
+        queryFn: () => learningPathService.getWithCourses(pathId),
+    });
 
-    // Get courses in this path with full details
-    const pathCourses = useMemo(() => {
-        if (!path) return [];
-        return path.courses.map(pc => {
-            const courseDetail = mockCourses.find(c => c.id === pc.id);
-            return {
-                ...pc,
-                ...courseDetail,
-            };
-        });
-    }, [path]);
+    // Fetch my enrollments to check status
+    const { data: myEnrollments = [] } = useQuery({
+        queryKey: queryKeys.enrollments.mine(),
+        queryFn: () => enrollmentService.getMyEnrollments({ limit: -1 }),
+    });
 
-    // Check enrollment status (Mock for user u1)
-    const currentUserId = 'u1';
+    const enrollMutation = useMutation({
+        mutationFn: async courses => {
+            // Enroll in all courses in the path
+            // In a real scenario, might have a specific API to enroll in a path
+            // Here loop through courses
+            const promises = courses.map(c => enrollmentService.enrollCourse(c.id));
+            return Promise.all(promises);
+        },
+        onSuccess: () => {
+            showSuccess('Đã đăng ký lộ trình thành công!');
+            // Invalidate enrollments
+        },
+        onError: showError,
+    });
 
     // Calculate progress
     const progressStats = useMemo(() => {
-        if (!pathCourses.length) return { completed: 0, total: 0, percent: 0 };
+        if (!path?.courses?.length) return { completed: 0, total: 0, percent: 0 };
 
-        const completedCount = pathCourses.filter(c => {
-            const enrollment = mockEnrollments.find(e => e.course_id === c.id && e.user_id === currentUserId);
+        const completedCount = path.courses.filter(c => {
+            const enrollment = myEnrollments.find(e => e.course_id === c.id);
             return enrollment?.status === 'completed';
         }).length;
 
         return {
             completed: completedCount,
-            total: pathCourses.length,
-            percent: Math.round((completedCount / pathCourses.length) * 100),
+            total: path.courses.length,
+            percent: Math.round((completedCount / path.courses.length) * 100),
         };
-    }, [pathCourses]);
+    }, [path, myEnrollments]);
 
     const handleEnrollPath = () => {
-        setEnrolling(true);
-        setTimeout(() => {
-            message.success('Đã đăng ký lộ trình thành công!');
-            setEnrolling(false);
-            // In real app, this would create enrollments for all courses
-        }, 1000);
+        if (!path?.courses) return;
+        // Filter courses not yet enrolled
+        const coursesToEnroll = path.courses.filter(c => !myEnrollments.find(e => e.course_id === c.id));
+
+        if (coursesToEnroll.length === 0) {
+            message.info('Bạn đã đăng ký tất cả khóa học trong lộ trình này');
+            return;
+        }
+
+        enrollMutation.mutate(coursesToEnroll);
     };
+
+    if (isLoading) {
+        return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+    }
 
     if (!path) {
         return (
@@ -116,7 +134,7 @@ function LearningPathDetailPage() {
                                 </Space>
                                 <Space>
                                     <BookOutlined />
-                                    <Text>{pathCourses.length} khóa học</Text>
+                                    <Text>{path.courses?.length || 0} khóa học</Text>
                                 </Space>
                             </Space>
                         </Space>
@@ -144,7 +162,8 @@ function LearningPathDetailPage() {
                                     size="large"
                                     block
                                     onClick={handleEnrollPath}
-                                    loading={enrolling}
+                                    loading={enrollMutation.isPending}
+                                    disabled={progressStats.percent === 100}
                                 >
                                     {progressStats.percent > 0 ? 'Tiếp tục học' : 'Bắt đầu ngay'}
                                 </Button>
@@ -159,17 +178,17 @@ function LearningPathDetailPage() {
                     <Steps
                         direction="vertical"
                         current={progressStats.completed}
-                        items={pathCourses.map((course, index) => {
+                        items={path.courses?.map((course, index) => {
                             // Determine status
-                            const enrollment = mockEnrollments.find(
-                                e => e.course_id === course.id && e.user_id === currentUserId
-                            );
+                            const enrollment = myEnrollments.find(e => e.course_id === course.id);
                             const isCompleted = enrollment?.status === 'completed';
                             const isEnrolled = !!enrollment;
-                            const isLocked = index > 0 && !pathCourses[index - 1].isCompleted && !isEnrolled; // Simple logic: locked if prev not done
 
-                            // Override for demo: Unlock first 2
-                            const demoLocked = index > 1;
+                            // Locked logic: locked if previous not completed AND not mandatory?
+                            // Or generally enforce sequential?
+                            // For flexibility, let's say locked if previous not completed IF we enforce sequence.
+                            // Currently simple logic:
+                            const isLocked = index > 0 && !path.courses[index - 1].isCompleted && !isEnrolled; // Simplified
 
                             return {
                                 title: (
@@ -188,19 +207,11 @@ function LearningPathDetailPage() {
                                         <Button
                                             type={isCompleted ? 'default' : 'primary'}
                                             ghost={!isCompleted}
-                                            disabled={demoLocked && !isCompleted}
-                                            icon={
-                                                isCompleted ? (
-                                                    <CheckCircleOutlined />
-                                                ) : demoLocked ? (
-                                                    <LockOutlined />
-                                                ) : (
-                                                    <PlayCircleOutlined />
-                                                )
-                                            }
+                                            // disabled={isLocked && !isCompleted}
+                                            icon={isCompleted ? <CheckCircleOutlined /> : <PlayCircleOutlined />}
                                             onClick={() => navigate(`/courses/${course.id}`)}
                                         >
-                                            {isCompleted ? 'Đã học xong' : demoLocked ? 'Đang khóa' : 'Vào học'}
+                                            {isCompleted ? 'Đã học xong' : isEnrolled ? 'Tiếp tục' : 'Xem chi tiết'}
                                         </Button>
                                     </div>
                                 ),
@@ -217,14 +228,8 @@ function LearningPathDetailPage() {
                                         </Space>
                                     </div>
                                 ),
-                                status: isCompleted ? 'finish' : demoLocked ? 'wait' : 'process',
-                                icon: isCompleted ? (
-                                    <CheckCircleOutlined />
-                                ) : demoLocked ? (
-                                    <LockOutlined />
-                                ) : (
-                                    <RocketOutlined />
-                                ),
+                                status: isCompleted ? 'finish' : isEnrolled ? 'process' : 'wait',
+                                icon: isCompleted ? <CheckCircleOutlined /> : <RocketOutlined />,
                             };
                         })}
                     />

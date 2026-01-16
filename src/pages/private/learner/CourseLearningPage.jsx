@@ -20,7 +20,6 @@ import {
     List,
     Avatar,
     Input,
-    Form,
     Divider,
     Empty,
 } from 'antd';
@@ -47,8 +46,13 @@ import {
     LockOutlined,
     EyeOutlined,
 } from '@ant-design/icons';
-import { mockCourses, mockDiscussions, getModulesWithLessons } from '../../../mocks';
+import { useCourseDetail } from '../../../hooks/useCourses';
+import { useEnrollmentByCourse } from '../../../hooks/useEnrollments';
+import { useLessonProgressByEnrollment, useCompleteLesson, useStartLesson } from '../../../hooks/useLessonProgress';
+import { useNotesByLesson, useCreateNote, useDeleteNote } from '../../../hooks/useNotes';
+import { useCommentsByLesson, useCreateComment } from '../../../hooks/useComments';
 import { LESSON_TYPE_MAP } from '../../../constants/lms';
+import { getAssetUrl } from '../../../utils/directusHelpers';
 
 const { Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -63,48 +67,39 @@ function CourseLearningPage() {
     const navigate = useNavigate();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebarVisible, setMobileSidebarVisible] = useState(false);
-    const [loading, setLoading] = useState(true);
-
-    // Load completedLessons from localStorage (per course)
-    const [completedLessons, setCompletedLessons] = useState(() => {
-        const storageKey = `lms_completed_lessons_${courseId}`;
-        const saved = localStorage.getItem(storageKey);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch {
-                return [];
-            }
-        }
-        // Default mock data for demo (first 2 lessons completed)
-        return ['l1', 'l2'];
-    });
-    const [currentLesson, setCurrentLesson] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
 
     // Notes state
-    const [notes, setNotes] = useState([]);
     const [currentNote, setCurrentNote] = useState('');
 
     // Discussion state
-    const [discussions, setDiscussions] = useState([]);
     const [newComment, setNewComment] = useState('');
 
-    // Get course data
-    const course = useMemo(() => {
-        return mockCourses.find(c => c.id === courseId);
-    }, [courseId]);
+    // Data Hooks
+    const { data: course, isLoading: courseLoading } = useCourseDetail(courseId);
+    const { data: enrollment, isLoading: enrollmentLoading } = useEnrollmentByCourse(courseId);
 
-    // Get modules for this course (with lessons nested)
+    // Only fetch progress if enrollment exists
+    const { data: progressList = [], isLoading: progressLoading } = useLessonProgressByEnrollment(enrollment?.id);
+
+    // Mutations
+    const startLessonMutation = useStartLesson();
+    const completeLessonMutation = useCompleteLesson();
+    const createNoteMutation = useCreateNote();
+    const deleteNoteMutation = useDeleteNote();
+    const createCommentMutation = useCreateComment();
+
+    // Derived Data
     const modules = useMemo(() => {
-        return getModulesWithLessons(courseId);
-    }, [courseId]);
+        if (!course?.modules) return [];
+        return [...course.modules].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    }, [course]);
 
-    // Flatten all lessons
     const allLessons = useMemo(() => {
         const lessons = [];
         modules.forEach(module => {
-            module.lessons?.forEach(lesson => {
+            const moduleLessons = module.lessons || [];
+            moduleLessons.forEach(lesson => {
                 lessons.push({
                     ...lesson,
                     moduleId: module.id,
@@ -115,185 +110,180 @@ function CourseLearningPage() {
         return lessons;
     }, [modules]);
 
-    // Calculate progress
-    const progress = useMemo(() => {
-        if (allLessons.length === 0) return 0;
-        return Math.round((completedLessons.length / allLessons.length) * 100);
-    }, [allLessons, completedLessons]);
+    const completedLessonIds = useMemo(() => {
+        return progressList.filter(p => p.status === 'completed').map(p => p.lesson?.id || p.lesson); // Handle object or ID
+    }, [progressList]);
 
-    // Get current lesson index
+    const overallProgress = useMemo(() => {
+        if (allLessons.length === 0) return 0;
+        return Math.round((completedLessonIds.length / allLessons.length) * 100);
+    }, [allLessons, completedLessonIds]);
+
+    const currentLesson = useMemo(() => {
+        if (!lessonId) return null;
+        return allLessons.find(l => l.id === lessonId);
+    }, [lessonId, allLessons]);
+
     const currentLessonIndex = useMemo(() => {
         if (!currentLesson) return -1;
         return allLessons.findIndex(l => l.id === currentLesson.id);
     }, [currentLesson, allLessons]);
 
-    // Check if a lesson is locked (must complete previous lessons first)
-    const isLessonLocked = lessonId => {
-        const lessonIndex = allLessons.findIndex(l => l.id === lessonId);
-        if (lessonIndex <= 0) return false; // First lesson is never locked
+    // Lesson specific hooks (Notes & Comments)
+    const { data: notes = [] } = useNotesByLesson(lessonId);
+    const { data: comments = [] } = useCommentsByLesson(lessonId);
 
-        // Check if all previous lessons are completed
-        for (let i = 0; i < lessonIndex; i++) {
-            if (!completedLessons.includes(allLessons[i].id)) {
-                return true; // Previous lesson not completed, so this one is locked
-            }
-        }
-        return false;
+    // Helpers
+    const isLessonLocked = targetLessonId => {
+        const lessonIndex = allLessons.findIndex(l => l.id === targetLessonId);
+        if (lessonIndex <= 0) return false;
+
+        // Check if previous lesson is completed
+        const prevLessonId = allLessons[lessonIndex - 1].id;
+        return !completedLessonIds.includes(prevLessonId);
     };
 
-    // Navigation helpers
     const hasPrevious = currentLessonIndex > 0;
     const hasNext = currentLessonIndex < allLessons.length - 1;
     const previousLesson = hasPrevious ? allLessons[currentLessonIndex - 1] : null;
     const nextLesson = hasNext ? allLessons[currentLessonIndex + 1] : null;
-
-    // Check if next lesson is locked
     const isNextLessonLocked = nextLesson ? isLessonLocked(nextLesson.id) : false;
 
-    // Persist completedLessons to localStorage whenever it changes
+    // Effects
     useEffect(() => {
-        const storageKey = `lms_completed_lessons_${courseId}`;
-        localStorage.setItem(storageKey, JSON.stringify(completedLessons));
-    }, [completedLessons, courseId]);
+        // If no lessonId in URL, redirect to first unlocked lesson
+        if (!lessonId && allLessons.length > 0 && !courseLoading && !enrollmentLoading) {
+            let firstUnlocked = allLessons[0];
+            for (let i = 0; i < allLessons.length; i++) {
+                if (!completedLessonIds.includes(allLessons[i].id)) {
+                    if (!isLessonLocked(allLessons[i].id)) {
+                        firstUnlocked = allLessons[i];
+                        break;
+                    }
+                }
+            }
+            navigate(`/learn/${courseId}/${firstUnlocked.id}`, { replace: true });
+        }
+    }, [lessonId, allLessons, courseId, completedLessonIds, courseLoading, enrollmentLoading, navigate]);
 
-    // Get the first unlocked incomplete lesson
-    const getFirstUnlockedLesson = () => {
-        for (let i = 0; i < allLessons.length; i++) {
-            if (!completedLessons.includes(allLessons[i].id)) {
-                return allLessons[i];
+    useEffect(() => {
+        // Start lesson (create progress) when accessing
+        if (lessonId && enrollment?.id && currentLesson) {
+            // Check if progress exists locally first to avoid spamming
+            const hasProgress = progressList.some(p => (p.lesson?.id || p.lesson) === lessonId);
+            if (!hasProgress) {
+                startLessonMutation.mutate({
+                    enrollmentId: enrollment.id,
+                    lessonId: lessonId,
+                });
             }
         }
-        return allLessons[0];
-    };
+    }, [lessonId, enrollment, progressList, currentLesson]); // Removed startLessonMutation from deps to avoid loop
 
-    // Load current lesson & discussions
-    useEffect(() => {
-        setLoading(true);
-        const timer = setTimeout(() => {
-            if (lessonId) {
-                const lesson = allLessons.find(l => l.id === lessonId);
-                // If lesson is locked, redirect to first unlocked lesson
-                if (lesson && isLessonLocked(lesson.id)) {
-                    const unlockedLesson = getFirstUnlockedLesson();
-                    setCurrentLesson(unlockedLesson);
-                    message.warning('Bài học này đang bị khóa. Vui lòng hoàn thành các bài trước!');
-                } else {
-                    setCurrentLesson(lesson || allLessons[0]);
-                }
-            } else {
-                // Find first unlocked incomplete lesson
-                const firstUnlocked = getFirstUnlockedLesson();
-                setCurrentLesson(firstUnlocked || allLessons[0]);
-            }
-
-            // Load mock discussions (randomly pick from mock for demo)
-            setDiscussions(mockDiscussions);
-
-            setLoading(false);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [lessonId, allLessons, completedLessons]);
-
-    // Handle lesson click
+    // Handlers
     const handleLessonClick = lesson => {
-        // Check if lesson is locked
         if (isLessonLocked(lesson.id)) {
-            message.warning('Vui lòng hoàn thành các bài học trước để mở khóa bài này!');
+            message.warning('Vui lòng hoàn thành bài học trước để mở khóa!');
             return;
         }
-
-        setCurrentLesson(lesson);
-        navigate(`/learn/${courseId}/${lesson.id}`, { replace: true });
+        navigate(`/learn/${courseId}/${lesson.id}`);
         setMobileSidebarVisible(false);
-        setActiveTab('overview'); // Reset tab
+        setActiveTab('overview');
     };
 
-    // Handle mark complete
-    const handleMarkComplete = () => {
-        if (!currentLesson) return;
+    const handleMarkComplete = async () => {
+        if (!currentLesson || !enrollment) return;
 
-        if (completedLessons.includes(currentLesson.id)) {
-            setCompletedLessons(prev => prev.filter(id => id !== currentLesson.id));
-            message.info('Đã bỏ đánh dấu hoàn thành');
-        } else {
-            setCompletedLessons(prev => [...prev, currentLesson.id]);
-            message.success('Đã đánh dấu hoàn thành!');
+        try {
+            await completeLessonMutation.mutateAsync({
+                enrollmentId: enrollment.id,
+                lessonId: currentLesson.id,
+            });
 
-            if (hasNext) {
+            if (hasNext && !isNextLessonLocked) {
+                // Auto advance after short delay
                 setTimeout(() => {
                     handleLessonClick(nextLesson);
-                }, 1000);
+                }, 1500);
             }
+        } catch {
+            // Error handled by global handler
         }
     };
 
-    // Handle navigation
-    const handlePrevious = () => {
-        if (previousLesson && !isLessonLocked(previousLesson.id)) {
-            handleLessonClick(previousLesson);
-        }
-    };
-
-    const handleNext = () => {
-        if (nextLesson && !isLessonLocked(nextLesson.id)) {
-            handleLessonClick(nextLesson);
-        }
-    };
-
-    // Note handlers
-    const handleSaveNote = () => {
+    const handleSaveNote = async () => {
         if (!currentNote.trim()) return;
-        const newNote = {
-            id: Date.now(),
-            content: currentNote,
-            timestamp: new Date().toISOString(),
-            lessonId: currentLesson.id,
-            timeInVideo: '05:30', // Mock timestamp
-        };
-        setNotes([newNote, ...notes]);
-        setCurrentNote('');
-        message.success('Đã lưu ghi chú');
+        try {
+            await createNoteMutation.mutateAsync({
+                lesson_id: lessonId,
+                content: currentNote,
+                // video_timestamp: currentVideoTime // Todo: Get from video player
+            });
+            setCurrentNote('');
+        } catch {
+            // Error handled
+        }
     };
 
-    const handleDeleteNote = id => {
-        setNotes(notes.filter(n => n.id !== id));
-        message.success('Đã xóa ghi chú');
+    const handleDeleteNote = async id => {
+        try {
+            await deleteNoteMutation.mutateAsync(id);
+        } catch {
+            // Error handled
+        }
     };
 
-    // Discussion handlers
-    const handleSubmitComment = () => {
+    const handleSubmitComment = async () => {
         if (!newComment.trim()) return;
-        const comment = {
-            id: Date.now(),
-            user_id: 'u1',
-            user_name: 'Tôi (User)',
-            user_avatar: null,
-            content: newComment,
-            date: new Date().toISOString(),
-            likes: 0,
-            replies: [],
-        };
-        setDiscussions([comment, ...discussions]);
-        setNewComment('');
-        message.success('Đã gửi câu hỏi');
+        try {
+            await createCommentMutation.mutateAsync({
+                lesson_id: lessonId,
+                content: newComment,
+            });
+            setNewComment('');
+        } catch {
+            // Error handled
+        }
     };
 
-    // Get lesson icon
+    // Render Helpers
     const getLessonIcon = type => {
+        const config = LESSON_TYPE_MAP[type];
         const iconMap = {
-            video: <PlayCircleOutlined style={{ color: '#1890ff' }} />,
-            article: <FileTextOutlined style={{ color: '#52c41a' }} />,
-            file: <FileOutlined style={{ color: '#faad14' }} />,
-            link: <LinkOutlined style={{ color: '#722ed1' }} />,
-            quiz: <FormOutlined style={{ color: '#eb2f96' }} />,
+            video: <PlayCircleOutlined style={{ color: config?.color }} />,
+            article: <FileTextOutlined style={{ color: config?.color }} />,
+            file: <FileOutlined style={{ color: config?.color }} />,
+            quiz: <FormOutlined style={{ color: config?.color }} />,
         };
         return iconMap[type] || <FileOutlined />;
     };
 
-    // Render sidebar content
+    // Loading State
+    if (courseLoading || enrollmentLoading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Spin size="large" tip="Đang tải khóa học..." />
+            </div>
+        );
+    }
+
+    if (!course || !enrollment) {
+        return (
+            <Result
+                status="404"
+                title="Không tìm thấy khóa học"
+                subTitle="Khóa học không tồn tại hoặc bạn chưa đăng ký."
+                extra={
+                    <Button type="primary" onClick={() => navigate('/my-courses')}>
+                        Quay lại
+                    </Button>
+                }
+            />
+        );
+    }
+
     const renderSidebarContent = () => (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            {/* Course header */}
             <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0' }}>
                 <Button
                     type="text"
@@ -303,41 +293,23 @@ function CourseLearningPage() {
                 >
                     Quay lại
                 </Button>
-                <Title level={5} style={{ margin: 0, marginBottom: 8 }}>
-                    {course?.title}
+                <Title level={5} style={{ margin: 0, marginBottom: 8 }} ellipsis={{ tooltip: course.title }}>
+                    {course.title}
                 </Title>
-                <Progress percent={progress} size="small" strokeColor="#52c41a" format={p => `${p}%`} />
+                <Progress percent={overallProgress} size="small" strokeColor="#52c41a" />
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    {completedLessons.length}/{allLessons.length} bài học hoàn thành
+                    {completedLessonIds.length}/{allLessons.length} bài học hoàn thành
                 </Text>
             </div>
-
-            {/* Modules & Lessons */}
             <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-                <Collapse
-                    defaultActiveKey={modules.map(m => m.id)}
-                    ghost
-                    expandIconPosition="end"
-                    style={{ width: '100%' }}
-                >
-                    {modules.map((module, moduleIndex) => (
+                <Collapse defaultActiveKey={modules.map(m => m.id)} ghost expandIconPosition="end">
+                    {modules.map((module, index) => (
                         <Collapse.Panel
                             key={module.id}
                             header={
                                 <Space style={{ width: '100%', overflow: 'hidden' }}>
-                                    <Badge
-                                        count={moduleIndex + 1}
-                                        style={{ backgroundColor: '#ea4544', flexShrink: 0 }}
-                                    />
-                                    <Text
-                                        strong
-                                        style={{
-                                            wordBreak: 'break-word',
-                                            overflowWrap: 'break-word',
-                                            whiteSpace: 'normal',
-                                        }}
-                                        ellipsis={{ tooltip: module.title }}
-                                    >
+                                    <Badge count={index + 1} style={{ backgroundColor: '#ea4544', flexShrink: 0 }} />
+                                    <Text strong ellipsis>
                                         {module.title}
                                     </Text>
                                 </Space>
@@ -349,100 +321,44 @@ function CourseLearningPage() {
                                 style={{ border: 'none' }}
                             >
                                 {module.lessons?.map(lesson => {
-                                    const isCompleted = completedLessons.includes(lesson.id);
+                                    const isCompleted = completedLessonIds.includes(lesson.id);
                                     const isCurrent = currentLesson?.id === lesson.id;
                                     const isLocked = isLessonLocked(lesson.id);
 
                                     return (
-                                        <Tooltip
+                                        <Menu.Item
                                             key={lesson.id}
-                                            title={isLocked ? 'Hoàn thành bài trước để mở khóa' : ''}
-                                            placement="right"
+                                            icon={
+                                                isLocked ? (
+                                                    <LockOutlined />
+                                                ) : isCompleted ? (
+                                                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                                ) : (
+                                                    getLessonIcon(lesson.type)
+                                                )
+                                            }
+                                            onClick={() => handleLessonClick(lesson)}
+                                            disabled={isLocked}
+                                            style={{
+                                                height: 'auto',
+                                                whiteSpace: 'normal',
+                                                lineHeight: 1.5,
+                                                padding: '8px 16px',
+                                                background: isCurrent ? '#fff1f0' : undefined,
+                                                borderRight: isCurrent ? '3px solid #ea4544' : undefined,
+                                            }}
                                         >
-                                            <Menu.Item
-                                                key={lesson.id}
-                                                icon={
-                                                    isLocked ? (
-                                                        <LockOutlined style={{ color: '#999' }} />
-                                                    ) : isCompleted ? (
-                                                        <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                                                    ) : (
-                                                        getLessonIcon(lesson.type)
-                                                    )
-                                                }
-                                                onClick={() => handleLessonClick(lesson)}
-                                                disabled={isLocked}
-                                                style={{
-                                                    background: isCurrent
-                                                        ? '#fff1f0'
-                                                        : isLocked
-                                                          ? '#fafafa'
-                                                          : undefined,
-                                                    borderRight: isCurrent ? '3px solid #ea4544' : undefined,
-                                                    padding: '8px 16px',
-                                                    margin: '4px 0',
-                                                    height: 'auto',
-                                                    minHeight: 'auto',
-                                                    lineHeight: '1.5',
-                                                    whiteSpace: 'normal',
-                                                    opacity: isLocked ? 0.6 : 1,
-                                                    cursor: isLocked ? 'not-allowed' : 'pointer',
-                                                    wordBreak: 'break-word',
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: 4,
-                                                        width: '100%',
-                                                        minWidth: 0,
-                                                    }}
-                                                >
-                                                    <Text
-                                                        style={{
-                                                            textDecoration: isCompleted ? 'none' : 'none',
-                                                            color: isLocked
-                                                                ? '#999'
-                                                                : isCompleted
-                                                                  ? '#52c41a'
-                                                                  : undefined,
-                                                            display: 'block',
-                                                            wordBreak: 'break-word',
-                                                            overflowWrap: 'break-word',
-                                                            whiteSpace: 'normal',
-                                                            lineHeight: '1.4',
-                                                            width: '100%',
-                                                        }}
-                                                    >
-                                                        {lesson.title}
-                                                        {isLocked && (
-                                                            <Tag
-                                                                color="default"
-                                                                style={{ marginLeft: 8, fontSize: 10 }}
-                                                            >
-                                                                Đang khóa
-                                                            </Tag>
-                                                        )}
-                                                    </Text>
-                                                    {lesson.duration && (
-                                                        <Text
-                                                            type="secondary"
-                                                            style={{
-                                                                fontSize: 11,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 4,
-                                                                whiteSpace: 'nowrap',
-                                                                flexShrink: 0,
-                                                            }}
-                                                        >
-                                                            <ClockCircleOutlined /> {lesson.duration} phút
-                                                        </Text>
-                                                    )}
-                                                </div>
-                                            </Menu.Item>
-                                        </Tooltip>
+                                            <div>
+                                                <Text style={{ color: isLocked ? '#999' : undefined }}>
+                                                    {lesson.title}
+                                                </Text>
+                                                {lesson.duration_minutes && (
+                                                    <div style={{ fontSize: 11, color: '#999' }}>
+                                                        <ClockCircleOutlined /> {lesson.duration_minutes} phút
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Menu.Item>
                                     );
                                 })}
                             </Menu>
@@ -453,267 +369,15 @@ function CourseLearningPage() {
         </div>
     );
 
-    // Tab Contents
-    const items = [
-        {
-            key: 'overview',
-            label: 'Tổng quan',
-            icon: <FileTextOutlined />,
-            children: (
-                <div style={{ padding: '24px 0' }}>
-                    <Title level={4}>Giới thiệu bài học</Title>
-                    <Paragraph>
-                        {currentLesson?.description ||
-                            'Chào mừng bạn đến với bài học này. Hãy tập trung theo dõi nội dung và ghi chép lại những ý chính quan trọng.'}
-                    </Paragraph>
-                    {currentLesson?.learning_objectives && (
-                        <>
-                            <Title level={5}>Mục tiêu bài học</Title>
-                            <ul>
-                                {currentLesson.learning_objectives.split('\n').map((line, i) => (
-                                    <li key={i}>{line.replace('-', '').trim()}</li>
-                                ))}
-                            </ul>
-                        </>
-                    )}
-                </div>
-            ),
-        },
-        {
-            key: 'qa',
-            label: 'Hỏi đáp',
-            icon: <MessageOutlined />,
-            children: (
-                <div style={{ padding: '24px 0' }}>
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <Avatar icon={<UserOutlined />} />
-                            <div style={{ flex: 1 }}>
-                                <TextArea
-                                    rows={3}
-                                    placeholder="Bạn có thắc mắc gì về bài học này?"
-                                    value={newComment}
-                                    onChange={e => setNewComment(e.target.value)}
-                                    style={{ marginBottom: 8 }}
-                                />
-                                <Button type="primary" onClick={handleSubmitComment} icon={<SendOutlined />}>
-                                    Gửi câu hỏi
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <List
-                        itemLayout="horizontal"
-                        dataSource={discussions}
-                        renderItem={item => (
-                            <List.Item
-                                actions={[
-                                    <Space key="list-op">
-                                        <LikeOutlined /> {item.likes}
-                                    </Space>,
-                                    <span key="reply">Trả lời</span>,
-                                ]}
-                            >
-                                <List.Item.Meta
-                                    avatar={<Avatar src={item.user_avatar}>{item.user_name[0]}</Avatar>}
-                                    title={
-                                        <Space>
-                                            <Text strong>{item.user_name}</Text>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {new Date(item.date).toLocaleDateString('vi-VN')}
-                                            </Text>
-                                        </Space>
-                                    }
-                                    description={
-                                        <div>
-                                            <Paragraph style={{ marginBottom: 8 }}>{item.content}</Paragraph>
-                                            {item.replies?.length > 0 && (
-                                                <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 8 }}>
-                                                    {item.replies.map(reply => (
-                                                        <div
-                                                            key={reply.id}
-                                                            style={{ display: 'flex', gap: 8, marginBottom: 8 }}
-                                                        >
-                                                            <Avatar size="small" src={reply.user_avatar}>
-                                                                {reply.user_name[0]}
-                                                            </Avatar>
-                                                            <div>
-                                                                <Space>
-                                                                    <Text
-                                                                        strong
-                                                                        style={{
-                                                                            color:
-                                                                                reply.role === 'instructor'
-                                                                                    ? '#ea4544'
-                                                                                    : undefined,
-                                                                        }}
-                                                                    >
-                                                                        {reply.user_name}
-                                                                        {reply.role === 'instructor' && (
-                                                                            <Tag color="red" style={{ marginLeft: 8 }}>
-                                                                                Giảng viên
-                                                                            </Tag>
-                                                                        )}
-                                                                    </Text>
-                                                                </Space>
-                                                                <div>{reply.content}</div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    }
-                                />
-                            </List.Item>
-                        )}
-                    />
-                </div>
-            ),
-        },
-        {
-            key: 'notes',
-            label: 'Ghi chú',
-            icon: <EditOutlined />,
-            children: (
-                <div style={{ padding: '24px 0' }}>
-                    <div style={{ marginBottom: 24 }}>
-                        <Title level={5}>Thêm ghi chú mới</Title>
-                        <TextArea
-                            rows={4}
-                            placeholder="Ghi lại những ý chính..."
-                            value={currentNote}
-                            onChange={e => setCurrentNote(e.target.value)}
-                            style={{ marginBottom: 12 }}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Tag color="blue" icon={<ClockCircleOutlined />}>
-                                05:30
-                            </Tag>
-                            <Button type="primary" onClick={handleSaveNote}>
-                                Lưu ghi chú
-                            </Button>
-                        </div>
-                    </div>
-
-                    <Divider />
-
-                    <List
-                        dataSource={notes}
-                        locale={{ emptyText: 'Chưa có ghi chú nào cho bài học này' }}
-                        renderItem={item => (
-                            <List.Item
-                                actions={[
-                                    <Button
-                                        key="del"
-                                        type="text"
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        onClick={() => handleDeleteNote(item.id)}
-                                    />,
-                                ]}
-                            >
-                                <List.Item.Meta
-                                    title={
-                                        <Space>
-                                            <Tag color="blue">{item.timeInVideo}</Tag>
-                                            <Text type="secondary">
-                                                {new Date(item.timestamp).toLocaleTimeString()}
-                                            </Text>
-                                        </Space>
-                                    }
-                                    description={item.content}
-                                />
-                            </List.Item>
-                        )}
-                    />
-                </div>
-            ),
-        },
-        {
-            key: 'resources',
-            label: 'Tài liệu',
-            icon: <FileOutlined />,
-            children: (
-                <div style={{ padding: '24px 0' }}>
-                    <List
-                        dataSource={
-                            currentLesson?.documents?.length > 0
-                                ? currentLesson.documents
-                                : currentLesson?.file_attachment
-                                  ? [
-                                        {
-                                            id: currentLesson.file_attachment.id,
-                                            title: currentLesson.file_attachment.filename_download,
-                                            type: 'file',
-                                            file: currentLesson.file_attachment,
-                                        },
-                                    ]
-                                  : []
-                        }
-                        locale={{ emptyText: 'Không có tài liệu đính kèm' }}
-                        renderItem={item => (
-                            <List.Item
-                                actions={[
-                                    <Button
-                                        key="download"
-                                        type="link"
-                                        icon={item.type === 'url' ? <EyeOutlined /> : <DownloadOutlined />}
-                                        onClick={() => {
-                                            if (item.type === 'url') {
-                                                window.open(item.url, '_blank');
-                                            } else {
-                                                // Handle download (mock)
-                                                message.success('Đang tải xuống...');
-                                            }
-                                        }}
-                                    >
-                                        {item.type === 'url' ? 'Xem trước' : 'Tải xuống'}
-                                    </Button>,
-                                ]}
-                            >
-                                <List.Item.Meta
-                                    avatar={
-                                        <Avatar
-                                            icon={item.type === 'url' ? <LinkOutlined /> : <FileTextOutlined />}
-                                            style={{ backgroundColor: item.type === 'url' ? '#52c41a' : '#1890ff' }}
-                                        />
-                                    }
-                                    title={item.title || item.name}
-                                    description={item.type === 'url' ? item.url : 'Tài liệu đính kèm'}
-                                />
-                            </List.Item>
-                        )}
-                    />
-                </div>
-            ),
-        },
-    ];
-
-    // Render lesson content based on type
     const renderLessonContent = () => {
-        if (!currentLesson) {
-            return (
-                <Result
-                    status="404"
-                    title="Không tìm thấy bài học"
-                    extra={
-                        <Button type="primary" onClick={() => navigate('/my-courses')}>
-                            Quay lại khóa học
-                        </Button>
-                    }
-                />
-            );
-        }
+        if (!currentLesson) return <Empty description="Chọn bài học để bắt đầu" />;
 
-        const isCompleted = completedLessons.includes(currentLesson.id);
+        const isCompleted = completedLessonIds.includes(currentLesson.id);
 
         return (
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
-                {/* Lesson header */}
                 <div style={{ marginBottom: 24 }}>
-                    <Space style={{ marginBottom: 8 }}>
+                    <Space>
                         <Tag color={LESSON_TYPE_MAP[currentLesson.type]?.color}>
                             {LESSON_TYPE_MAP[currentLesson.type]?.label}
                         </Tag>
@@ -722,252 +386,243 @@ function CourseLearningPage() {
                                 Đã hoàn thành
                             </Tag>
                         )}
-                        {currentLesson.duration && (
-                            <Text type="secondary">
-                                <ClockCircleOutlined /> {currentLesson.duration} phút
-                            </Text>
-                        )}
                     </Space>
-                    <Title level={3}>{currentLesson.title}</Title>
+                    <Title level={3} style={{ marginTop: 8 }}>
+                        {currentLesson.title}
+                    </Title>
                 </div>
 
-                {/* Main Content Area (Video/Article/Quiz) */}
-                <Card style={{ marginBottom: 24, overflow: 'hidden' }} bodyStyle={{ padding: 0 }}>
-                    {currentLesson.type === 'video' && (
-                        <div
-                            style={{
-                                position: 'relative',
-                                paddingBottom: '56.25%',
-                                height: 0,
-                                background: '#000',
-                            }}
-                        >
-                            {currentLesson.video_url ? (
-                                <iframe
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        border: 'none',
-                                    }}
-                                    src={currentLesson.video_url.replace('watch?v=', 'embed/')}
-                                    title={currentLesson.title}
-                                    allowFullScreen
-                                />
-                            ) : (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        transform: 'translate(-50%, -50%)',
-                                        color: '#fff',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <PlayCircleOutlined style={{ fontSize: 64, marginBottom: 16 }} />
-                                    <div>Video player</div>
-                                    <Text type="secondary" style={{ color: '#999' }}>
-                                        (Demo - Sẽ hiển thị video thực tế khi tích hợp)
-                                    </Text>
-                                </div>
-                            )}
+                <Card bodyStyle={{ padding: 0 }} style={{ marginBottom: 24, overflow: 'hidden' }}>
+                    {currentLesson.type === 'video' && currentLesson.video_url ? (
+                        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, background: '#000' }}>
+                            <iframe
+                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                                src={currentLesson.video_url.replace('watch?v=', 'embed/')}
+                                title={currentLesson.title}
+                                frameBorder="0"
+                                allowFullScreen
+                            />
                         </div>
-                    )}
-
-                    {currentLesson.type === 'article' && (
-                        <div style={{ padding: 24, minHeight: 300 }}>
-                            <Paragraph>
-                                {currentLesson.content || (
-                                    <>
-                                        <Title level={4}>Nội dung bài viết</Title>
-                                        <Paragraph>
-                                            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-                                            tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-                                            quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-                                            consequat.
-                                        </Paragraph>
-                                    </>
-                                )}
-                            </Paragraph>
+                    ) : currentLesson.type === 'article' ? (
+                        <div style={{ padding: 24 }}>
+                            <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
                         </div>
-                    )}
-
-                    {currentLesson.type === 'file' && (
-                        <div style={{ textAlign: 'center', padding: 60 }}>
-                            <FileOutlined style={{ fontSize: 64, color: '#faad14', marginBottom: 16 }} />
-                            <Title level={4}>Tài liệu đính kèm</Title>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-                                {currentLesson.file?.filename || 'document.pdf'}
-                            </Text>
-                            <Button type="primary" icon={<DownloadOutlined />}>
-                                Tải xuống tài liệu
-                            </Button>
-                        </div>
-                    )}
-
-                    {currentLesson.type === 'link' && (
-                        <div style={{ textAlign: 'center', padding: 60 }}>
-                            <LinkOutlined style={{ fontSize: 64, color: '#722ed1', marginBottom: 16 }} />
-                            <Title level={4}>Liên kết bên ngoài</Title>
-                            <Button
-                                type="primary"
-                                icon={<LinkOutlined />}
-                                onClick={() => window.open(currentLesson.external_url || '#', '_blank')}
-                            >
-                                Mở liên kết
-                            </Button>
-                        </div>
-                    )}
-
-                    {currentLesson.type === 'quiz' && (
-                        <div style={{ textAlign: 'center', padding: 60 }}>
-                            <FormOutlined style={{ fontSize: 64, color: '#eb2f96', marginBottom: 16 }} />
-                            <Title level={4}>Bài kiểm tra</Title>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-                                Hoàn thành bài kiểm tra để tiếp tục
-                            </Text>
-                            <Button
-                                type="primary"
-                                size="large"
-                                onClick={() => navigate(`/quiz/${currentLesson.quiz_id || 'q1'}`)}
-                            >
-                                Bắt đầu làm bài
-                            </Button>
+                    ) : (
+                        <div style={{ padding: 60, textAlign: 'center' }}>
+                            {getLessonIcon(currentLesson.type)}
+                            <Title level={4} style={{ marginTop: 16 }}>
+                                Nội dung bài học
+                            </Title>
+                            <Text type="secondary">Nội dung này chưa được hỗ trợ hiển thị trực tiếp.</Text>
                         </div>
                     )}
                 </Card>
 
-                {/* Action & Navigation Bar */}
                 <div
                     style={{
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center',
                         marginBottom: 24,
                         background: '#fff',
                         padding: 16,
                         borderRadius: 8,
                     }}
                 >
-                    <Button size="large" icon={<ArrowLeftOutlined />} disabled={!hasPrevious} onClick={handlePrevious}>
+                    <Button
+                        size="large"
+                        icon={<ArrowLeftOutlined />}
+                        disabled={!hasPrevious}
+                        onClick={() => handleLessonClick(previousLesson)}
+                    >
                         Bài trước
                     </Button>
-
                     <Button
                         type={isCompleted ? 'default' : 'primary'}
                         size="large"
                         icon={isCompleted ? <CheckCircleOutlined /> : <CheckOutlined />}
                         onClick={handleMarkComplete}
-                        className={isCompleted ? 'ant-btn-success' : ''}
-                        style={{
-                            background: isCompleted ? '#f6ffed' : undefined,
-                            borderColor: isCompleted ? '#52c41a' : undefined,
-                            color: isCompleted ? '#52c41a' : undefined,
-                            minWidth: 200,
-                        }}
+                        loading={completeLessonMutation.isPending}
+                        style={{ minWidth: 200 }}
                     >
                         {isCompleted ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
                     </Button>
-
-                    <Tooltip title={isNextLessonLocked ? 'Hoàn thành bài hiện tại để mở khóa' : ''}>
+                    <Tooltip title={isNextLessonLocked ? 'Bị khóa' : ''}>
                         <Button
                             type="primary"
                             ghost
                             size="large"
-                            icon={isNextLessonLocked ? <LockOutlined /> : <ArrowRightOutlined />}
-                            iconPosition="end"
                             disabled={!hasNext || isNextLessonLocked}
-                            onClick={handleNext}
+                            onClick={() => handleLessonClick(nextLesson)}
                         >
-                            Bài tiếp theo
+                            Bài tiếp theo <ArrowRightOutlined />
                         </Button>
                     </Tooltip>
                 </div>
 
-                {/* Tabs Area */}
                 <Card>
-                    <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} />
+                    <Tabs
+                        activeKey={activeTab}
+                        onChange={setActiveTab}
+                        items={[
+                            {
+                                key: 'overview',
+                                label: 'Tổng quan',
+                                children: (
+                                    <div>
+                                        <Title level={5}>Mô tả</Title>
+                                        <Paragraph>{currentLesson.description || 'Không có mô tả.'}</Paragraph>
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: 'notes',
+                                label: `Ghi chú (${notes.length})`,
+                                children: (
+                                    <div>
+                                        <div style={{ marginBottom: 16 }}>
+                                            <TextArea
+                                                rows={3}
+                                                placeholder="Thêm ghi chú..."
+                                                value={currentNote}
+                                                onChange={e => setCurrentNote(e.target.value)}
+                                            />
+                                            <Button
+                                                type="primary"
+                                                onClick={handleSaveNote}
+                                                style={{ marginTop: 8 }}
+                                                loading={createNoteMutation.isPending}
+                                            >
+                                                Lưu ghi chú
+                                            </Button>
+                                        </div>
+                                        <List
+                                            dataSource={notes}
+                                            renderItem={item => (
+                                                <List.Item
+                                                    actions={[
+                                                        <Button
+                                                            type="text"
+                                                            danger
+                                                            icon={<DeleteOutlined />}
+                                                            onClick={() => handleDeleteNote(item.id)}
+                                                        />,
+                                                    ]}
+                                                >
+                                                    <List.Item.Meta
+                                                        title={
+                                                            <Text type="secondary">
+                                                                {new Date(item.date_created).toLocaleString()}
+                                                            </Text>
+                                                        }
+                                                        description={item.content}
+                                                    />
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: 'qa',
+                                label: `Hỏi đáp (${comments.length})`,
+                                children: (
+                                    <div>
+                                        <div style={{ marginBottom: 16 }}>
+                                            <TextArea
+                                                rows={3}
+                                                placeholder="Đặt câu hỏi..."
+                                                value={newComment}
+                                                onChange={e => setNewComment(e.target.value)}
+                                            />
+                                            <Button
+                                                type="primary"
+                                                onClick={handleSubmitComment}
+                                                style={{ marginTop: 8 }}
+                                                loading={createCommentMutation.isPending}
+                                            >
+                                                Gửi
+                                            </Button>
+                                        </div>
+                                        <List
+                                            dataSource={comments}
+                                            renderItem={item => (
+                                                <List.Item>
+                                                    <List.Item.Meta
+                                                        avatar={
+                                                            <Avatar src={getAssetUrl(item.user_created?.avatar)}>
+                                                                {item.user_created?.first_name?.[0]}
+                                                            </Avatar>
+                                                        }
+                                                        title={
+                                                            <Space>
+                                                                <Text strong>
+                                                                    {item.user_created?.first_name}{' '}
+                                                                    {item.user_created?.last_name}
+                                                                </Text>
+                                                                <Text type="secondary">
+                                                                    {new Date(item.date_created).toLocaleDateString()}
+                                                                </Text>
+                                                            </Space>
+                                                        }
+                                                        description={item.content}
+                                                    />
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </div>
+                                ),
+                            },
+                        ]}
+                    />
                 </Card>
             </div>
         );
     };
 
-    if (!course) {
-        return (
-            <Result
-                status="404"
-                title="Không tìm thấy khóa học"
-                extra={
-                    <Button type="primary" onClick={() => navigate('/my-courses')}>
-                        Quay lại khóa học của tôi
-                    </Button>
-                }
-            />
-        );
-    }
-
     return (
-        <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-            {/* Desktop Sidebar */}
+        <Layout style={{ minHeight: '100vh' }}>
             <Sider
                 width={320}
                 collapsible
                 collapsed={sidebarCollapsed}
                 onCollapse={setSidebarCollapsed}
-                collapsedWidth={0}
-                trigger={null}
+                breakpoint="lg"
+                theme="light"
                 style={{
-                    background: '#fff',
-                    boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
-                    position: 'fixed',
+                    overflow: 'auto',
                     height: '100vh',
+                    position: 'fixed',
                     left: 0,
                     top: 0,
+                    bottom: 0,
                     zIndex: 100,
-                    overflow: 'hidden',
+                    boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
                 }}
                 className="desktop-sidebar"
-                breakpoint="lg"
-                onBreakpoint={broken => {
-                    setSidebarCollapsed(broken);
-                }}
             >
                 {renderSidebarContent()}
             </Sider>
 
-            {/* Mobile Drawer */}
             <Drawer
-                title="Nội dung khóa học"
                 placement="left"
                 onClose={() => setMobileSidebarVisible(false)}
                 open={mobileSidebarVisible}
-                style={{ padding: 0 }}
-                width={320}
+                width={300}
                 className="mobile-sidebar"
+                bodyStyle={{ padding: 0 }}
             >
                 {renderSidebarContent()}
             </Drawer>
 
-            {/* Main Content */}
-            <Layout
-                style={{
-                    marginLeft: sidebarCollapsed ? 0 : 320,
-                    transition: 'margin-left 0.2s',
-                    minHeight: '100vh',
-                }}
-            >
-                {/* Top bar */}
+            <Layout style={{ marginLeft: sidebarCollapsed ? 0 : 320, transition: 'all 0.2s' }}>
                 <div
                     style={{
+                        padding: '16px 24px',
                         background: '#fff',
-                        padding: '12px 24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
                         borderBottom: '1px solid #f0f0f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         position: 'sticky',
                         top: 0,
                         zIndex: 99,
@@ -978,100 +633,27 @@ function CourseLearningPage() {
                             type="text"
                             icon={<MenuOutlined />}
                             onClick={() => {
-                                if (window.innerWidth <= 992) {
-                                    setMobileSidebarVisible(true);
-                                } else {
-                                    setSidebarCollapsed(!sidebarCollapsed);
-                                }
+                                if (window.innerWidth < 992) setMobileSidebarVisible(true);
+                                else setSidebarCollapsed(!sidebarCollapsed);
                             }}
                         />
                         <Text strong>
                             {currentLessonIndex + 1}. {currentLesson?.title}
                         </Text>
                     </Space>
-                    <Progress percent={progress} size="small" style={{ width: 150, margin: 0 }} strokeColor="#52c41a" />
+                    <Space>
+                        <Button onClick={() => navigate('/my-courses')}>Thoát</Button>
+                    </Space>
                 </div>
-
-                {/* Content */}
-                <Content style={{ padding: 24 }}>
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: 100 }}>
-                            <Spin size="large" tip="Đang tải bài học..." />
-                        </div>
-                    ) : (
-                        renderLessonContent()
-                    )}
-                </Content>
+                <Content style={{ margin: '24px 16px', padding: 24, minHeight: 280 }}>{renderLessonContent()}</Content>
             </Layout>
-
-            {/* Responsive styles */}
             <style>{`
                 @media (max-width: 992px) {
-                    .desktop-sidebar {
-                        display: none !important;
-                    }
+                    .desktop-sidebar { display: none !important; }
+                    .ant-layout { margin-left: 0 !important; }
                 }
                 @media (min-width: 993px) {
-                    .mobile-sidebar {
-                        display: none !important;
-                    }
-                }
-                
-                /* Fix Menu.Item overflow issues */
-                .ant-menu-inline .ant-menu-item {
-                    white-space: normal !important;
-                    height: auto !important;
-                    min-height: 40px !important;
-                    line-height: 1.5 !important;
-                    padding: 8px 16px !important;
-                    overflow: visible !important;
-                    margin: 4px 0 !important;
-                    border-radius: 0 !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                .ant-menu-inline .ant-menu-item > .ant-menu-title-content {
-                    width: 100% !important;
-                    overflow: visible !important;
-                    display: block !important;
-                    min-width: 0 !important;
-                }
-                
-                .ant-menu-inline .ant-menu-item-selected {
-                    background-color: #fff1f0 !important;
-                }
-                
-                .ant-menu-inline .ant-menu-item-selected::after {
-                    display: none !important;
-                }
-                
-                /* Custom border for active lesson */
-                .ant-menu-inline .ant-menu-item[style*="border-right"] {
-                    border-right: 3px solid #ea4544 !important;
-                    margin-right: 0 !important;
-                }
-                
-                /* Ensure icon doesn't cause layout issues */
-                .ant-menu-inline .ant-menu-item .anticon {
-                    flex-shrink: 0 !important;
-                    margin-right: 12px !important;
-                }
-                
-                /* Fix Menu layout */
-                .ant-menu-inline {
-                    width: 100% !important;
-                }
-                
-                /* Fix Collapse header overflow */
-                .ant-collapse-header {
-                    padding: 12px 16px !important;
-                    word-break: break-word;
-                    overflow-wrap: break-word;
-                }
-                
-                .ant-collapse-content-box {
-                    padding: 8px 0 !important;
+                    .mobile-sidebar { display: none !important; }
                 }
             `}</style>
         </Layout>

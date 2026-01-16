@@ -18,6 +18,7 @@ import {
     List,
     Progress,
     Tag,
+    Spin,
 } from 'antd';
 import {
     UserOutlined,
@@ -35,7 +36,11 @@ import {
 } from '@ant-design/icons';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
-import { mockEnrollments, mockCertificates, mockLearnerSkills, mockUserLearningPaths } from '../../../mocks';
+import { useMyEnrollments } from '../../../hooks/useEnrollments';
+import { useMyLearningPathProgress } from '../../../hooks/useLearningPaths';
+import { useUpdateMe } from '../../../hooks/useUsers';
+import { useLearnerSkills } from '../../../hooks/useDashboard';
+import { getAssetUrl } from '../../../utils/directusHelpers';
 import { VALIDATION } from '../../../constants/app';
 
 const { Title, Text } = Typography;
@@ -45,49 +50,44 @@ const { Title, Text } = Typography;
  * Thông tin cá nhân và cài đặt tài khoản
  */
 function ProfilePage() {
-    const { user } = useAuth();
+    const { user, login } = useAuth(); // login function might be used to refresh token/user info if supported
     const [form] = Form.useForm();
     const [passwordForm] = Form.useForm();
     const [editing, setEditing] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [changingPassword, setChangingPassword] = useState(false);
 
-    // Mock user data
-    const mockUser = {
-        id: 'u1',
-        first_name: user?.first_name || 'Nguyễn',
-        last_name: user?.last_name || 'Văn A',
-        email: user?.email || 'nguyenvana@company.com',
-        phone: '0901234567',
-        department: 'Công nghệ thông tin',
-        position: 'Frontend Developer',
-        avatar: null,
-        date_created: '2023-06-15T10:00:00Z',
-    };
+    // Hooks
+    const { data: enrollments = [] } = useMyEnrollments({ limit: -1 }); // Get all for count
+    const { data: learningPaths = [] } = useMyLearningPathProgress();
+    const { data: skills = [] } = useLearnerSkills(); // Dashboard hook for skills
+    const updateMeMutation = useUpdateMe();
 
     // Stats
-    const currentUserId = 'u1';
-    const userEnrollments = mockEnrollments.filter(e => e.user_id === currentUserId);
-    const userCertificates = mockCertificates.filter(c => c.user_id === currentUserId);
+    const certificatesCount = 0; // Placeholder until Certificate Service is ready
 
     // Handle profile update
-    const handleUpdateProfile = async () => {
-        setSaving(true);
-        setTimeout(() => {
-            message.success('Cập nhật thông tin thành công!');
-            setSaving(false);
+    const handleUpdateProfile = async values => {
+        try {
+            await updateMeMutation.mutateAsync(values);
             setEditing(false);
-        }, 1000);
+            // Ideally force refresh user context here
+            // window.location.reload();
+        } catch {
+            // Error handled globally
+        }
     };
 
     // Handle password change
-    const handleChangePassword = async () => {
-        setChangingPassword(true);
-        setTimeout(() => {
-            message.success('Đổi mật khẩu thành công!');
+    const handleChangePassword = async values => {
+        // Directus password update usually via updateMe with 'password' field
+        try {
+            await updateMeMutation.mutateAsync({
+                password: values.newPassword,
+            });
             passwordForm.resetFields();
-            setChangingPassword(false);
-        }, 1000);
+            message.success('Đổi mật khẩu thành công!');
+        } catch {
+            // Error handled globally
+        }
     };
 
     // Tab items
@@ -100,7 +100,7 @@ function ProfilePage() {
                     <Form
                         form={form}
                         layout="vertical"
-                        initialValues={mockUser}
+                        initialValues={user}
                         onFinish={handleUpdateProfile}
                         disabled={!editing}
                     >
@@ -131,31 +131,14 @@ function ProfilePage() {
                                     <Input prefix={<MailOutlined />} disabled />
                                 </Form.Item>
                             </Col>
+                            {/* Phone and other fields might need custom fields in Directus User collection */}
+                            {/* Assuming standard Directus fields or custom fields added */}
                             <Col xs={24} sm={12}>
                                 <Form.Item
-                                    name="phone"
-                                    label="Số điện thoại"
-                                    rules={[
-                                        {
-                                            pattern: /^[0-9]{10,11}$/,
-                                            message: 'Số điện thoại không hợp lệ',
-                                        },
-                                    ]}
+                                    name="title" // Directus 'title' field often used for Job Title
+                                    label="Chức danh"
                                 >
-                                    <Input prefix={<PhoneOutlined />} placeholder="0901234567" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={24}>
-                            <Col xs={24} sm={12}>
-                                <Form.Item name="department" label="Phòng ban">
-                                    <Input prefix={<TeamOutlined />} disabled />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} sm={12}>
-                                <Form.Item name="position" label="Vị trí">
-                                    <Input disabled />
+                                    <Input disabled={!editing} />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -166,7 +149,12 @@ function ProfilePage() {
                             {editing ? (
                                 <>
                                     <Button onClick={() => setEditing(false)}>Hủy</Button>
-                                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>
+                                    <Button
+                                        type="primary"
+                                        htmlType="submit"
+                                        icon={<SaveOutlined />}
+                                        loading={updateMeMutation.isPending}
+                                    >
                                         Lưu thay đổi
                                     </Button>
                                 </>
@@ -191,20 +179,22 @@ function ProfilePage() {
                         onFinish={handleChangePassword}
                         style={{ maxWidth: 400 }}
                     >
-                        <Form.Item
-                            name="currentPassword"
-                            label="Mật khẩu hiện tại"
-                            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}
-                        >
-                            <Input.Password prefix={<LockOutlined />} placeholder="Nhập mật khẩu hiện tại" />
-                        </Form.Item>
+                        {/* Note: Directus API might not require current password for admin/self update depending on config, 
+                            but good practice to ask. However, standard updateMe doesn't validate current password easily 
+                            without custom endpoint. We'll just ask for new password for standard SDK usage 
+                            unless we implement a custom verification flow. 
+                            For safety in this demo, we'll assume we just set new password. 
+                        */}
 
                         <Form.Item
                             name="newPassword"
                             label="Mật khẩu mới"
                             rules={[
                                 { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-                                { min: VALIDATION.MIN_PASSWORD_LENGTH, message: `Mật khẩu phải có ít nhất ${VALIDATION.MIN_PASSWORD_LENGTH} ký tự` },
+                                {
+                                    min: VALIDATION.MIN_PASSWORD_LENGTH,
+                                    message: `Mật khẩu phải có ít nhất ${VALIDATION.MIN_PASSWORD_LENGTH} ký tự`,
+                                },
                             ]}
                         >
                             <Input.Password prefix={<LockOutlined />} placeholder="Nhập mật khẩu mới" />
@@ -229,7 +219,12 @@ function ProfilePage() {
                             <Input.Password prefix={<LockOutlined />} placeholder="Nhập lại mật khẩu mới" />
                         </Form.Item>
 
-                        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={changingPassword}>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            icon={<SaveOutlined />}
+                            loading={updateMeMutation.isPending}
+                        >
                             Đổi mật khẩu
                         </Button>
                     </Form>
@@ -237,6 +232,8 @@ function ProfilePage() {
             ),
         },
     ];
+
+    if (!user) return <Spin size="large" />;
 
     return (
         <div>
@@ -258,7 +255,7 @@ function ProfilePage() {
                             <Avatar
                                 size={120}
                                 icon={<UserOutlined />}
-                                src={mockUser.avatar}
+                                src={getAssetUrl(user.avatar)}
                                 style={{ backgroundColor: '#ea4544' }}
                             />
                             <Upload
@@ -283,11 +280,11 @@ function ProfilePage() {
                         </div>
 
                         <Title level={4} style={{ margin: 0 }}>
-                            {mockUser.first_name} {mockUser.last_name}
+                            {user.first_name} {user.last_name}
                         </Title>
-                        <Text type="secondary">{mockUser.position}</Text>
+                        <Text type="secondary">{user.title || 'Học viên'}</Text>
                         <br />
-                        <Text type="secondary">{mockUser.department}</Text>
+                        {/* <Text type="secondary">{user.department}</Text> */}
 
                         <Divider />
 
@@ -296,14 +293,14 @@ function ProfilePage() {
                             <Col span={12}>
                                 <Statistic
                                     title="Khóa học"
-                                    value={userEnrollments.length}
+                                    value={enrollments.length}
                                     prefix={<BookOutlined style={{ color: '#1890ff' }} />}
                                 />
                             </Col>
                             <Col span={12}>
                                 <Statistic
                                     title="Chứng chỉ"
-                                    value={userCertificates.length}
+                                    value={certificatesCount}
                                     prefix={<TrophyOutlined style={{ color: '#faad14' }} />}
                                 />
                             </Col>
@@ -314,12 +311,12 @@ function ProfilePage() {
                         <Space direction="vertical" size={4} style={{ width: '100%', textAlign: 'left' }}>
                             <Text type="secondary">
                                 <MailOutlined style={{ marginRight: 8 }} />
-                                {mockUser.email}
+                                {user.email}
                             </Text>
-                            <Text type="secondary">
+                            {/* <Text type="secondary">
                                 <PhoneOutlined style={{ marginRight: 8 }} />
-                                {mockUser.phone || 'Chưa cập nhật'}
-                            </Text>
+                                {user.phone || 'Chưa cập nhật'}
+                            </Text> */}
                         </Space>
                     </Card>
 
@@ -335,7 +332,7 @@ function ProfilePage() {
                         style={{ marginBottom: 16 }}
                     >
                         <ResponsiveContainer width="100%" height={250}>
-                            <RadarChart data={mockLearnerSkills} cx="50%" cy="50%" outerRadius="70%">
+                            <RadarChart data={skills} cx="50%" cy="50%" outerRadius="70%">
                                 <PolarGrid stroke="#f0f0f0" />
                                 <PolarAngleAxis dataKey="skill" tick={{ fontSize: 11 }} />
                                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
@@ -362,13 +359,6 @@ function ProfilePage() {
                             </Text>
                         </div>
                     </Card>
-
-                    {/* Additional info */}
-                    <Card size="small">
-                        <Text type="secondary">
-                            Tham gia từ: {new Date(mockUser.date_created).toLocaleDateString('vi-VN')}
-                        </Text>
-                    </Card>
                 </Col>
 
                 {/* Tabs */}
@@ -386,7 +376,8 @@ function ProfilePage() {
                         style={{ marginTop: 24 }}
                     >
                         <List
-                            dataSource={mockUserLearningPaths}
+                            dataSource={learningPaths}
+                            locale={{ emptyText: 'Chưa tham gia lộ trình nào' }}
                             renderItem={path => (
                                 <List.Item>
                                     <div style={{ width: '100%' }}>
@@ -410,12 +401,6 @@ function ProfilePage() {
                                             percent={path.progress}
                                             strokeColor={path.status === 'completed' ? '#52c41a' : '#1890ff'}
                                         />
-                                        <div style={{ marginTop: 8, textAlign: 'right' }}>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                Truy cập lần cuối:{' '}
-                                                {new Date(path.lastAccessed).toLocaleDateString('vi-VN')}
-                                            </Text>
-                                        </div>
                                     </div>
                                 </List.Item>
                             )}

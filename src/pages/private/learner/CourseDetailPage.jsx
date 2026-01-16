@@ -62,7 +62,21 @@ function CourseDetailPage() {
     // Process modules from course data
     const modules = useMemo(() => {
         if (!course?.modules) return [];
-        return [...course.modules].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+        console.log(course.modules);
+
+        // Filter published content for learners
+        const publishedModules = course.modules
+            .filter(m => m.status === 'published')
+            .map(m => ({
+                ...m,
+                lessons: (m.lessons || []).filter(l => l.status === 'published'),
+            }))
+            // Optional: Show module even if empty? Usually yes, to show course structure.
+            // .filter(m => m.lessons.length > 0)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+        return publishedModules;
     }, [course]);
 
     // Flatten tags từ M2M relation

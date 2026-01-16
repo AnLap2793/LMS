@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Table, Space, Tag, Popconfirm, Input, Select, Row, Col, Avatar, message, Tooltip } from 'antd';
 import {
@@ -11,8 +11,8 @@ import {
     UnorderedListOutlined,
 } from '@ant-design/icons';
 import { PageHeader, StatusTag, DifficultyTag, EmptyState } from '../../../../components/common';
-import { mockCourses, mockTags } from '../../../../mocks';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
+import { useAllCourses, useDeleteCourse, useTags } from '../../../../hooks/useCourses';
 
 /**
  * Course List Page
@@ -20,8 +20,6 @@ import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../co
  */
 function CourseListPage() {
     const navigate = useNavigate();
-    const [courses, setCourses] = useState(mockCourses);
-    const [loading, setLoading] = useState(false);
 
     // Filter states
     const [searchText, setSearchText] = useState('');
@@ -29,32 +27,23 @@ function CourseListPage() {
     const [difficultyFilter, setDifficultyFilter] = useState(null);
     const [tagFilter, setTagFilter] = useState(null);
 
-    // Filtered courses
-    const filteredCourses = useMemo(() => {
-        let result = courses;
+    // Debounce search text
+    // If we don't have useDebounce, we can just pass searchText directly but it might cause many requests
+    // For now passing directly.
 
-        // Search by title
-        if (searchText.trim()) {
-            result = result.filter(course => course.title.toLowerCase().includes(searchText.toLowerCase()));
-        }
+    // Data Hooks
+    const { data: courses = [], isLoading: coursesLoading } = useAllCourses({
+        search: searchText,
+        status: statusFilter,
+        difficulty: difficultyFilter,
+        tags: tagFilter ? [tagFilter] : undefined,
+        limit: -1, // Fetch all matching
+    });
 
-        // Filter by status
-        if (statusFilter) {
-            result = result.filter(course => course.status === statusFilter);
-        }
+    const { data: tags = [] } = useTags();
+    const deleteCourse = useDeleteCourse();
 
-        // Filter by difficulty
-        if (difficultyFilter) {
-            result = result.filter(course => course.difficulty === difficultyFilter);
-        }
-
-        // Filter by tag
-        if (tagFilter) {
-            result = result.filter(course => course.tags.some(tag => tag.id === tagFilter));
-        }
-
-        return result;
-    }, [courses, searchText, statusFilter, difficultyFilter, tagFilter]);
+    const loading = coursesLoading || deleteCourse.isPending;
 
     // Clear all filters
     const clearFilters = () => {
@@ -65,13 +54,8 @@ function CourseListPage() {
     };
 
     // Handle delete course
-    const handleDelete = id => {
-        setLoading(true);
-        setTimeout(() => {
-            setCourses(prev => prev.filter(course => course.id !== id));
-            message.success('Đã xóa khóa học thành công');
-            setLoading(false);
-        }, 500);
+    const handleDelete = async id => {
+        await deleteCourse.mutateAsync(id);
     };
 
     // Format duration
@@ -113,15 +97,24 @@ function CourseListPage() {
             dataIndex: 'tags',
             key: 'tags',
             width: 200,
-            render: tags => (
-                <Space size={[0, 4]} wrap>
-                    {tags?.map(tag => (
-                        <Tag key={tag.id} color={tag.color}>
-                            {tag.name}
-                        </Tag>
-                    ))}
-                </Space>
-            ),
+            render: tags => {
+                // tags here is from courseService, which might be array of junction or tag objects
+                // In getAllCourses: tags: c.tags || []
+                // If deep fetched: tags is array of junctions { tags_id: { id, name, color } }
+                // Need to handle this structure
+                return (
+                    <Space size={[0, 4]} wrap>
+                        {tags?.map(tagItem => {
+                            const tag = tagItem.tags_id || tagItem; // Handle junction or direct tag
+                            return (
+                                <Tag key={tag.id} color={tag.color}>
+                                    {tag.name}
+                                </Tag>
+                            );
+                        })}
+                    </Space>
+                );
+            },
         },
         {
             title: 'Trạng thái',
@@ -129,8 +122,6 @@ function CourseListPage() {
             key: 'status',
             width: 120,
             render: status => <StatusTag status={status} />,
-            filters: COURSE_STATUS_OPTIONS.map(opt => ({ text: opt.label, value: opt.value })),
-            onFilter: (value, record) => record.status === value,
         },
         {
             title: 'Độ khó',
@@ -141,11 +132,11 @@ function CourseListPage() {
         },
         {
             title: 'Thời lượng',
-            dataIndex: 'duration',
+            dataIndex: 'duration_minutes', // Use minutes
             key: 'duration',
             width: 100,
             render: formatDuration,
-            sorter: (a, b) => (a.duration || 0) - (b.duration || 0),
+            sorter: (a, b) => (a.duration_minutes || 0) - (b.duration_minutes || 0),
         },
         {
             title: 'Học viên',
@@ -207,7 +198,7 @@ function CourseListPage() {
         <div>
             <PageHeader
                 title="Quản lý Khóa học"
-                subtitle={`${filteredCourses.length} khóa học`}
+                subtitle={`${courses.length} khóa học`}
                 breadcrumbs={[{ title: 'Khóa học' }]}
                 actions={
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/courses/create')}>
@@ -252,7 +243,7 @@ function CourseListPage() {
                         placeholder="Tag"
                         value={tagFilter}
                         onChange={setTagFilter}
-                        options={mockTags.map(tag => ({ value: tag.id, label: tag.name }))}
+                        options={tags.map(tag => ({ value: tag.id, label: tag.name }))}
                         allowClear
                         style={{ width: '100%' }}
                     />
@@ -267,10 +258,10 @@ function CourseListPage() {
             </Row>
 
             {/* Table */}
-            {filteredCourses.length > 0 ? (
+            {courses.length > 0 ? (
                 <Table
                     columns={columns}
-                    dataSource={filteredCourses}
+                    dataSource={courses}
                     rowKey="id"
                     loading={loading}
                     pagination={{

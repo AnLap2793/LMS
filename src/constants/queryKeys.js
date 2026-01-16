@@ -222,4 +222,16 @@ export const queryKeys = {
         all: ['app-settings'],
         current: () => [...queryKeys.appSettings.all, 'current'],
     },
+
+    /**
+     * System - Departments & Positions
+     */
+    departments: {
+        all: ['departments'],
+        lists: () => [...queryKeys.departments.all, 'list'],
+    },
+    positions: {
+        all: ['positions'],
+        lists: () => [...queryKeys.positions.all, 'list'],
+    },
 };

@@ -1,26 +1,33 @@
-import { useState, useMemo } from 'react';
-import { Button, Table, Space, Tag, Popconfirm, Input, message } from 'antd';
+import { useState } from 'react';
+import { Button, Table, Space, Tag, Popconfirm, Input } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { PageHeader, EmptyState } from '../../../../components/common';
 import TagFormModal from '../../../../components/admin/tags/TagFormModal';
-import { mockTags } from '../../../../mocks';
+import { useTagsList, useCreateTag, useUpdateTag, useDeleteTag } from '../../../../hooks/useTags';
 
 /**
  * Tag List Page
  * CRUD management for Tags
  */
 function TagListPage() {
-    const [tags, setTags] = useState(mockTags);
+    // Search state
     const [searchText, setSearchText] = useState('');
+
+    // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTag, setEditingTag] = useState(null);
-    const [loading, setLoading] = useState(false);
 
-    // Filtered tags based on search
-    const filteredTags = useMemo(() => {
-        if (!searchText.trim()) return tags;
-        return tags.filter(tag => tag.name.toLowerCase().includes(searchText.toLowerCase()));
-    }, [tags, searchText]);
+    // React Query Hooks
+    const { data: tags = [], isLoading: tagsLoading } = useTagsList({
+        search: searchText,
+        limit: -1, // Fetch all for now, or implement pagination
+    });
+
+    const createTag = useCreateTag();
+    const updateTag = useUpdateTag();
+    const deleteTag = useDeleteTag();
+
+    const loading = createTag.isPending || updateTag.isPending || deleteTag.isPending || tagsLoading;
 
     // Handle create new tag
     const handleCreate = () => {
@@ -35,39 +42,25 @@ function TagListPage() {
     };
 
     // Handle delete tag
-    const handleDelete = id => {
-        setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setTags(prev => prev.filter(tag => tag.id !== id));
-            message.success('Đã xóa tag thành công');
-            setLoading(false);
-        }, 500);
+    const handleDelete = async id => {
+        await deleteTag.mutateAsync(id);
     };
 
     // Handle form submit
-    const handleFormSubmit = values => {
-        setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+    const handleFormSubmit = async values => {
+        try {
             if (editingTag) {
                 // Update existing tag
-                setTags(prev => prev.map(tag => (tag.id === editingTag.id ? { ...tag, ...values } : tag)));
-                message.success('Đã cập nhật tag thành công');
+                await updateTag.mutateAsync({ id: editingTag.id, data: values });
             } else {
                 // Create new tag
-                const newTag = {
-                    id: String(Date.now()),
-                    ...values,
-                    date_created: new Date().toISOString(),
-                };
-                setTags(prev => [...prev, newTag]);
-                message.success('Đã tạo tag thành công');
+                await createTag.mutateAsync(values);
             }
             setIsModalOpen(false);
             setEditingTag(null);
-            setLoading(false);
-        }, 500);
+        } catch (error) {
+            // Error handled by global handler
+        }
     };
 
     // Table columns
@@ -115,8 +108,8 @@ function TagListPage() {
             dataIndex: 'date_created',
             key: 'date_created',
             width: 180,
-            render: date => new Date(date).toLocaleDateString('vi-VN'),
-            sorter: (a, b) => new Date(a.date_created) - new Date(b.date_created),
+            render: date => (date ? new Date(date).toLocaleDateString('vi-VN') : '-'),
+            sorter: (a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0),
         },
         {
             title: 'Thao tác',
@@ -134,7 +127,12 @@ function TagListPage() {
                         cancelText="Hủy"
                         okButtonProps={{ danger: true }}
                     >
-                        <Button type="text" danger icon={<DeleteOutlined />} />
+                        <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            loading={deleteTag.isPending && deleteTag.variables === record.id}
+                        />
                     </Popconfirm>
                 </Space>
             ),
@@ -167,10 +165,10 @@ function TagListPage() {
             </div>
 
             {/* Table */}
-            {filteredTags.length > 0 ? (
+            {tags.length > 0 || loading ? (
                 <Table
                     columns={columns}
-                    dataSource={filteredTags}
+                    dataSource={tags}
                     rowKey="id"
                     loading={loading}
                     pagination={{
@@ -181,10 +179,10 @@ function TagListPage() {
                 />
             ) : (
                 <EmptyState
-                    title="Chưa có tag nào"
-                    description="Tạo tag đầu tiên để phân loại khóa học"
-                    actionText="Thêm Tag"
-                    onAction={handleCreate}
+                    title={searchText ? 'Không tìm thấy tag' : 'Chưa có tag nào'}
+                    description={searchText ? 'Thử từ khóa khác' : 'Tạo tag đầu tiên để phân loại khóa học'}
+                    actionText={searchText ? undefined : 'Thêm Tag'}
+                    onAction={searchText ? undefined : handleCreate}
                 />
             )}
 
@@ -197,7 +195,7 @@ function TagListPage() {
                 }}
                 onSubmit={handleFormSubmit}
                 initialValues={editingTag}
-                loading={loading}
+                loading={createTag.isPending || updateTag.isPending}
             />
         </div>
     );

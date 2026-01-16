@@ -89,7 +89,7 @@ export function useQuizzesForFilter() {
     return useQuery({
         queryKey: [...queryKeys.quizzes.all, 'filter-options'],
         queryFn: () => quizAttemptService.getQuizzesForFilter(),
-        staleTime: CACHE_TIME.STALE_TIME * 2, // Ít thay đổi
+        staleTime: CACHE_TIME.STALE_TIME * 2,
     });
 }
 
@@ -102,7 +102,6 @@ export function useCreateQuizAttempt() {
     return useMutation({
         mutationFn: quizAttemptService.create,
         onSuccess: () => {
-            // Invalidate all attempt queries
             queryClient.invalidateQueries({ queryKey: queryKeys.quizAttempts.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.quizAttempts.mine() });
             showSuccess('Đã lưu kết quả bài kiểm tra!');

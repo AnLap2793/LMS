@@ -1,11 +1,10 @@
 /**
- * Quiz Service - Mock data cho quizzes và quiz questions
- * Sử dụng mock data thay vì Directus API
+ * Quiz Service - Quản lý bài kiểm tra và câu hỏi
+ * Directus Implementation
  */
-import { mockQuizzes, mockQuizQuestions, getQuestionsByQuizId } from '../mocks/quizzes';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+import { directus } from './directus';
+import { readItems, readItem, createItem, updateItem, deleteItem, aggregate } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 
 export const quizService = {
     /**
@@ -14,29 +13,29 @@ export const quizService = {
      * @returns {Promise<Array>} Danh sách quizzes
      */
     getAll: async (params = {}) => {
-        await delay();
         const { search, course_id, page = 1, limit = 10 } = params;
 
-        let filteredQuizzes = [...mockQuizzes];
+        const filter = {};
 
-        // Filter by search
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredQuizzes = filteredQuizzes.filter(
-                q => q.title.toLowerCase().includes(searchLower) || q.description?.toLowerCase().includes(searchLower)
-            );
+            filter._or = [{ title: { _icontains: search } }, { description: { _icontains: search } }];
         }
 
-        // Filter by course
         if (course_id) {
-            filteredQuizzes = filteredQuizzes.filter(q => q.course_id === course_id);
+            filter.course_id = { _eq: course_id };
         }
 
-        // Pagination
-        const offset = (page - 1) * limit;
-        const paginatedQuizzes = filteredQuizzes.slice(offset, offset + limit);
+        const items = await directus.request(
+            readItems(COLLECTIONS.QUIZZES, {
+                filter,
+                limit,
+                page,
+                fields: ['*', 'user_created.first_name', 'user_created.last_name'],
+                sort: ['-date_created'],
+            })
+        );
 
-        return paginatedQuizzes;
+        return items;
     },
 
     /**
@@ -45,23 +44,26 @@ export const quizService = {
      * @returns {Promise<number>} Tổng số quizzes
      */
     count: async (params = {}) => {
-        await delay(100);
         const { search, course_id } = params;
 
-        let filteredQuizzes = [...mockQuizzes];
+        const filter = {};
 
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredQuizzes = filteredQuizzes.filter(
-                q => q.title.toLowerCase().includes(searchLower) || q.description?.toLowerCase().includes(searchLower)
-            );
+            filter._or = [{ title: { _icontains: search } }, { description: { _icontains: search } }];
         }
 
         if (course_id) {
-            filteredQuizzes = filteredQuizzes.filter(q => q.course_id === course_id);
+            filter.course_id = { _eq: course_id };
         }
 
-        return filteredQuizzes.length;
+        const result = await directus.request(
+            aggregate(COLLECTIONS.QUIZZES, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
+
+        return Number(result[0]?.count) || 0;
     },
 
     /**
@@ -70,14 +72,11 @@ export const quizService = {
      * @returns {Promise<Object>} Chi tiết quiz
      */
     getById: async quizId => {
-        await delay();
-        const quiz = mockQuizzes.find(q => q.id === quizId);
-
-        if (!quiz) {
-            throw new Error('Quiz not found');
-        }
-
-        return quiz;
+        return await directus.request(
+            readItem(COLLECTIONS.QUIZZES, quizId, {
+                fields: ['*', 'user_created.first_name', 'user_created.last_name'],
+            })
+        );
     },
 
     /**
@@ -86,18 +85,20 @@ export const quizService = {
      * @returns {Promise<Object>} Quiz với danh sách questions
      */
     getWithQuestions: async quizId => {
-        await delay();
-        const quiz = mockQuizzes.find(q => q.id === quizId);
+        const quiz = await quizService.getById(quizId);
 
-        if (!quiz) {
-            throw new Error('Quiz not found');
-        }
-
-        const questions = getQuestionsByQuizId(quizId).sort((a, b) => a.sort - b.sort);
+        // Fetch questions separately to ensure proper sorting and fields
+        const questions = await directus.request(
+            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
+                filter: { quiz_id: { _eq: quizId } },
+                sort: ['sort'],
+                limit: -1,
+            })
+        );
 
         return {
             ...quiz,
-            questions,
+            questions: questions || [],
         };
     },
 
@@ -107,8 +108,12 @@ export const quizService = {
      * @returns {Promise<Array>} Danh sách quizzes
      */
     getByCourseId: async courseId => {
-        await delay();
-        return mockQuizzes.filter(q => q.course_id === courseId);
+        return await directus.request(
+            readItems(COLLECTIONS.QUIZZES, {
+                filter: { course_id: { _eq: courseId } },
+                sort: ['title'],
+            })
+        );
     },
 
     /**
@@ -117,8 +122,13 @@ export const quizService = {
      * @returns {Promise<Object|null>} Quiz hoặc null
      */
     getByLessonId: async lessonId => {
-        await delay();
-        return mockQuizzes.find(q => q.lesson_id === lessonId) || null;
+        const items = await directus.request(
+            readItems(COLLECTIONS.QUIZZES, {
+                filter: { lesson_id: { _eq: lessonId } },
+                limit: 1,
+            })
+        );
+        return items[0] || null;
     },
 
     /**
@@ -127,8 +137,13 @@ export const quizService = {
      * @returns {Promise<Array>} Danh sách câu hỏi
      */
     getQuestions: async quizId => {
-        await delay();
-        return getQuestionsByQuizId(quizId).sort((a, b) => a.sort - b.sort);
+        return await directus.request(
+            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
+                filter: { quiz_id: { _eq: quizId } },
+                sort: ['sort'],
+                limit: -1,
+            })
+        );
     },
 
     /**
@@ -137,14 +152,7 @@ export const quizService = {
      * @returns {Promise<Object>} Chi tiết câu hỏi
      */
     getQuestionById: async questionId => {
-        await delay();
-        const question = mockQuizQuestions.find(q => q.id === questionId);
-
-        if (!question) {
-            throw new Error('Question not found');
-        }
-
-        return question;
+        return await directus.request(readItem(COLLECTIONS.QUIZ_QUESTIONS, questionId));
     },
 
     /**
@@ -153,17 +161,7 @@ export const quizService = {
      * @returns {Promise<Object>} Quiz đã tạo
      */
     create: async data => {
-        await delay(500);
-        const newQuiz = {
-            id: `q${Date.now()}`,
-            ...data,
-            questions_count: 0,
-            user_created: { id: 'admin', first_name: 'Admin', last_name: 'User' },
-            date_created: new Date().toISOString(),
-        };
-
-        mockQuizzes.push(newQuiz);
-        return newQuiz;
+        return await directus.request(createItem(COLLECTIONS.QUIZZES, data));
     },
 
     /**
@@ -173,15 +171,7 @@ export const quizService = {
      * @returns {Promise<Object>} Quiz đã cập nhật
      */
     update: async (id, data) => {
-        await delay(500);
-        const index = mockQuizzes.findIndex(q => q.id === id);
-
-        if (index === -1) {
-            throw new Error('Quiz not found');
-        }
-
-        mockQuizzes[index] = { ...mockQuizzes[index], ...data };
-        return mockQuizzes[index];
+        return await directus.request(updateItem(COLLECTIONS.QUIZZES, id, data));
     },
 
     /**
@@ -190,14 +180,8 @@ export const quizService = {
      * @returns {Promise<void>}
      */
     delete: async id => {
-        await delay(500);
-        const index = mockQuizzes.findIndex(q => q.id === id);
-
-        if (index === -1) {
-            throw new Error('Quiz not found');
-        }
-
-        mockQuizzes.splice(index, 1);
+        // Directus should handle cascade delete if configured
+        return await directus.request(deleteItem(COLLECTIONS.QUIZZES, id));
     },
 
     /**
@@ -207,26 +191,22 @@ export const quizService = {
      * @returns {Promise<Object>} Câu hỏi đã tạo
      */
     addQuestion: async (quizId, questionData) => {
-        await delay(500);
-        const existingQuestions = getQuestionsByQuizId(quizId);
-        const maxSort = existingQuestions.length > 0 ? Math.max(...existingQuestions.map(q => q.sort)) : 0;
+        // Get max sort order
+        const existingQuestions = await quizService.getQuestions(quizId);
+        const maxSort = existingQuestions.length > 0 ? Math.max(...existingQuestions.map(q => q.sort || 0)) : 0;
 
-        const newQuestion = {
-            id: `qq${Date.now()}`,
-            quiz_id: quizId,
-            ...questionData,
-            sort: maxSort + 1,
-        };
+        const question = await directus.request(
+            createItem(COLLECTIONS.QUIZ_QUESTIONS, {
+                quiz_id: quizId,
+                ...questionData,
+                sort: maxSort + 1,
+            })
+        );
 
-        mockQuizQuestions.push(newQuestion);
+        // Update question count in quiz
+        await quizService.updateQuizQuestionCount(quizId);
 
-        // Update questions count
-        const quizIndex = mockQuizzes.findIndex(q => q.id === quizId);
-        if (quizIndex !== -1) {
-            mockQuizzes[quizIndex].questions_count = (mockQuizzes[quizIndex].questions_count || 0) + 1;
-        }
-
-        return newQuestion;
+        return question;
     },
 
     /**
@@ -236,15 +216,7 @@ export const quizService = {
      * @returns {Promise<Object>} Câu hỏi đã cập nhật
      */
     updateQuestion: async (questionId, data) => {
-        await delay(500);
-        const index = mockQuizQuestions.findIndex(q => q.id === questionId);
-
-        if (index === -1) {
-            throw new Error('Question not found');
-        }
-
-        mockQuizQuestions[index] = { ...mockQuizQuestions[index], ...data };
-        return mockQuizQuestions[index];
+        return await directus.request(updateItem(COLLECTIONS.QUIZ_QUESTIONS, questionId, data));
     },
 
     /**
@@ -253,33 +225,46 @@ export const quizService = {
      * @returns {Promise<void>}
      */
     deleteQuestion: async questionId => {
-        await delay(500);
-        const index = mockQuizQuestions.findIndex(q => q.id === questionId);
+        const question = await quizService.getQuestionById(questionId);
+        await directus.request(deleteItem(COLLECTIONS.QUIZ_QUESTIONS, questionId));
 
-        if (index === -1) {
-            throw new Error('Question not found');
-        }
-
-        const quizId = mockQuizQuestions[index].quiz_id;
-        mockQuizQuestions.splice(index, 1);
-
-        // Update questions count
-        const quizIndex = mockQuizzes.findIndex(q => q.id === quizId);
-        if (quizIndex !== -1) {
-            mockQuizzes[quizIndex].questions_count = Math.max(0, (mockQuizzes[quizIndex].questions_count || 1) - 1);
+        if (question?.quiz_id) {
+            await quizService.updateQuizQuestionCount(question.quiz_id);
         }
     },
 
     /**
-     * Lấy thống kê quizzes
+     * Update quiz question count helper
+     */
+    updateQuizQuestionCount: async quizId => {
+        const questions = await quizService.getQuestions(quizId);
+        await directus.request(
+            updateItem(COLLECTIONS.QUIZZES, quizId, {
+                questions_count: questions.length,
+            })
+        );
+    },
+
+    /**
+     * Lấy thống kê quizzes (Admin)
      * @returns {Promise<Object>} Thống kê
      */
     getStats: async () => {
-        await delay(200);
+        const totalQuizzesResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZZES, { aggregate: { count: '*' } })
+        );
+
+        const totalQuestionsResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_QUESTIONS, { aggregate: { count: '*' } })
+        );
+
+        const totalQuizzes = Number(totalQuizzesResult[0]?.count) || 0;
+        const totalQuestions = Number(totalQuestionsResult[0]?.count) || 0;
+
         return {
-            totalQuizzes: mockQuizzes.length,
-            totalQuestions: mockQuizQuestions.length,
-            averageQuestionsPerQuiz: Math.round(mockQuizQuestions.length / mockQuizzes.length),
+            totalQuizzes,
+            totalQuestions,
+            averageQuestionsPerQuiz: totalQuizzes > 0 ? Math.round(totalQuestions / totalQuizzes) : 0,
         };
     },
 };

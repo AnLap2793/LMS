@@ -1,50 +1,11 @@
 /**
- * Enrollment Service - Mock data cho đăng ký khóa học và tiến độ học
- * Sử dụng mock data thay vì Directus API
+ * Enrollment Service - Quản lý đăng ký khóa học
+ * Directus Implementation
  */
-import { mockEnrollments, getEnrollmentStats } from '../mocks/enrollments';
-import { mockCourses } from '../mocks/courses';
+import { directus } from './directus';
+import { readItems, createItem, updateItem, deleteItem, readMe, aggregate } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 import { ENROLLMENT_STATUS } from '../constants/lms';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
-
-// In-memory storage for mutations (để test mutations)
-let enrollmentsData = [...mockEnrollments];
-
-// Helper: Get course by ID
-const getCourseById = courseId => mockCourses.find(c => c.id === courseId);
-
-// Helper: Transform enrollment to API response format
-const transformEnrollment = enrollment => {
-    const course = getCourseById(enrollment.course_id);
-    return {
-        id: enrollment.id,
-        status: enrollment.status,
-        progress_percentage: enrollment.progress_percentage,
-        enrolled_at: enrollment.date_created,
-        completed_at: enrollment.completed_at,
-        last_accessed_at: enrollment.started_at || enrollment.date_created,
-        course: course
-            ? {
-                  id: course.id,
-                  title: course.title,
-                  description: course.description,
-                  thumbnail: course.thumbnail,
-                  difficulty: course.difficulty,
-                  duration_hours: Math.round(course.duration / 60),
-                  instructor: course.user_created
-                      ? {
-                            first_name: course.user_created.first_name,
-                            last_name: course.user_created.last_name,
-                            avatar: null,
-                        }
-                      : null,
-                  tags: course.tags?.map(t => ({ tags_id: t })) || [],
-              }
-            : enrollment.course,
-    };
-};
 
 export const enrollmentService = {
     /**
@@ -53,37 +14,45 @@ export const enrollmentService = {
      * @returns {Promise<Array>} Danh sách enrollments
      */
     getMyEnrollments: async (params = {}) => {
-        await delay();
         const { status, search, page = 1, limit = 12 } = params;
 
-        let filteredEnrollments = [...enrollmentsData];
+        // Get current user ID
+        const user = await directus.request(readMe());
+        const userId = user.id;
 
-        // Filter theo status
+        const filter = {
+            user_id: { _eq: userId },
+        };
+
         if (status && status !== 'all') {
-            filteredEnrollments = filteredEnrollments.filter(e => e.status === status);
+            filter.status = { _eq: status };
         }
 
-        // Search theo tên khóa học
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredEnrollments = filteredEnrollments.filter(e => {
-                const course = getCourseById(e.course_id);
-                return course?.title?.toLowerCase().includes(searchLower);
-            });
+            filter.course = {
+                title: { _icontains: search },
+            };
         }
 
-        // Sort by last accessed
-        filteredEnrollments.sort((a, b) => {
-            const dateA = new Date(a.started_at || a.date_created);
-            const dateB = new Date(b.started_at || b.date_created);
-            return dateB - dateA;
-        });
-
-        // Pagination
-        const offset = (page - 1) * limit;
-        const paginatedEnrollments = filteredEnrollments.slice(offset, offset + limit);
-
-        return paginatedEnrollments.map(transformEnrollment);
+        return await directus.request(
+            readItems(COLLECTIONS.ENROLLMENTS, {
+                filter,
+                fields: [
+                    '*',
+                    'course.id',
+                    'course.title',
+                    'course.slug',
+                    'course.thumbnail',
+                    'course.difficulty',
+                    'course.duration',
+                    'course.user_created.first_name',
+                    'course.user_created.last_name',
+                ],
+                sort: ['-last_accessed_at', '-date_created'], // Sort by last accessed desc
+                limit,
+                page,
+            })
+        );
     },
 
     /**
@@ -91,14 +60,34 @@ export const enrollmentService = {
      * @returns {Promise<Object>} Thống kê enrollments
      */
     getMyEnrollmentStats: async () => {
-        await delay(100);
-        const stats = getEnrollmentStats();
+        const user = await directus.request(readMe());
+        const userId = user.id;
+
+        const result = await directus.request(
+            aggregate(COLLECTIONS.ENROLLMENTS, {
+                aggregate: { count: '*' },
+                groupBy: ['status'],
+                query: {
+                    filter: { user_id: { _eq: userId } },
+                },
+            })
+        );
+
+        // Calculate stats map
+        const stats = result.reduce(
+            (acc, item) => {
+                acc[item.status] = Number(item.count);
+                acc.total += Number(item.count);
+                return acc;
+            },
+            { total: 0, [ENROLLMENT_STATUS.IN_PROGRESS]: 0, [ENROLLMENT_STATUS.COMPLETED]: 0, assigned: 0 } // 'assigned' might be pending or another status? Assuming 'assigned' isn't a direct status in DB based on code, but typically it is.
+        );
 
         return {
             total: stats.total,
-            inProgress: stats.inProgress,
-            completed: stats.completed,
-            assigned: stats.assigned,
+            inProgress: stats[ENROLLMENT_STATUS.IN_PROGRESS] || 0,
+            completed: stats[ENROLLMENT_STATUS.COMPLETED] || 0,
+            assigned: stats.assigned || 0, // Adjust key if 'assigned' is different in DB
         };
     },
 
@@ -108,35 +97,20 @@ export const enrollmentService = {
      * @returns {Promise<Array>} Danh sách enrollments đang học
      */
     getContinueLearning: async (limit = 4) => {
-        await delay();
+        const user = await directus.request(readMe());
+        const userId = user.id;
 
-        const inProgressEnrollments = enrollmentsData
-            .filter(e => e.status === ENROLLMENT_STATUS.IN_PROGRESS)
-            .sort((a, b) => {
-                const dateA = new Date(a.started_at || a.date_created);
-                const dateB = new Date(b.started_at || b.date_created);
-                return dateB - dateA;
+        return await directus.request(
+            readItems(COLLECTIONS.ENROLLMENTS, {
+                filter: {
+                    user_id: { _eq: userId },
+                    status: { _eq: ENROLLMENT_STATUS.IN_PROGRESS },
+                },
+                fields: ['*', 'course.id', 'course.title', 'course.thumbnail', 'course.difficulty', 'course.duration'],
+                sort: ['-last_accessed_at'],
+                limit,
             })
-            .slice(0, limit);
-
-        return inProgressEnrollments.map(e => {
-            const course = getCourseById(e.course_id);
-            return {
-                id: e.id,
-                status: e.status,
-                progress_percentage: e.progress_percentage,
-                last_accessed_at: e.started_at || e.date_created,
-                course: course
-                    ? {
-                          id: course.id,
-                          title: course.title,
-                          thumbnail: course.thumbnail,
-                          difficulty: course.difficulty,
-                          duration_hours: Math.round(course.duration / 60),
-                      }
-                    : e.course,
-            };
-        });
+        );
     },
 
     /**
@@ -145,14 +119,15 @@ export const enrollmentService = {
      * @returns {Promise<Object>} Chi tiết enrollment
      */
     getEnrollmentDetail: async enrollmentId => {
-        await delay();
-        const enrollment = enrollmentsData.find(e => e.id === enrollmentId);
-
-        if (!enrollment) {
-            throw new Error('Enrollment not found');
-        }
-
-        return transformEnrollment(enrollment);
+        return await directus
+            .request(
+                readItems(COLLECTIONS.ENROLLMENTS, {
+                    filter: { id: { _eq: enrollmentId } },
+                    fields: ['*', 'course.*', 'course.user_created.first_name', 'course.user_created.last_name'],
+                    limit: 1,
+                })
+            )
+            .then(res => res[0]);
     },
 
     /**
@@ -161,20 +136,20 @@ export const enrollmentService = {
      * @returns {Promise<Object|null>} Enrollment hoặc null
      */
     getEnrollmentByCourse: async courseId => {
-        await delay(100);
-        const enrollment = enrollmentsData.find(e => e.course_id === courseId);
+        const user = await directus.request(readMe());
+        const userId = user.id;
 
-        if (!enrollment) {
-            return null;
-        }
+        const result = await directus.request(
+            readItems(COLLECTIONS.ENROLLMENTS, {
+                filter: {
+                    user_id: { _eq: userId },
+                    course_id: { _eq: courseId },
+                },
+                limit: 1,
+            })
+        );
 
-        return {
-            id: enrollment.id,
-            status: enrollment.status,
-            progress_percentage: enrollment.progress_percentage,
-            enrolled_at: enrollment.date_created,
-            last_accessed_at: enrollment.started_at || enrollment.date_created,
-        };
+        return result[0] || null;
     },
 
     /**
@@ -183,44 +158,34 @@ export const enrollmentService = {
      * @returns {Promise<Object>} Enrollment mới
      */
     enrollCourse: async courseId => {
-        await delay();
+        const user = await directus.request(readMe());
+        const userId = user.id;
 
         // Check if already enrolled
-        const existingEnrollment = enrollmentsData.find(e => e.course_id === courseId);
-        if (existingEnrollment) {
+        const existing = await directus.request(
+            readItems(COLLECTIONS.ENROLLMENTS, {
+                filter: {
+                    user_id: { _eq: userId },
+                    course_id: { _eq: courseId },
+                },
+                limit: 1,
+            })
+        );
+
+        if (existing.length > 0) {
             throw new Error('Bạn đã đăng ký khóa học này rồi');
         }
 
-        const course = getCourseById(courseId);
-        if (!course) {
-            throw new Error('Không tìm thấy khóa học');
-        }
-
-        const newEnrollment = {
-            id: `e${Date.now()}`,
-            user_id: 'current_user',
-            user: { id: 'current_user', first_name: 'Current', last_name: 'User', email: 'user@company.com' },
-            course_id: courseId,
-            course: { id: course.id, title: course.title },
-            assigned_by: null,
-            assignment_type: 'individual',
-            status: ENROLLMENT_STATUS.IN_PROGRESS,
-            progress_percentage: 0,
-            started_at: new Date().toISOString(),
-            completed_at: null,
-            due_date: null,
-            date_created: new Date().toISOString(),
-        };
-
-        enrollmentsData.push(newEnrollment);
-
-        return {
-            id: newEnrollment.id,
-            course: courseId,
-            status: newEnrollment.status,
-            progress_percentage: newEnrollment.progress_percentage,
-            enrolled_at: newEnrollment.date_created,
-        };
+        return await directus.request(
+            createItem(COLLECTIONS.ENROLLMENTS, {
+                user_id: userId,
+                course_id: courseId,
+                status: ENROLLMENT_STATUS.IN_PROGRESS,
+                progress_percentage: 0,
+                started_at: new Date().toISOString(),
+                assignment_type: 'self', // Default for self-enrollment
+            })
+        );
     },
 
     /**
@@ -229,22 +194,11 @@ export const enrollmentService = {
      * @returns {Promise<Object>} Enrollment đã cập nhật
      */
     updateLastAccessed: async enrollmentId => {
-        await delay(100);
-
-        const enrollmentIndex = enrollmentsData.findIndex(e => e.id === enrollmentId);
-        if (enrollmentIndex === -1) {
-            throw new Error('Enrollment not found');
-        }
-
-        enrollmentsData[enrollmentIndex] = {
-            ...enrollmentsData[enrollmentIndex],
-            started_at: new Date().toISOString(),
-        };
-
-        return {
-            id: enrollmentId,
-            last_accessed_at: new Date().toISOString(),
-        };
+        return await directus.request(
+            updateItem(COLLECTIONS.ENROLLMENTS, enrollmentId, {
+                last_accessed_at: new Date().toISOString(),
+            })
+        );
     },
 
     /**
@@ -254,16 +208,9 @@ export const enrollmentService = {
      * @returns {Promise<Object>} Enrollment đã cập nhật
      */
     updateProgress: async (enrollmentId, progressPercentage) => {
-        await delay();
-
-        const enrollmentIndex = enrollmentsData.findIndex(e => e.id === enrollmentId);
-        if (enrollmentIndex === -1) {
-            throw new Error('Enrollment not found');
-        }
-
         const updates = {
             progress_percentage: progressPercentage,
-            started_at: new Date().toISOString(),
+            last_accessed_at: new Date().toISOString(),
         };
 
         // Nếu hoàn thành 100%, cập nhật status và completed_at
@@ -274,14 +221,60 @@ export const enrollmentService = {
             updates.status = ENROLLMENT_STATUS.IN_PROGRESS;
         }
 
-        enrollmentsData[enrollmentIndex] = {
-            ...enrollmentsData[enrollmentIndex],
-            ...updates,
-        };
+        return await directus.request(updateItem(COLLECTIONS.ENROLLMENTS, enrollmentId, updates));
+    },
 
-        return {
-            id: enrollmentId,
-            ...updates,
-        };
+    /**
+     * Admin: Lấy danh sách tất cả enrollments
+     * @param {Object} params - Filter params
+     */
+    getAll: async (params = {}) => {
+        const { search, status, courseId, userId, page = 1, limit = 10 } = params;
+
+        const filter = {};
+
+        if (status) filter.status = { _eq: status };
+        if (courseId) filter.course_id = { _eq: courseId };
+        if (userId) filter.user_id = { _eq: userId };
+
+        // Note: Deep search in Directus needs configuration or specific fields
+        if (search) {
+            // Simplified search (might need adjustment based on requirements)
+            // Searching across related collections (user.email, course.title) requires permission and specific filter structure
+            // Or just search by ID if search is simple string
+        }
+
+        return await directus.request(
+            readItems(COLLECTIONS.ENROLLMENTS, {
+                filter,
+                fields: ['*', 'user.first_name', 'user.last_name', 'user.email', 'course.title'],
+                sort: ['-date_created'],
+                page,
+                limit,
+            })
+        );
+    },
+
+    /**
+     * Admin: Assign course to user
+     */
+    assignCourse: async data => {
+        // data: { user_id, course_id, due_date, ... }
+        return await directus.request(
+            createItem(COLLECTIONS.ENROLLMENTS, {
+                ...data,
+                status: ENROLLMENT_STATUS.IN_PROGRESS, // or 'assigned' if supported
+                progress_percentage: 0,
+                assigned_by: (await directus.request(readMe())).id, // Current admin ID
+                assignment_type: 'assigned',
+            })
+        );
+    },
+
+    /**
+     * Admin: Delete enrollment
+     */
+    delete: async id => {
+        return await directus.request(deleteItem(COLLECTIONS.ENROLLMENTS, id));
     },
 };

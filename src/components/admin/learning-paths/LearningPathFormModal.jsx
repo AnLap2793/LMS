@@ -2,7 +2,11 @@ import { useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Modal, Form, Input, Select, Switch, Row, Col, Divider, Typography, InputNumber, Card, Space } from 'antd';
 import { NodeIndexOutlined, BookOutlined, ClockCircleOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
-import { mockCourses, mockPositions, mockDepartments } from '../../../mocks';
+import { useQuery } from '@tanstack/react-query';
+import { usePublishedCourses } from '../../../hooks/useCourses';
+import { departmentService } from '../../../services/departmentService';
+import { positionService } from '../../../services/positionService';
+import { queryKeys } from '../../../constants/queryKeys';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -16,9 +20,20 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
     const isEdit = !!initialValues;
 
     // Get available courses (published only)
-    const availableCourses = useMemo(() => {
-        return mockCourses.filter(c => c.status === 'published');
-    }, []);
+    const { data: availableCourses = [] } = usePublishedCourses({ limit: 100 });
+
+    // Get departments and positions
+    const { data: departments = [] } = useQuery({
+        queryKey: queryKeys.departments.lists(),
+        queryFn: departmentService.getAll,
+        enabled: open,
+    });
+
+    const { data: positions = [] } = useQuery({
+        queryKey: queryKeys.positions.lists(),
+        queryFn: positionService.getAll,
+        enabled: open,
+    });
 
     // Watch selected courses to calculate total duration
     const selectedCourseIds = Form.useWatch('course_ids', form) || [];
@@ -26,10 +41,10 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
 
     const totalDuration = useMemo(() => {
         return selectedCourseIds.reduce((total, courseId) => {
-            const course = mockCourses.find(c => c.id === courseId);
-            return total + (course?.duration || 0);
+            const course = availableCourses.find(c => c.id === courseId);
+            return total + (course?.duration || 0); // Assuming duration is in minutes
         }, 0);
-    }, [selectedCourseIds]);
+    }, [selectedCourseIds, availableCourses]);
 
     // Format duration
     const formatDuration = minutes => {
@@ -41,6 +56,9 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
         }
         return `${mins} phút`;
     };
+
+    // Helper to get course details
+    const getCourseDetails = id => availableCourses.find(c => c.id === id);
 
     // Reset form when modal opens
     useEffect(() => {
@@ -71,7 +89,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
             const submitData = {
                 ...values,
                 courses: values.course_ids.map((id, index) => {
-                    const course = mockCourses.find(c => c.id === id);
+                    const course = availableCourses.find(c => c.id === id);
                     return {
                         id,
                         title: course?.title,
@@ -197,7 +215,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                options={mockDepartments.map(dept => ({
+                                options={departments.map(dept => ({
                                     value: dept.code,
                                     label: (
                                         <Space>
@@ -221,7 +239,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                options={mockPositions.map(pos => ({
+                                options={positions.map(pos => ({
                                     value: pos.code,
                                     label: (
                                         <Space>
@@ -264,15 +282,16 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
                                 </Space>
                             ),
                         }))}
-                        optionRender={option => (
-                            <Space>
-                                <BookOutlined style={{ color: '#1890ff' }} />
-                                <span>{mockCourses.find(c => c.id === option.value)?.title}</span>
-                                <Text type="secondary">
-                                    ({formatDuration(mockCourses.find(c => c.id === option.value)?.duration)})
-                                </Text>
-                            </Space>
-                        )}
+                        optionRender={option => {
+                            const course = getCourseDetails(option.value);
+                            return (
+                                <Space>
+                                    <BookOutlined style={{ color: '#1890ff' }} />
+                                    <span>{course?.title}</span>
+                                    <Text type="secondary">({formatDuration(course?.duration || 0)})</Text>
+                                </Space>
+                            );
+                        }}
                     />
                 </Form.Item>
 

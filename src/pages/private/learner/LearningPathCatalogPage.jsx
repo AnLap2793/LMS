@@ -10,7 +10,9 @@ import {
     ArrowRightOutlined,
     FlagOutlined,
 } from '@ant-design/icons';
-import { mockLearningPaths } from '../../../mocks';
+import { useQuery } from '@tanstack/react-query';
+import { learningPathService } from '../../../services/learningPathService';
+import { queryKeys } from '../../../constants/queryKeys';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -22,7 +24,10 @@ function LearningPathCatalogPage() {
     const navigate = useNavigate();
     const [searchText, setSearchText] = useState('');
 
-    const filteredPaths = mockLearningPaths.filter(path => path.title.toLowerCase().includes(searchText.toLowerCase()));
+    const { data: paths = [], isLoading } = useQuery({
+        queryKey: queryKeys.learningPaths.list({ status: 'published', search: searchText }),
+        queryFn: () => learningPathService.getPublished({ search: searchText }),
+    });
 
     // Format duration
     const formatDuration = hours => {
@@ -40,7 +45,7 @@ function LearningPathCatalogPage() {
 
     // Render learning path card
     const renderPathCard = path => {
-        const courseCount = path.courses?.length || 0;
+        const courseCount = path.courses_count || path.courses?.length || 0;
 
         return (
             <Col xs={24} sm={12} lg={8} key={path.id}>
@@ -107,22 +112,7 @@ function LearningPathCatalogPage() {
                                     </Text>
                                 </Space>
 
-                                {/* Progress indicator for paths with courses */}
-                                <div style={{ marginTop: 8 }}>
-                                    <div style={{ display: 'flex', gap: 4 }}>
-                                        {path.courses?.map((_, index) => (
-                                            <div
-                                                key={index}
-                                                style={{
-                                                    flex: 1,
-                                                    height: 4,
-                                                    borderRadius: 2,
-                                                    background: '#f0f0f0',
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
+                                {/* Progress indicator logic would go here if we tracked progress on catalog */}
                             </Space>
                         }
                     />
@@ -166,8 +156,10 @@ function LearningPathCatalogPage() {
             </Card>
 
             {/* Path Grid */}
-            {filteredPaths.length > 0 ? (
-                <Row gutter={[16, 16]}>{filteredPaths.map(path => renderPathCard(path))}</Row>
+            {isLoading ? (
+                <Skeleton active />
+            ) : paths.length > 0 ? (
+                <Row gutter={[16, 16]}>{paths.map(path => renderPathCard(path))}</Row>
             ) : (
                 <Card>
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có lộ trình học tập nào" />

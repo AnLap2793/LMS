@@ -1,11 +1,10 @@
 /**
- * Learning Path Service - Mock data cho lộ trình học tập
- * Sử dụng mock data thay vì Directus API
+ * Learning Path Service - Quản lý lộ trình học tập
+ * Directus Implementation
  */
-import { mockLearningPaths, mockUserLearningPaths } from '../mocks/learningPaths';
-
-// Helper: Simulate API delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+import { directus } from './directus';
+import { readItems, readItem, createItem, updateItem, deleteItem, aggregate } from '@directus/sdk';
+import { COLLECTIONS } from '../constants/collections';
 
 export const learningPathService = {
     /**
@@ -14,34 +13,44 @@ export const learningPathService = {
      * @returns {Promise<Array>} Danh sách learning paths
      */
     getAll: async (params = {}) => {
-        await delay();
         const { search, status, is_mandatory, page = 1, limit = 10 } = params;
 
-        let filteredPaths = [...mockLearningPaths];
+        const filter = {};
 
-        // Filter by search
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredPaths = filteredPaths.filter(
-                p => p.title.toLowerCase().includes(searchLower) || p.description?.toLowerCase().includes(searchLower)
-            );
+            filter._or = [{ title: { _icontains: search } }, { description: { _icontains: search } }];
         }
 
-        // Filter by status
         if (status) {
-            filteredPaths = filteredPaths.filter(p => p.status === status);
+            filter.status = { _eq: status };
         }
 
-        // Filter by mandatory
         if (is_mandatory !== undefined) {
-            filteredPaths = filteredPaths.filter(p => p.is_mandatory === is_mandatory);
+            filter.is_mandatory = { _eq: is_mandatory };
         }
 
-        // Pagination
-        const offset = (page - 1) * limit;
-        const paginatedPaths = filteredPaths.slice(offset, offset + limit);
+        const items = await directus.request(
+            readItems(COLLECTIONS.LEARNING_PATHS, {
+                filter,
+                limit,
+                page,
+                sort: ['-date_created'],
+                fields: [
+                    '*',
+                    'user_created.first_name',
+                    'user_created.last_name',
+                    // Count courses (M2M) - Directus doesn't return count directly in fields easily without specific setup
+                    // We will fetch relations or rely on a calculated field if available.
+                    // For now fetching courses array to count length
+                    'courses.id',
+                ],
+            })
+        );
 
-        return paginatedPaths;
+        return items.map(p => ({
+            ...p,
+            courses_count: p.courses?.length || 0,
+        }));
     },
 
     /**
@@ -50,27 +59,30 @@ export const learningPathService = {
      * @returns {Promise<number>} Tổng số
      */
     count: async (params = {}) => {
-        await delay(100);
         const { search, status, is_mandatory } = params;
 
-        let filteredPaths = [...mockLearningPaths];
+        const filter = {};
 
         if (search) {
-            const searchLower = search.toLowerCase();
-            filteredPaths = filteredPaths.filter(
-                p => p.title.toLowerCase().includes(searchLower) || p.description?.toLowerCase().includes(searchLower)
-            );
+            filter._or = [{ title: { _icontains: search } }, { description: { _icontains: search } }];
         }
 
         if (status) {
-            filteredPaths = filteredPaths.filter(p => p.status === status);
+            filter.status = { _eq: status };
         }
 
         if (is_mandatory !== undefined) {
-            filteredPaths = filteredPaths.filter(p => p.is_mandatory === is_mandatory);
+            filter.is_mandatory = { _eq: is_mandatory };
         }
 
-        return filteredPaths.length;
+        const result = await directus.request(
+            aggregate(COLLECTIONS.LEARNING_PATHS, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
+
+        return Number(result[0]?.count) || 0;
     },
 
     /**
@@ -79,25 +91,7 @@ export const learningPathService = {
      * @returns {Promise<Array>} Danh sách learning paths
      */
     getPublished: async (params = {}) => {
-        await delay();
-        const { search, is_mandatory, page = 1, limit = 10 } = params;
-
-        let filteredPaths = mockLearningPaths.filter(p => p.status === 'published');
-
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filteredPaths = filteredPaths.filter(
-                p => p.title.toLowerCase().includes(searchLower) || p.description?.toLowerCase().includes(searchLower)
-            );
-        }
-
-        if (is_mandatory !== undefined) {
-            filteredPaths = filteredPaths.filter(p => p.is_mandatory === is_mandatory);
-        }
-
-        // Pagination
-        const offset = (page - 1) * limit;
-        return filteredPaths.slice(offset, offset + limit);
+        return await learningPathService.getAll({ ...params, status: 'published' });
     },
 
     /**
@@ -106,14 +100,11 @@ export const learningPathService = {
      * @returns {Promise<Object>} Chi tiết learning path
      */
     getById: async pathId => {
-        await delay();
-        const path = mockLearningPaths.find(p => p.id === pathId);
-
-        if (!path) {
-            throw new Error('Learning path not found');
-        }
-
-        return path;
+        return await directus.request(
+            readItem(COLLECTIONS.LEARNING_PATHS, pathId, {
+                fields: ['*', 'user_created.first_name', 'user_created.last_name'],
+            })
+        );
     },
 
     /**
@@ -122,55 +113,36 @@ export const learningPathService = {
      * @returns {Promise<Object>} Chi tiết learning path với courses
      */
     getWithCourses: async pathId => {
-        await delay();
-        const path = mockLearningPaths.find(p => p.id === pathId);
+        const path = await learningPathService.getById(pathId);
 
-        if (!path) {
-            throw new Error('Learning path not found');
-        }
+        // Fetch M2M courses
+        // Collection: learning_paths_courses (Junction)
+        // Fields: learning_path_id, course_id.*, sort
+        const relations = await directus.request(
+            readItems(COLLECTIONS.LEARNING_PATHS_COURSES, {
+                filter: { learning_path_id: { _eq: pathId } },
+                sort: ['sort'],
+                fields: [
+                    'id',
+                    'sort',
+                    'course_id.id',
+                    'course_id.title',
+                    'course_id.description',
+                    'course_id.thumbnail',
+                    'course_id.duration',
+                    'course_id.difficulty',
+                ],
+            })
+        );
 
         return {
             ...path,
-            courses: path.courses || [],
+            courses: relations.map(r => ({
+                ...r.course_id,
+                junction_id: r.id,
+                sort: r.sort,
+            })),
         };
-    },
-
-    /**
-     * Lấy tiến độ learning paths của user hiện tại
-     * @returns {Promise<Array>} Danh sách tiến độ
-     */
-    getMyProgress: async () => {
-        await delay();
-        return mockUserLearningPaths;
-    },
-
-    /**
-     * Lấy tiến độ của một learning path cụ thể
-     * @param {string} pathId - ID learning path
-     * @returns {Promise<Object|null>} Tiến độ hoặc null
-     */
-    getMyPathProgress: async pathId => {
-        await delay();
-        return mockUserLearningPaths.find(p => p.pathId === pathId) || null;
-    },
-
-    /**
-     * Lấy learning paths nổi bật (cho homepage)
-     * @param {number} limit - Số lượng
-     * @returns {Promise<Array>} Danh sách learning paths
-     */
-    getFeatured: async (limit = 4) => {
-        await delay();
-        return mockLearningPaths.filter(p => p.status === 'published').slice(0, limit);
-    },
-
-    /**
-     * Lấy learning paths bắt buộc (cho user mới)
-     * @returns {Promise<Array>} Danh sách learning paths bắt buộc
-     */
-    getMandatory: async () => {
-        await delay();
-        return mockLearningPaths.filter(p => p.is_mandatory && p.status === 'published');
     },
 
     /**
@@ -179,19 +151,25 @@ export const learningPathService = {
      * @returns {Promise<Object>} Learning path đã tạo
      */
     create: async data => {
-        await delay(500);
-        const newPath = {
-            id: `${Date.now()}`,
-            ...data,
-            status: data.status || 'draft',
-            courses: data.courses || [],
-            total_duration: 0,
-            enrollments_count: 0,
-            user_created: { id: 'admin', first_name: 'Admin', last_name: 'User' },
-            date_created: new Date().toISOString(),
-        };
+        const { courses, ...pathData } = data;
 
-        mockLearningPaths.push(newPath);
+        const newPath = await directus.request(createItem(COLLECTIONS.LEARNING_PATHS, pathData));
+
+        if (courses && courses.length > 0) {
+            // Add courses to M2M
+            await Promise.all(
+                courses.map(async (c, index) => {
+                    await directus.request(
+                        createItem(COLLECTIONS.LEARNING_PATHS_COURSES, {
+                            learning_path_id: newPath.id,
+                            course_id: c.id,
+                            sort: index + 1,
+                        })
+                    );
+                })
+            );
+        }
+
         return newPath;
     },
 
@@ -202,15 +180,51 @@ export const learningPathService = {
      * @returns {Promise<Object>} Learning path đã cập nhật
      */
     update: async (id, data) => {
-        await delay(500);
-        const index = mockLearningPaths.findIndex(p => p.id === id);
+        const { courses, ...pathData } = data;
 
-        if (index === -1) {
-            throw new Error('Learning path not found');
+        const updatedPath = await directus.request(updateItem(COLLECTIONS.LEARNING_PATHS, id, pathData));
+
+        if (courses) {
+            // Update M2M relations is complex (diffing).
+            // Simplest strategy: Delete all and re-create (careful with IDs) or sync.
+            // For MVP, we might assume the UI handles list management or we just wipe and recreate for now.
+            // A better approach is to handle Add/Remove/Reorder separate actions, but if the form sends full list:
+
+            // 1. Get existing
+            const existing = await directus.request(
+                readItems(COLLECTIONS.LEARNING_PATHS_COURSES, {
+                    filter: { learning_path_id: { _eq: id } },
+                    fields: ['id'],
+                })
+            );
+
+            // 2. Delete existing
+            if (existing.length > 0) {
+                await directus.request(
+                    deleteItem(
+                        COLLECTIONS.LEARNING_PATHS_COURSES,
+                        existing.map(e => e.id)
+                    )
+                );
+            }
+
+            // 3. Create new
+            if (courses.length > 0) {
+                await Promise.all(
+                    courses.map(async (c, index) => {
+                        await directus.request(
+                            createItem(COLLECTIONS.LEARNING_PATHS_COURSES, {
+                                learning_path_id: id,
+                                course_id: c.id,
+                                sort: index + 1,
+                            })
+                        );
+                    })
+                );
+            }
         }
 
-        mockLearningPaths[index] = { ...mockLearningPaths[index], ...data };
-        return mockLearningPaths[index];
+        return updatedPath;
     },
 
     /**
@@ -219,104 +233,42 @@ export const learningPathService = {
      * @returns {Promise<void>}
      */
     delete: async id => {
-        await delay(500);
-        const index = mockLearningPaths.findIndex(p => p.id === id);
-
-        if (index === -1) {
-            throw new Error('Learning path not found');
-        }
-
-        mockLearningPaths.splice(index, 1);
+        return await directus.request(deleteItem(COLLECTIONS.LEARNING_PATHS, id));
     },
 
     /**
-     * Thêm khóa học vào learning path
-     * @param {string} pathId - ID learning path
-     * @param {string} courseId - ID khóa học
-     * @param {Object} courseInfo - Thông tin khóa học
-     * @returns {Promise<Object>} Learning path đã cập nhật
-     */
-    addCourse: async (pathId, courseId, courseInfo = {}) => {
-        await delay(500);
-        const index = mockLearningPaths.findIndex(p => p.id === pathId);
-
-        if (index === -1) {
-            throw new Error('Learning path not found');
-        }
-
-        const courses = mockLearningPaths[index].courses || [];
-        const maxSort = courses.length > 0 ? Math.max(...courses.map(c => c.sort || 0)) : 0;
-
-        courses.push({
-            id: courseId,
-            title: courseInfo.title || 'Course',
-            sort: maxSort + 1,
-        });
-
-        mockLearningPaths[index].courses = courses;
-        return mockLearningPaths[index];
-    },
-
-    /**
-     * Xóa khóa học khỏi learning path
-     * @param {string} pathId - ID learning path
-     * @param {string} courseId - ID khóa học
-     * @returns {Promise<Object>} Learning path đã cập nhật
-     */
-    removeCourse: async (pathId, courseId) => {
-        await delay(500);
-        const index = mockLearningPaths.findIndex(p => p.id === pathId);
-
-        if (index === -1) {
-            throw new Error('Learning path not found');
-        }
-
-        mockLearningPaths[index].courses = (mockLearningPaths[index].courses || []).filter(c => c.id !== courseId);
-
-        return mockLearningPaths[index];
-    },
-
-    /**
-     * Sắp xếp lại thứ tự khóa học trong learning path
-     * @param {string} pathId - ID learning path
-     * @param {Array<string>} courseIds - Danh sách ID khóa học theo thứ tự mới
-     * @returns {Promise<Object>} Learning path đã cập nhật
-     */
-    reorderCourses: async (pathId, courseIds) => {
-        await delay(500);
-        const index = mockLearningPaths.findIndex(p => p.id === pathId);
-
-        if (index === -1) {
-            throw new Error('Learning path not found');
-        }
-
-        const existingCourses = mockLearningPaths[index].courses || [];
-        const reorderedCourses = courseIds
-            .map((id, idx) => {
-                const course = existingCourses.find(c => c.id === id);
-                return course ? { ...course, sort: idx + 1 } : null;
-            })
-            .filter(Boolean);
-
-        mockLearningPaths[index].courses = reorderedCourses;
-        return mockLearningPaths[index];
-    },
-
-    /**
-     * Lấy thống kê learning paths
+     * Lấy thống kê learning paths (Admin)
      * @returns {Promise<Object>} Thống kê
      */
     getStats: async () => {
-        await delay(200);
-        const published = mockLearningPaths.filter(p => p.status === 'published');
-        const mandatory = published.filter(p => p.is_mandatory);
+        const totalResult = await directus.request(
+            aggregate(COLLECTIONS.LEARNING_PATHS, { aggregate: { count: '*' } })
+        );
+        const total = Number(totalResult[0]?.count) || 0;
+
+        const publishedResult = await directus.request(
+            aggregate(COLLECTIONS.LEARNING_PATHS, {
+                aggregate: { count: '*' },
+                query: { filter: { status: { _eq: 'published' } } },
+            })
+        );
+        const published = Number(publishedResult[0]?.count) || 0;
+
+        const mandatoryResult = await directus.request(
+            aggregate(COLLECTIONS.LEARNING_PATHS, {
+                aggregate: { count: '*' },
+                query: { filter: { is_mandatory: { _eq: true } } },
+            })
+        );
+        const mandatory = Number(mandatoryResult[0]?.count) || 0;
 
         return {
-            total: mockLearningPaths.length,
-            published: published.length,
-            draft: mockLearningPaths.length - published.length,
-            mandatory: mandatory.length,
-            totalEnrollments: mockLearningPaths.reduce((sum, p) => sum + (p.enrollments_count || 0), 0),
+            total,
+            published,
+            draft: total - published,
+            mandatory,
+            // totalEnrollments: requires complex aggregation on enrollments via paths
+            totalEnrollments: 0, // Placeholder
         };
     },
 };

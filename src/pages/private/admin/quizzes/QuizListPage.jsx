@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Space, Tag, Popconfirm, Input, Select, message, Tooltip } from 'antd';
+import { Button, Table, Space, Tag, Popconfirm, Input, Select, message, Tooltip, Empty } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
@@ -10,9 +10,13 @@ import {
     TrophyOutlined,
     BarChartOutlined,
 } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader, EmptyState } from '../../../../components/common';
 import QuizFormModal from '../../../../components/admin/quizzes/QuizFormModal';
-import { mockQuizzes, mockCourses } from '../../../../mocks';
+import { quizService } from '../../../../services/quizService';
+import { courseService } from '../../../../services/courseService';
+import { queryKeys } from '../../../../constants/queryKeys';
+import { showSuccess, showError } from '../../../../utils/errorHandler';
 
 /**
  * Quiz List Page
@@ -20,26 +24,58 @@ import { mockQuizzes, mockCourses } from '../../../../mocks';
  */
 function QuizListPage() {
     const navigate = useNavigate();
-    const [quizzes, setQuizzes] = useState(mockQuizzes);
     const [searchText, setSearchText] = useState('');
     const [courseFilter, setCourseFilter] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingQuiz, setEditingQuiz] = useState(null);
+    const queryClient = useQueryClient();
 
-    // Filtered quizzes
-    const filteredQuizzes = useMemo(() => {
-        let result = quizzes;
+    // Data Hooks
+    const { data: quizzes = [], isLoading: quizzesLoading } = useQuery({
+        queryKey: queryKeys.quizzes.list({ search: searchText, course: courseFilter }),
+        queryFn: () =>
+            quizService.getAll({
+                search: searchText,
+                course_id: courseFilter,
+            }),
+    });
 
-        if (searchText.trim()) {
-            result = result.filter(q => q.title.toLowerCase().includes(searchText.toLowerCase()));
-        }
+    const { data: courses = [] } = useQuery({
+        queryKey: queryKeys.courses.list({ fields: ['id', 'title'] }),
+        queryFn: () => courseService.getAll({ limit: -1, fields: ['id', 'title'] }),
+    });
 
-        if (courseFilter) {
-            result = result.filter(q => q.course_id === courseFilter);
-        }
+    // Mutations
+    const createMutation = useMutation({
+        mutationFn: quizService.create,
+        onSuccess: () => {
+            queryClient.invalidateQueries(queryKeys.quizzes.all);
+            showSuccess('Đã tạo bài kiểm tra mới');
+            setIsModalOpen(false);
+            setEditingQuiz(null);
+        },
+        onError: showError,
+    });
 
-        return result;
-    }, [quizzes, searchText, courseFilter]);
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => quizService.update(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries(queryKeys.quizzes.all);
+            showSuccess('Đã cập nhật bài kiểm tra');
+            setIsModalOpen(false);
+            setEditingQuiz(null);
+        },
+        onError: showError,
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: quizService.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries(queryKeys.quizzes.all);
+            showSuccess('Đã xóa bài kiểm tra');
+        },
+        onError: showError,
+    });
 
     // Handle operations
     const handleCreate = () => {
@@ -53,35 +89,28 @@ function QuizListPage() {
     };
 
     const handleDelete = id => {
-        setQuizzes(prev => prev.filter(q => q.id !== id));
-        message.success('Đã xóa bài kiểm tra');
+        deleteMutation.mutate(id);
     };
 
     const handleFormSubmit = values => {
         if (editingQuiz) {
-            setQuizzes(prev => prev.map(q => (q.id === editingQuiz.id ? { ...q, ...values } : q)));
-            message.success('Đã cập nhật bài kiểm tra');
+            updateMutation.mutate({ id: editingQuiz.id, data: values });
         } else {
-            const newQuiz = {
-                id: `q${Date.now()}`,
+            createMutation.mutate({
                 ...values,
                 questions_count: 0,
-                date_created: new Date().toISOString(),
-            };
-            setQuizzes(prev => [...prev, newQuiz]);
-            message.success('Đã tạo bài kiểm tra mới');
+                // date_created will be auto-set by Directus usually, but we can set specific fields if needed
+            });
         }
-        setIsModalOpen(false);
-        setEditingQuiz(null);
     };
 
     const handleManageQuestions = id => {
         navigate(`/admin/quizzes/${id}/questions`);
     };
 
-    // Get course title
+    // Get course title helper
     const getCourseTitle = courseId => {
-        return mockCourses.find(c => c.id === courseId)?.title || 'Unknown Course';
+        return courses.find(c => c.id === courseId)?.title || 'Unknown Course';
     };
 
     // Columns
@@ -150,9 +179,7 @@ function QuizListPage() {
                         cancelText="Hủy"
                         okButtonProps={{ danger: true }}
                     >
-                        <Tooltip title="Xóa">
-                            <Button type="text" danger icon={<DeleteOutlined />} />
-                        </Tooltip>
+                        <Button type="text" danger icon={<DeleteOutlined />} loading={deleteMutation.isPending} />
                     </Popconfirm>
                 </Space>
             ),
@@ -188,13 +215,19 @@ function QuizListPage() {
                     onChange={setCourseFilter}
                     style={{ width: 250 }}
                     allowClear
-                    options={mockCourses.map(c => ({ value: c.id, label: c.title }))}
+                    options={courses.map(c => ({ value: c.id, label: c.title }))}
                 />
             </div>
 
             {/* Table */}
-            {filteredQuizzes.length > 0 ? (
-                <Table columns={columns} dataSource={filteredQuizzes} rowKey="id" pagination={{ pageSize: 10 }} />
+            {quizzes.length > 0 || quizzesLoading ? (
+                <Table
+                    columns={columns}
+                    dataSource={quizzes}
+                    rowKey="id"
+                    pagination={{ pageSize: 10 }}
+                    loading={quizzesLoading}
+                />
             ) : (
                 <EmptyState
                     title="Chưa có bài kiểm tra nào"
@@ -213,6 +246,7 @@ function QuizListPage() {
                 }}
                 onSubmit={handleFormSubmit}
                 initialValues={editingQuiz}
+                loading={createMutation.isPending || updateMutation.isPending}
             />
         </div>
     );

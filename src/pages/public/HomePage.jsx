@@ -21,75 +21,84 @@ import { useFeaturedCourses, usePopularCourses } from '../../hooks/useCourses';
 import { useContinueLearning, useMyEnrollmentStats } from '../../hooks/useEnrollments';
 import DifficultyTag from '../../components/common/DifficultyTag';
 import { getAssetUrl } from '../../utils/directusHelpers';
-import { mockLearnerWeeklyActivity, mockLearnerStreak } from '../../mocks';
+import { useLearnerWeeklyActivity, useLearnerStreak } from '../../hooks/useDashboard';
 
-const { Title, Text, Paragraph } = Typography;
+// ... (imports)
 
-// ============================================
-// Sub-components
-// ============================================
+function WeeklyActivitySection() {
+    const { data: weeklyData = [] } = useLearnerWeeklyActivity();
+    const { data: streak = {} } = useLearnerStreak();
 
-/**
- * Hero Section với greeting và stats nhanh
- */
-function HeroSection({ user, stats, loading }) {
-    const firstName = user?.first_name || 'Học viên';
+    const totalMinutesThisWeek = weeklyData.reduce((sum, d) => sum + (d.minutes || 0), 0);
+    const totalLessonsThisWeek = weeklyData.reduce((sum, d) => sum + (d.lessons || 0), 0);
 
     return (
-        <Card
-            style={{
-                background: 'linear-gradient(135deg, #ea4544 0%, #ff6b6a 100%)',
-                border: 'none',
-                marginBottom: 24,
-            }}
-        >
-            <Row gutter={[24, 24]} align="middle">
+        <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={4} style={{ margin: 0 }}>
+                    <ThunderboltOutlined style={{ marginRight: 8, color: '#faad14' }} />
+                    Hoạt động tuần này
+                </Title>
+                <Space>
+                    <Tag color="orange" icon={<FireOutlined />}>
+                        Streak: {streak.currentStreak || 0} ngày
+                    </Tag>
+                </Space>
+            </div>
+
+            <Row gutter={[16, 16]}>
+                {/* Chart */}
                 <Col xs={24} md={16}>
-                    <Title level={2} style={{ color: '#fff', margin: 0 }}>
-                        Xin chào, {firstName}!
-                    </Title>
-                    <Paragraph style={{ color: 'rgba(255,255,255,0.85)', marginTop: 8, marginBottom: 16 }}>
-                        Tiếp tục hành trình học tập của bạn. Mỗi ngày một bước tiến!
-                    </Paragraph>
-                    <Space size="middle">
-                        <Link to="/my-courses">
-                            <Button type="primary" size="large" icon={<BookOutlined />}>
-                                Khóa học của tôi
-                            </Button>
-                        </Link>
-                        <Link to="/courses">
-                            <Button
-                                size="large"
-                                icon={<RocketOutlined />}
-                                style={{ background: '#fff', borderColor: '#fff' }}
-                            >
-                                Khám phá thêm
-                            </Button>
-                        </Link>
-                    </Space>
+                    <Card bodyStyle={{ padding: '16px 16px 8px 0' }}>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <BarChart data={weeklyData}>
+                                <XAxis dataKey="day" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                                <YAxis hide />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar dataKey="minutes" radius={[4, 4, 0, 0]} barSize={32}>
+                                    {weeklyData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.minutes > 0 ? '#ea4544' : '#f0f0f0'}
+                                            fillOpacity={entry.minutes > 0 ? 0.8 : 0.5}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
                 </Col>
+
+                {/* Stats */}
                 <Col xs={24} md={8}>
-                    <Row gutter={[16, 16]}>
-                        <Col span={12}>
-                            <Statistic
-                                title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Đang học</span>}
-                                value={loading ? '-' : stats?.inProgress || 0}
-                                valueStyle={{ color: '#fff' }}
-                                prefix={<BookOutlined />}
-                            />
-                        </Col>
-                        <Col span={12}>
-                            <Statistic
-                                title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Hoàn thành</span>}
-                                value={loading ? '-' : stats?.completed || 0}
-                                valueStyle={{ color: '#fff' }}
-                                prefix={<TrophyOutlined />}
-                            />
-                        </Col>
-                    </Row>
+                    <Card style={{ height: '100%' }}>
+                        <Row gutter={[16, 16]}>
+                            <Col span={12}>
+                                <Statistic
+                                    title="Tổng phút học"
+                                    value={totalMinutesThisWeek}
+                                    suffix="phút"
+                                    valueStyle={{ color: '#ea4544' }}
+                                />
+                            </Col>
+                            <Col span={12}>
+                                <Statistic
+                                    title="Bài học hoàn thành"
+                                    value={totalLessonsThisWeek}
+                                    suffix="bài"
+                                    valueStyle={{ color: '#52c41a' }}
+                                />
+                            </Col>
+                            <Col span={24}>
+                                <Text type="secondary">
+                                    Trung bình: <Text strong>{streak.averageMinutesPerDay || 0} phút/ngày</Text>
+                                </Text>
+                            </Col>
+                        </Row>
+                    </Card>
                 </Col>
             </Row>
-        </Card>
+        </div>
     );
 }
 
@@ -400,10 +409,11 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 function WeeklyActivitySection() {
-    const weeklyData = mockLearnerWeeklyActivity;
-    const streak = mockLearnerStreak;
-    const totalMinutesThisWeek = weeklyData.reduce((sum, d) => sum + d.minutes, 0);
-    const totalLessonsThisWeek = weeklyData.reduce((sum, d) => sum + d.lessons, 0);
+    const { data: weeklyData = [] } = useLearnerWeeklyActivity();
+    const { data: streak = {} } = useLearnerStreak();
+
+    const totalMinutesThisWeek = weeklyData.reduce((sum, d) => sum + (d.minutes || 0), 0);
+    const totalLessonsThisWeek = weeklyData.reduce((sum, d) => sum + (d.lessons || 0), 0);
 
     return (
         <div style={{ marginBottom: 32 }}>
@@ -414,7 +424,7 @@ function WeeklyActivitySection() {
                 </Title>
                 <Space>
                     <Tag color="orange" icon={<FireOutlined />}>
-                        Streak: {streak.currentStreak} ngày
+                        Streak: {streak.currentStreak || 0} ngày
                     </Tag>
                 </Space>
             </div>
@@ -464,7 +474,7 @@ function WeeklyActivitySection() {
                             </Col>
                             <Col span={24}>
                                 <Text type="secondary">
-                                    Trung bình: <Text strong>{streak.averageMinutesPerDay} phút/ngày</Text>
+                                    Trung bình: <Text strong>{streak.averageMinutesPerDay || 0} phút/ngày</Text>
                                 </Text>
                             </Col>
                         </Row>

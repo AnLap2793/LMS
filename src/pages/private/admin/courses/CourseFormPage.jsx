@@ -20,8 +20,10 @@ import {
 } from 'antd';
 import { PlusOutlined, SaveOutlined, ArrowLeftOutlined, InboxOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { PageHeader, LexicalEditor } from '../../../../components/common';
-import { mockTags, mockCourses } from '../../../../mocks';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
+import { useCourseDetail, useTags, useCreateCourse, useUpdateCourse } from '../../../../hooks/useCourses';
+import { fileService } from '../../../../services/fileService';
+import { getAssetUrl } from '../../../../services/directus';
 
 const { Dragger } = Upload;
 
@@ -33,105 +35,115 @@ function CourseFormPage({ isEdit = false }) {
     const navigate = useNavigate();
     const { id } = useParams();
     const [form] = Form.useForm();
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(false);
     const [autoCalculateDuration, setAutoCalculateDuration] = useState(true);
-    const [courseData, setCourseData] = useState(null);
+
+    // File upload state
+    const [fileList, setFileList] = useState([]);
 
     // State for Lexical editors (since Lexical doesn't work directly with Form.Item)
     const [description, setDescription] = useState('');
     const [learningObjectives, setLearningObjectives] = useState('');
 
+    // Hooks
+    const { data: courseData, isLoading: fetching } = useCourseDetail(id);
+    const { data: tags = [] } = useTags();
+    const createCourse = useCreateCourse();
+    const updateCourse = useUpdateCourse();
+
+    const [uploading, setUploading] = useState(false);
+    const loading = createCourse.isPending || updateCourse.isPending || uploading;
+
     // Load course data if editing
     useEffect(() => {
-        if (isEdit && id) {
-            setFetching(true);
-            // Simulate API call
-            setTimeout(() => {
-                const foundCourse = mockCourses.find(c => c.id === id);
-                if (foundCourse) {
-                    setCourseData(foundCourse);
-                    // Transform tags to array of IDs
-                    const tagIds = foundCourse.tags?.map(t => t.id) || [];
+        if (isEdit && courseData) {
+            // Transform tags to array of IDs
+            const tagIds = courseData.tags?.map(t => t.tags_id?.id || t.tags_id || t.id) || [];
 
-                    form.setFieldsValue({
-                        ...foundCourse,
-                        tags: tagIds,
-                    });
+            form.setFieldsValue({
+                ...courseData,
+                tags: tagIds,
+                duration: courseData.duration_minutes || courseData.duration || 0,
+            });
 
-                    // Set Lexical editor values
-                    setDescription(foundCourse.description || '');
-                    setLearningObjectives(foundCourse.learning_objectives || '');
+            // Set thumbnail preview
+            if (courseData.thumbnail) {
+                setFileList([
+                    {
+                        uid: '-1',
+                        name: 'thumbnail.png',
+                        status: 'done',
+                        url: getAssetUrl(courseData.thumbnail),
+                    },
+                ]);
+            }
 
-                    // Check if duration is auto calculated (mock logic)
-                    // In real app, this might be a flag from DB
-                    if (foundCourse.duration && foundCourse.duration > 0) {
-                        setAutoCalculateDuration(false);
-                    }
-                } else {
-                    message.error('Không tìm thấy khóa học');
-                }
-                setFetching(false);
-            }, 500);
+            // Set Lexical editor values
+            setDescription(courseData.description || '');
+            setLearningObjectives(courseData.learning_objectives || '');
+
+            // Check if duration is auto calculated
+            if ((courseData.duration_minutes || courseData.duration) > 0) {
+                setAutoCalculateDuration(false);
+            }
         }
-    }, [isEdit, id, form]);
+    }, [isEdit, courseData, form]);
 
     // Handle form submit
-    const handleSubmit = async () => {
-        setLoading(true);
+    const handleSubmit = async values => {
+        setUploading(true);
         try {
-            const values = await form.validateFields();
-            // Add Lexical editor values
-            values.description = description;
-            values.learning_objectives = learningObjectives;
+            let thumbnailId = courseData?.thumbnail; // Default to existing thumbnail
 
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Handle File Upload if changed
+            const file = fileList[0];
+            if (file && file.originFileObj) {
+                // New file selected
+                const uploadedFile = await fileService.upload(file.originFileObj);
+                thumbnailId = uploadedFile.id;
+            } else if (!file) {
+                // File removed
+                thumbnailId = null;
+            }
 
-            // TODO: Replace with actual API call
-            message.success(isEdit ? 'Đã cập nhật khóa học' : 'Đã tạo khóa học mới');
+            // Add Lexical editor values & thumbnail
+            const submitData = {
+                ...values,
+                thumbnail: thumbnailId,
+                description,
+                learning_objectives: learningObjectives,
+            };
+
+            if (isEdit) {
+                await updateCourse.mutateAsync({ id, data: submitData });
+            } else {
+                await createCourse.mutateAsync(submitData);
+            }
             navigate('/admin/courses');
-        } catch {
-            message.error('Có lỗi xảy ra');
+        } catch (error) {
+            // Error handled by global handler
+            console.error('Submit error:', error);
         } finally {
-            setLoading(false);
+            setUploading(false);
         }
     };
 
-    // Handle save draft
+    // Wrapper for Save Draft (status = draft)
     const handleSaveDraft = async () => {
         try {
             const values = await form.validateFields();
             values.status = 'draft';
-            values.description = description;
-            values.learning_objectives = learningObjectives;
-            // In real app, we would call API here directly
-            // For now, we reuse handleSubmit which simulates API
-            setLoading(true);
-            setTimeout(() => {
-                message.success('Đã lưu bản nháp');
-                navigate('/admin/courses');
-                setLoading(false);
-            }, 1000);
+            await handleSubmit(values);
         } catch {
             message.error('Vui lòng điền đầy đủ thông tin bắt buộc');
         }
     };
 
-    // Handle publish
+    // Wrapper for Publish (status = published)
     const handlePublish = async () => {
         try {
             const values = await form.validateFields();
             values.status = 'published';
-            values.description = description;
-            values.learning_objectives = learningObjectives;
-            // In real app, we would call API here directly
-            setLoading(true);
-            setTimeout(() => {
-                message.success(isEdit ? 'Đã cập nhật và xuất bản' : 'Đã tạo và xuất bản');
-                navigate('/admin/courses');
-                setLoading(false);
-            }, 1000);
+            await handleSubmit(values);
         } catch {
             message.error('Vui lòng điền đầy đủ thông tin bắt buộc');
         }
@@ -144,6 +156,7 @@ function CourseFormPage({ isEdit = false }) {
         accept: 'image/*',
         maxCount: 1,
         listType: 'picture-card',
+        fileList: fileList,
         beforeUpload: file => {
             const isImage = file.type.startsWith('image/');
             if (!isImage) {
@@ -155,11 +168,24 @@ function CourseFormPage({ isEdit = false }) {
                 message.error('Ảnh phải nhỏ hơn 5MB!');
                 return Upload.LIST_IGNORE;
             }
-            // Prevent actual upload, just store locally
-            return false;
+            return false; // Prevent auto upload
         },
-        onChange: () => {
-            // TODO: Handle file change when connecting to Directus
+        onChange: ({ fileList: newFileList }) => {
+            setFileList(newFileList);
+        },
+        onPreview: async file => {
+            let src = file.url;
+            if (!src) {
+                src = await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file.originFileObj);
+                    reader.onload = () => resolve(reader.result);
+                });
+            }
+            const image = new Image();
+            image.src = src;
+            const imgWindow = window.open(src);
+            imgWindow?.document.write(image.outerHTML);
         },
     };
 
@@ -225,7 +251,7 @@ function CourseFormPage({ isEdit = false }) {
                             <Select
                                 mode="multiple"
                                 placeholder="Chọn tags"
-                                options={mockTags.map(tag => ({
+                                options={tags.map(tag => ({
                                     value: tag.id,
                                     label: tag.name,
                                 }))}
