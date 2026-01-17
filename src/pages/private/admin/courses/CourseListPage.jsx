@@ -12,7 +12,8 @@ import {
 } from '@ant-design/icons';
 import { PageHeader, StatusTag, DifficultyTag, EmptyState } from '../../../../components/common';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
-import { useAllCourses, useDeleteCourse, useTags } from '../../../../hooks/useCourses';
+import { useAllCourses, useDeleteCourse } from '../../../../hooks/useCourses';
+import { useAllTags } from '../../../../hooks/useTags';
 import { useDebounce } from '../../../../hooks/useDebounce';
 
 /**
@@ -40,7 +41,7 @@ function CourseListPage() {
         limit: -1, // Fetch all matching
     });
 
-    const { data: tags = [] } = useTags();
+    const { data: tags = [] } = useAllTags();
     const deleteCourse = useDeleteCourse();
 
     const loading = coursesLoading || deleteCourse.isPending;

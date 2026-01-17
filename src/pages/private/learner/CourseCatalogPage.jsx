@@ -22,7 +22,8 @@ import {
     AppstoreOutlined,
     UnorderedListOutlined,
 } from '@ant-design/icons';
-import { usePublishedCourses, useCoursesCount, useTags } from '../../../hooks/useCourses';
+import { usePublishedCourses, useCoursesCount } from '../../../hooks/useCourses';
+import { useAllTags } from '../../../hooks/useTags';
 import { COURSE_DIFFICULTY_MAP, COURSE_DIFFICULTY_OPTIONS } from '../../../constants/lms';
 import { getAssetUrl } from '../../../utils/directusHelpers';
 
@@ -62,7 +63,7 @@ function CourseCatalogPage() {
     });
 
     // Fetch tags cho filter
-    const { data: tags = [] } = useTags();
+    const { data: tags = [] } = useAllTags();
 
     // Format duration
     const formatDuration = hours => {
@@ -262,7 +263,11 @@ function CourseCatalogPage() {
                 </Col>
                 <Col xs={12} sm={8}>
                     <Card size="small">
-                        <Statistic title="Kết quả tìm kiếm" value={courses.length} styles={{ content: { color: '#faad14' } }} />
+                        <Statistic
+                            title="Kết quả tìm kiếm"
+                            value={courses.length}
+                            styles={{ content: { color: '#faad14' } }}
+                        />
                     </Card>
                 </Col>
             </Row>

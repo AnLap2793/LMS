@@ -22,7 +22,8 @@ import { PlusOutlined, SaveOutlined, ArrowLeftOutlined, InboxOutlined, Unordered
 import { PageHeader, LexicalEditor } from '../../../../components/common';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
 import { courseRules } from '../../../../validation/formRules';
-import { useCourseDetail, useTags, useCreateCourse, useUpdateCourse } from '../../../../hooks/useCourses';
+import { useCourseDetail, useCreateCourse, useUpdateCourse } from '../../../../hooks/useCourses';
+import { useAllTags } from '../../../../hooks/useTags';
 import { useDepartments } from '../../../../hooks/useDepartments';
 import { fileService } from '../../../../services/fileService';
 import { getAssetUrl } from '../../../../services/directus';
@@ -47,7 +48,7 @@ function CourseFormPage({ isEdit = false }) {
 
     // Hooks
     const { data: courseData, isLoading: fetching } = useCourseDetail(id);
-    const { data: tags = [] } = useTags();
+    const { data: tags = [] } = useAllTags();
     const { data: departments = [] } = useDepartments();
     const createCourse = useCreateCourse();
     const updateCourse = useUpdateCourse();

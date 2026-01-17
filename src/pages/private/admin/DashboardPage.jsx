@@ -1,17 +1,15 @@
-import { Row, Col, Card, Statistic, Progress, List, Avatar, Typography, Space, Spin, Empty } from 'antd';
-import {
-    BookOutlined,
-    TeamOutlined,
-    CheckCircleOutlined,
-    RiseOutlined,
-    ClockCircleOutlined,
-    TrophyOutlined,
-    UserOutlined,
-    WarningOutlined,
-    BarChartOutlined,
-    PieChartOutlined,
-    LineChartOutlined,
-} from '@ant-design/icons';
+import React, { useMemo } from 'react';
+import { Row, Col, Card, Statistic, Typography, Space, Spin, Empty } from 'antd';
+import BookOutlined from '@ant-design/icons/BookOutlined';
+import TeamOutlined from '@ant-design/icons/TeamOutlined';
+import CheckCircleOutlined from '@ant-design/icons/CheckCircleOutlined';
+import RiseOutlined from '@ant-design/icons/RiseOutlined';
+import ClockCircleOutlined from '@ant-design/icons/ClockCircleOutlined';
+import TrophyOutlined from '@ant-design/icons/TrophyOutlined';
+import UserOutlined from '@ant-design/icons/UserOutlined';
+import LineChartOutlined from '@ant-design/icons/LineChartOutlined';
+import PieChartOutlined from '@ant-design/icons/PieChartOutlined';
+
 import {
     AreaChart,
     Area,
@@ -24,13 +22,79 @@ import {
     PieChart,
     Pie,
     Cell,
-    BarChart,
-    Bar,
 } from 'recharts';
+
 import { PageHeader } from '../../../components/common';
 import { useAdminDashboardStats, useDashboardCharts } from '../../../hooks/useDashboard';
 
 const { Text } = Typography;
+
+// --- Helper Functions & Sub-components (Hoisted) ---
+
+// Helper để lấy icon cho activity (Hoisted outside component)
+const getActivityIcon = type => {
+    const iconStyle = { fontSize: 16 };
+    const iconMap = {
+        completion: <CheckCircleOutlined style={{ ...iconStyle, color: '#52c41a' }} />,
+        enrollment: <UserOutlined style={{ ...iconStyle, color: '#1890ff' }} />,
+        quiz_pass: <TrophyOutlined style={{ ...iconStyle, color: '#faad14' }} />,
+        course_created: <BookOutlined style={{ ...iconStyle, color: '#722ed1' }} />,
+        certificate: <TrophyOutlined style={{ ...iconStyle, color: '#eb2f96' }} />,
+    };
+    return iconMap[type] || <ClockCircleOutlined style={iconStyle} />;
+};
+
+// Sub-component for Popular Course Item to optimize re-renders
+const PopularCourseItem = React.memo(({ item, index, isLast }) => (
+    <div
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '12px 0',
+            borderBottom: isLast ? 'none' : '1px solid #f0f0f0',
+        }}
+    >
+        <Space>
+            <Text strong style={{ color: index < 3 ? '#ea4544' : '#999', width: 20 }}>
+                #{index + 1}
+            </Text>
+            <Text ellipsis style={{ maxWidth: 300 }}>
+                {item.title}
+            </Text>
+        </Space>
+        <div style={{ marginLeft: 'auto' }}>
+            <Space>
+                <TeamOutlined style={{ color: '#8c8c8c' }} />
+                <Text type="secondary">{item.enrollments} học viên</Text>
+            </Space>
+        </div>
+    </div>
+));
+
+// Sub-component for Activity Item
+const ActivityItem = React.memo(({ item, isLast }) => (
+    <div
+        style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            padding: '12px 0',
+            borderBottom: isLast ? 'none' : '1px solid #f0f0f0',
+        }}
+    >
+        <div style={{ marginRight: 16, marginTop: 4 }}>{getActivityIcon(item.type)}</div>
+        <div style={{ flex: 1 }}>
+            <div style={{ marginBottom: 4 }}>
+                <Text strong>{item.user}</Text> <Text type="secondary">{item.action}</Text>{' '}
+                <Text strong style={{ color: '#ea4544' }}>
+                    {item.target}
+                </Text>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+                {new Date(item.timestamp).toLocaleString('vi-VN')}
+            </Text>
+        </div>
+    </div>
+));
 
 /**
  * Admin Dashboard Page
@@ -42,6 +106,10 @@ function DashboardPage() {
 
     const loading = statsLoading || chartsLoading;
 
+    // Memoize fallback data
+    const safeStats = useMemo(() => stats || {}, [stats]);
+    const safeCharts = useMemo(() => charts || { monthly: [], status: [], popular: [], activity: [] }, [charts]);
+
     if (loading) {
         return (
             <div style={{ padding: 24, textAlign: 'center' }}>
@@ -49,22 +117,6 @@ function DashboardPage() {
             </div>
         );
     }
-
-    // Fallback if data is missing
-    const safeStats = stats || {};
-    const safeCharts = charts || { monthly: [], status: [], popular: [], activity: [] };
-
-    // Helper để lấy icon cho activity
-    const getActivityIcon = type => {
-        const iconMap = {
-            completion: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-            enrollment: <UserOutlined style={{ color: '#1890ff' }} />,
-            quiz_pass: <TrophyOutlined style={{ color: '#faad14' }} />,
-            course_created: <BookOutlined style={{ color: '#722ed1' }} />,
-            certificate: <TrophyOutlined style={{ color: '#eb2f96' }} />,
-        };
-        return iconMap[type] || <ClockCircleOutlined />;
-    };
 
     return (
         <div>
@@ -213,30 +265,12 @@ function DashboardPage() {
                     >
                         <div className="custom-list">
                             {safeCharts.popular.map((item, index) => (
-                                <div
+                                <PopularCourseItem
                                     key={index}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        padding: '12px 0',
-                                        borderBottom: index < safeCharts.popular.length - 1 ? '1px solid #f0f0f0' : 'none',
-                                    }}
-                                >
-                                    <Space>
-                                        <Text strong style={{ color: index < 3 ? '#ea4544' : '#999', width: 20 }}>
-                                            #{index + 1}
-                                        </Text>
-                                        <Text ellipsis style={{ maxWidth: 300 }}>
-                                            {item.title}
-                                        </Text>
-                                    </Space>
-                                    <div style={{ marginLeft: 'auto' }}>
-                                        <Space>
-                                            <TeamOutlined style={{ color: '#8c8c8c' }} />
-                                            <Text type="secondary">{item.enrollments} học viên</Text>
-                                        </Space>
-                                    </div>
-                                </div>
+                                    item={item}
+                                    index={index}
+                                    isLast={index === safeCharts.popular.length - 1}
+                                />
                             ))}
                             {safeCharts.popular.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
                         </div>
@@ -256,28 +290,11 @@ function DashboardPage() {
                     >
                         <div className="custom-list">
                             {safeCharts.activity.map((item, index) => (
-                                <div
+                                <ActivityItem
                                     key={index}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        padding: '12px 0',
-                                        borderBottom: index < safeCharts.activity.length - 1 ? '1px solid #f0f0f0' : 'none',
-                                    }}
-                                >
-                                    <div style={{ marginRight: 16, marginTop: 4 }}>{getActivityIcon(item.type)}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ marginBottom: 4 }}>
-                                            <Text strong>{item.user}</Text> <Text type="secondary">{item.action}</Text>{' '}
-                                            <Text strong style={{ color: '#ea4544' }}>
-                                                {item.target}
-                                            </Text>
-                                        </div>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>
-                                            {new Date(item.timestamp).toLocaleString('vi-VN')}
-                                        </Text>
-                                    </div>
-                                </div>
+                                    item={item}
+                                    isLast={index === safeCharts.activity.length - 1}
+                                />
                             ))}
                             {safeCharts.activity.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
                         </div>
