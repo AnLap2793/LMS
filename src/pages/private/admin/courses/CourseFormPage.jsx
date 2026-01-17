@@ -21,6 +21,7 @@ import {
 import { PlusOutlined, SaveOutlined, ArrowLeftOutlined, InboxOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { PageHeader, LexicalEditor } from '../../../../components/common';
 import { COURSE_STATUS_OPTIONS, COURSE_DIFFICULTY_OPTIONS } from '../../../../constants/lms';
+import { courseRules } from '../../../../validation/formRules';
 import { useCourseDetail, useTags, useCreateCourse, useUpdateCourse } from '../../../../hooks/useCourses';
 import { useDepartments } from '../../../../hooks/useDepartments';
 import { fileService } from '../../../../services/fileService';
@@ -185,8 +186,6 @@ function CourseFormPage({ isEdit = false }) {
         },
     };
 
-
-
     // Khi đang edit, phải đợi cả fetching xong VÀ courseData có dữ liệu
     if (isEdit && (fetching || !courseData)) {
         return <Spin fullscreen tip="Đang tải dữ liệu..." />;
@@ -232,15 +231,7 @@ function CourseFormPage({ isEdit = false }) {
                     <Row gutter={24}>
                         <Col xs={24} lg={16}>
                             {/* Title */}
-                            <Form.Item
-                                name="title"
-                                label="Tên khóa học"
-                                rules={[
-                                    { required: true, message: 'Vui lòng nhập tên khóa học' },
-                                    { min: 5, message: 'Tên phải có ít nhất 5 ký tự' },
-                                    { max: 200, message: 'Tên tối đa 200 ký tự' },
-                                ]}
-                            >
+                            <Form.Item name="title" label="Tên khóa học" rules={courseRules.title}>
                                 <Input placeholder="VD: Onboarding cho Nhân viên mới" size="large" />
                             </Form.Item>
 

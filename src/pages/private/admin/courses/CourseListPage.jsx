@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Table, Space, Tag, Popconfirm, Input, Select, Row, Col, Avatar, Tooltip } from 'antd';
 import {
@@ -70,42 +70,38 @@ function CourseListPage() {
     };
 
     // Table columns
-    const columns = [
-        {
-            title: 'Khóa học',
-            key: 'course',
-            width: 350,
-            render: (_, record) => (
-                <Space>
-                    <Avatar
-                        shape="square"
-                        size={48}
-                        icon={<BookOutlined />}
-                        src={record.thumbnail || null}
-                        style={{ backgroundColor: '#ea4544' }}
-                    />
-                    <div>
-                        <div style={{ fontWeight: 500 }}>{record.title}</div>
-                        <div style={{ fontSize: 12, color: '#999' }}>{record.modules_count || 0} modules</div>
-                    </div>
-                </Space>
-            ),
-            sorter: (a, b) => a.title.localeCompare(b.title),
-        },
-        {
-            title: 'Tags',
-            dataIndex: 'tags',
-            key: 'tags',
-            width: 200,
-            render: tags => {
-                // tags here is from courseService, which might be array of junction or tag objects
-                // In getAllCourses: tags: c.tags || []
-                // If deep fetched: tags is array of junctions { tags_id: { id, name, color } }
-                // Need to handle this structure
-                return (
+    const columns = useMemo(
+        () => [
+            {
+                title: 'Khóa học',
+                key: 'course',
+                width: 350,
+                render: (_, record) => (
+                    <Space>
+                        <Avatar
+                            shape="square"
+                            size={48}
+                            icon={<BookOutlined />}
+                            src={record.thumbnail || null}
+                            style={{ backgroundColor: '#ea4544' }}
+                        />
+                        <div>
+                            <div style={{ fontWeight: 500 }}>{record.title}</div>
+                            <div style={{ fontSize: 12, color: '#999' }}>{record.modules_count || 0} modules</div>
+                        </div>
+                    </Space>
+                ),
+                sorter: (a, b) => a.title.localeCompare(b.title),
+            },
+            {
+                title: 'Tags',
+                dataIndex: 'tags',
+                key: 'tags',
+                width: 200,
+                render: tags => (
                     <Space size={[0, 4]} wrap>
                         {tags?.map(tagItem => {
-                            const tag = tagItem.tags_id || tagItem; // Handle junction or direct tag
+                            const tag = tagItem.tags_id || tagItem;
                             return (
                                 <Tag key={tag.id} color={tag.color}>
                                     {tag.name}
@@ -113,83 +109,86 @@ function CourseListPage() {
                             );
                         })}
                     </Space>
-                );
+                ),
             },
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            width: 120,
-            render: status => <StatusTag status={status} />,
-        },
-        {
-            title: 'Độ khó',
-            dataIndex: 'difficulty',
-            key: 'difficulty',
-            width: 120,
-            render: difficulty => (difficulty ? <DifficultyTag difficulty={difficulty} /> : '-'),
-        },
-        {
-            title: 'Thời lượng',
-            dataIndex: 'duration_minutes', // Use minutes
-            key: 'duration',
-            width: 100,
-            render: formatDuration,
-            sorter: (a, b) => (a.duration_minutes || 0) - (b.duration_minutes || 0),
-        },
-        {
-            title: 'Học viên',
-            dataIndex: 'enrollments_count',
-            key: 'enrollments_count',
-            width: 100,
-            render: count => count || 0,
-            sorter: (a, b) => (a.enrollments_count || 0) - (b.enrollments_count || 0),
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            width: 150,
-            fixed: 'right',
-            render: (_, record) => (
-                <Space size="small">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            type="text"
-                            icon={<EyeOutlined />}
-                            onClick={() => navigate(`/admin/courses/${record.id}`)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Quản lý nội dung">
-                        <Button
-                            type="text"
-                            icon={<UnorderedListOutlined />}
-                            onClick={() => navigate(`/admin/courses/${record.id}/content`)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Chỉnh sửa">
-                        <Button
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={() => navigate(`/admin/courses/${record.id}/edit`)}
-                        />
-                    </Tooltip>
-                    <Popconfirm
-                        title="Xóa khóa học này?"
-                        description="Tất cả nội dung và dữ liệu liên quan sẽ bị xóa."
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Xóa"
-                        cancelText="Hủy"
-                        okButtonProps={{ danger: true }}
-                    >
-                        <Tooltip title="Xóa">
-                            <Button type="text" danger icon={<DeleteOutlined />} />
+            {
+                title: 'Trạng thái',
+                dataIndex: 'status',
+                key: 'status',
+                width: 120,
+                render: status => <StatusTag status={status} />,
+            },
+            {
+                title: 'Độ khó',
+                dataIndex: 'difficulty',
+                key: 'difficulty',
+                width: 120,
+                render: difficulty => (difficulty ? <DifficultyTag difficulty={difficulty} /> : '-'),
+            },
+            {
+                title: 'Thời lượng',
+                dataIndex: 'duration_minutes',
+                key: 'duration',
+                width: 100,
+                render: formatDuration,
+                sorter: (a, b) => (a.duration_minutes || 0) - (b.duration_minutes || 0),
+            },
+            {
+                title: 'Học viên',
+                dataIndex: 'enrollments_count',
+                key: 'enrollments_count',
+                width: 100,
+                render: count => count || 0,
+                sorter: (a, b) => (a.enrollments_count || 0) - (b.enrollments_count || 0),
+            },
+            {
+                title: 'Thao tác',
+                key: 'action',
+                width: 150,
+                fixed: 'right',
+                render: (_, record) => (
+                    <Space size="small">
+                        <Tooltip title="Xem chi tiết">
+                            <Button
+                                type="text"
+                                icon={<EyeOutlined />}
+                                onClick={() => navigate(`/admin/courses/${record.id}`)}
+                            />
                         </Tooltip>
-                    </Popconfirm>
-                </Space>
-            ),
-        },
-    ];
+                        <Tooltip title="Quản lý nội dung">
+                            <Button
+                                type="text"
+                                icon={<UnorderedListOutlined />}
+                                onClick={() => navigate(`/admin/courses/${record.id}/content`)}
+                            />
+                        </Tooltip>
+                        <Tooltip title="Chỉnh sửa">
+                            <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                onClick={() => navigate(`/admin/courses/${record.id}/edit`)}
+                            />
+                        </Tooltip>
+                        <Popconfirm
+                            title="Xóa khóa học này?"
+                            description="Tất cả nội dung và dữ liệu liên quan sẽ bị xóa."
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            okButtonProps={{ danger: true }}
+                        >
+                            <Tooltip title="Xóa">
+                                <Button type="text" danger icon={<DeleteOutlined />} />
+                            </Tooltip>
+                        </Popconfirm>
+                    </Space>
+                ),
+            },
+        ],
+        [navigate]
+    );
+
+    // Check if any filter is active
 
     // Check if any filter is active
     const hasActiveFilters = searchText || statusFilter || difficultyFilter || tagFilter;

@@ -156,6 +156,18 @@ export const userRules = {
     phone: phoneRules,
 };
 
+/**
+ * Validation rules cho form Course
+ */
+export const courseRules = {
+    title: [
+        { required: true, message: 'Vui lòng nhập tên khóa học' },
+        { min: 5, message: 'Tên khóa học phải có ít nhất 5 ký tự' },
+        { max: 200, message: 'Tên khóa học tối đa 200 ký tự' },
+    ],
+    // Các trường khác có thể thêm sau nếu cần
+};
+
 // Export các rules cũ để backward compatibility (có thể xóa sau)
 export const emailSchema = emailRules;
 export const passwordSchema = passwordRules;

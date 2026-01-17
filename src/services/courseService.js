@@ -256,62 +256,29 @@ export const courseService = {
      * @deprecated Prefer getCourseInfo + useModulesByCourse for admin pages
      */
     getCourseDetail: async courseId => {
-        // Fetch course with nested modules and lessons in ONE query
-        const course = await directus.request(
-            readItem(COLLECTIONS.COURSES, courseId, {
-                fields: [
-                    '*',
-                    'user_created.id',
-                    'user_created.first_name',
-                    'user_created.last_name',
-                    'tags.tags_id.id',
-                    'tags.tags_id.name',
-                    'tags.tags_id.color',
-                    // Fetch nested modules and their lessons
-                    'modules.id',
-                    'modules.title',
-                    'modules.description',
-                    'modules.sort',
-                    'modules.status',
-                    'modules.lessons.id',
-                    'modules.lessons.title',
-                    'modules.lessons.type',
-                    'modules.lessons.status',
-                    'modules.lessons.duration',
-                    'modules.lessons.sort',
-                ],
-                deep: {
-                    modules: {
-                        _sort: ['sort'],
-                        lessons: {
-                            _sort: ['sort'],
-                        },
-                    },
-                },
-            })
-        );
+        // Rule: async-parallel - Fetch course info and modules in parallel to avoid waterfall
+        const [course, modules] = await Promise.all([
+            // 1. Fetch Basic Course Info
+            directus.request(
+                readItem(COLLECTIONS.COURSES, courseId, {
+                    fields: [
+                        '*',
+                        'user_created.id',
+                        'user_created.first_name',
+                        'user_created.last_name',
+                        'tags.tags_id.id',
+                        'tags.tags_id.name',
+                        'tags.tags_id.color',
+                    ],
+                })
+            ),
+            // 2. Fetch Modules & Lessons (Reuse existing logic)
+            courseService.getCourseModules(courseId),
+        ]);
 
         if (!course) {
             throw new Error('Course not found');
         }
-
-        // Transform data structure if needed
-        const sortedModules = (course.modules || []).map(m => ({
-            id: m.id,
-            title: m.title,
-            description: m.description,
-            sort_order: m.sort,
-            status: m.status,
-            lessons: (m.lessons || []).map(l => ({
-                id: l.id,
-                title: l.title,
-                type: l.type,
-                status: l.status,
-                duration_minutes: l.duration,
-                sort_order: l.sort,
-                is_preview: false,
-            })),
-        }));
 
         return {
             ...course,
@@ -327,7 +294,7 @@ export const courseService = {
                   }
                 : null,
             tags: course.tags || [],
-            modules: sortedModules,
+            modules: modules, // Data from parallel fetch
         };
     },
 

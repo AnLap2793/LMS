@@ -3,7 +3,7 @@
  * Tách riêng logic từ courseService để dễ maintain
  */
 import { directus } from './directus';
-import { readItems, createItem, updateItem, deleteItem } from '@directus/sdk';
+import { readItems, readItem, createItem, updateItem, deleteItem } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const moduleService = {
@@ -65,8 +65,8 @@ export const moduleService = {
      * @returns {Promise<Object|null>} Chi tiết module
      */
     getById: async (id, params = {}) => {
-        const result = await directus.request(
-            readItems(COLLECTIONS.MODULES, {
+        return await directus.request(
+            readItem(COLLECTIONS.MODULES, id, {
                 fields: [
                     '*',
                     'course_id.id',
@@ -75,12 +75,9 @@ export const moduleService = {
                     'user_created.first_name',
                     'user_created.last_name',
                 ],
-                filter: { id: { _eq: id } },
-                limit: 1,
                 ...params,
             })
         );
-        return result[0] || null;
     },
 
     /**
@@ -140,8 +137,8 @@ export const moduleService = {
                     fields: ['*'],
                     filter: {
                         module_id: {
-                            course_id: { _eq: courseId }
-                        }
+                            course_id: { _eq: courseId },
+                        },
                     },
                     sort: ['sort'],
                 })
@@ -169,8 +166,9 @@ export const moduleService = {
     create: async data => {
         // Tự động set sort order nếu chưa có
         if (data.sort === undefined && data.course_id) {
-            const existingModules = await moduleService.getByCourse(data.course_id);
-            data.sort = existingModules.length;
+            // Tối ưu: Dùng count aggregate thay vì fetch all items
+            const count = await moduleService.countByCourse(data.course_id);
+            data.sort = count;
         }
 
         return await directus.request(createItem(COLLECTIONS.MODULES, data));

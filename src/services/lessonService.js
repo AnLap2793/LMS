@@ -3,7 +3,7 @@
  * Tách riêng logic từ courseService để dễ maintain
  */
 import { directus } from './directus';
-import { readItems, createItem, updateItem, deleteItem } from '@directus/sdk';
+import { readItems, readItem, createItem, updateItem, deleteItem } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const lessonService = {
@@ -56,8 +56,8 @@ export const lessonService = {
      * @returns {Promise<Object|null>} Chi tiết lesson
      */
     getById: async (id, params = {}) => {
-        const result = await directus.request(
-            readItems(COLLECTIONS.LESSONS, {
+        return await directus.request(
+            readItem(COLLECTIONS.LESSONS, id, {
                 fields: [
                     '*',
                     'module_id.id',
@@ -68,12 +68,9 @@ export const lessonService = {
                     'user_created.first_name',
                     'user_created.last_name',
                 ],
-                filter: { id: { _eq: id } },
-                limit: 1,
                 ...params,
             })
         );
-        return result[0] || null;
     },
 
     /**
@@ -84,8 +81,9 @@ export const lessonService = {
     create: async data => {
         // Tự động set sort order nếu chưa có
         if (data.sort === undefined && data.module_id) {
-            const existingLessons = await lessonService.getByModule(data.module_id);
-            data.sort = existingLessons.length;
+            // Tối ưu: Dùng count aggregate thay vì fetch all items
+            const count = await lessonService.countByModule(data.module_id);
+            data.sort = count;
         }
 
         return await directus.request(createItem(COLLECTIONS.LESSONS, data));

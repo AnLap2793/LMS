@@ -3,7 +3,7 @@
  * Directus Implementation
  */
 import { directus } from './directus';
-import { readItems, createItem, updateItem, deleteItem, aggregate } from '@directus/sdk';
+import { readItems, readItem, createItem, updateItem, deleteItem, aggregate } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const tagService = {
@@ -65,14 +65,7 @@ export const tagService = {
      * @returns {Promise<Object>} Chi tiết tag
      */
     getById: async tagId => {
-        return await directus
-            .request(
-                readItems(COLLECTIONS.TAGS, {
-                    filter: { id: { _eq: tagId } },
-                    limit: 1,
-                })
-            )
-            .then(res => res[0]);
+        return await directus.request(readItem(COLLECTIONS.TAGS, tagId));
     },
 
     /**
@@ -81,18 +74,6 @@ export const tagService = {
      * @returns {Promise<Object>} Tag đã tạo
      */
     create: async data => {
-        // Check duplicate name
-        const existing = await directus.request(
-            readItems(COLLECTIONS.TAGS, {
-                filter: { name: { _eq: data.name } },
-                limit: 1,
-            })
-        );
-
-        if (existing.length > 0) {
-            throw new Error('Tag với tên này đã tồn tại');
-        }
-
         return await directus.request(
             createItem(COLLECTIONS.TAGS, {
                 ...data,
@@ -108,22 +89,6 @@ export const tagService = {
      * @returns {Promise<Object>} Tag đã cập nhật
      */
     update: async (id, data) => {
-        if (data.name) {
-            const existing = await directus.request(
-                readItems(COLLECTIONS.TAGS, {
-                    filter: {
-                        name: { _eq: data.name },
-                        id: { _neq: id },
-                    },
-                    limit: 1,
-                })
-            );
-
-            if (existing.length > 0) {
-                throw new Error('Tag với tên này đã tồn tại');
-            }
-        }
-
         return await directus.request(updateItem(COLLECTIONS.TAGS, id, data));
     },
 
