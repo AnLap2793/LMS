@@ -270,7 +270,7 @@ function CourseDetailPage() {
                 <Col xs={24} lg={16}>
                     {/* Course header */}
                     <Card style={{ marginBottom: 24 }}>
-                        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
                             {/* Tags */}
                             <Space wrap>
                                 {courseTags.map(tag => (
@@ -294,7 +294,7 @@ function CourseDetailPage() {
                             </Paragraph>
 
                             {/* Meta info */}
-                            <Space split={<Divider type="vertical" />} wrap>
+                            <Space separator={<span style={{ color: '#d9d9d9' }}>|</span>} wrap>
                                 <Space>
                                     <ClockCircleOutlined />
                                     <Text>{formatDuration(stats.duration) || `${course.duration_hours || 0} giờ`}</Text>
@@ -308,7 +308,7 @@ function CourseDetailPage() {
                                     <Text>{course.enrollments_count || 0} học viên</Text>
                                 </Space>
                             </Space>
-                        </Space>
+                        </div>
                     </Card>
 
                     {/* Learning objectives */}
@@ -386,7 +386,7 @@ function CourseDetailPage() {
                                 <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
                             </div>
                         ) : isEnrolled ? (
-                            <Space direction="vertical" style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                                 <Tag
                                     color="success"
                                     icon={<CheckCircleOutlined />}
@@ -403,7 +403,7 @@ function CourseDetailPage() {
                                 >
                                     Tiếp tục học
                                 </Button>
-                            </Space>
+                            </div>
                         ) : (
                             <Button
                                 type="primary"

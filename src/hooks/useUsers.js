@@ -1,12 +1,15 @@
 /**
- * VÍ DỤ: React Query Hooks
- * Xem TEMPLATE_GUIDE.md để biết hướng dẫn chi tiết
+ * React Query Hooks cho Users
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../services/userService';
 import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
+
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
 
 export function useUsers(params = {}) {
     return useQuery({
@@ -20,7 +23,7 @@ export function useUser(id) {
     return useQuery({
         queryKey: queryKeys.users.detail(id),
         queryFn: () => userService.getById(id),
-        enabled: !!id, // Chỉ fetch khi có id
+        enabled: !!id,
     });
 }
 
@@ -61,11 +64,11 @@ export function useDeleteUser() {
     });
 }
 
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
 export function useUpdateMe() {
-    // Can use queryClient to invalidate 'me' query if we had one separate from auth context
-    // But usually AuthContext handles the user state.
-    // Ideally, on success, we should reload the page or update AuthContext.
-    // For now, just success message.
     return useMutation({
         mutationFn: userService.updateMe,
         onSuccess: () => {

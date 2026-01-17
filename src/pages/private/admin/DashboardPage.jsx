@@ -45,7 +45,7 @@ function DashboardPage() {
     if (loading) {
         return (
             <div style={{ padding: 24, textAlign: 'center' }}>
-                <Spin size="large" tip="Đang tải dữ liệu tổng quan..." />
+                <Spin fullscreen tip="Đang tải dữ liệu tổng quan..." />
             </div>
         );
     }
@@ -211,21 +211,35 @@ function DashboardPage() {
                         }
                         style={{ height: '100%' }}
                     >
-                        <List
-                            dataSource={safeCharts.popular}
-                            renderItem={(item, index) => (
-                                <List.Item>
-                                    <div style={{ flex: 1 }}>
+                        <div className="custom-list">
+                            {safeCharts.popular.map((item, index) => (
+                                <div
+                                    key={index}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '12px 0',
+                                        borderBottom: index < safeCharts.popular.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                    }}
+                                >
+                                    <Space>
+                                        <Text strong style={{ color: index < 3 ? '#ea4544' : '#999', width: 20 }}>
+                                            #{index + 1}
+                                        </Text>
+                                        <Text ellipsis style={{ maxWidth: 300 }}>
+                                            {item.title}
+                                        </Text>
+                                    </Space>
+                                    <div style={{ marginLeft: 'auto' }}>
                                         <Space>
-                                            <Text strong style={{ color: index < 3 ? '#ea4544' : '#999' }}>
-                                                #{index + 1}
-                                            </Text>
-                                            <Text>{item.title}</Text>
+                                            <TeamOutlined style={{ color: '#8c8c8c' }} />
+                                            <Text type="secondary">{item.enrollments} học viên</Text>
                                         </Space>
                                     </div>
-                                </List.Item>
-                            )}
-                        />
+                                </div>
+                            ))}
+                            {safeCharts.popular.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                        </div>
                     </Card>
                 </Col>
 
@@ -240,30 +254,33 @@ function DashboardPage() {
                         }
                         style={{ height: '100%' }}
                     >
-                        <List
-                            dataSource={safeCharts.activity}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        avatar={getActivityIcon(item.type)}
-                                        title={
-                                            <span>
-                                                <Text strong>{item.user}</Text>{' '}
-                                                <Text type="secondary">{item.action}</Text>{' '}
-                                                <Text strong style={{ color: '#ea4544' }}>
-                                                    {item.target}
-                                                </Text>
-                                            </span>
-                                        }
-                                        description={
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {new Date(item.timestamp).toLocaleString('vi-VN')}
+                        <div className="custom-list">
+                            {safeCharts.activity.map((item, index) => (
+                                <div
+                                    key={index}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        padding: '12px 0',
+                                        borderBottom: index < safeCharts.activity.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                    }}
+                                >
+                                    <div style={{ marginRight: 16, marginTop: 4 }}>{getActivityIcon(item.type)}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ marginBottom: 4 }}>
+                                            <Text strong>{item.user}</Text> <Text type="secondary">{item.action}</Text>{' '}
+                                            <Text strong style={{ color: '#ea4544' }}>
+                                                {item.target}
                                             </Text>
-                                        }
-                                    />
-                                </List.Item>
-                            )}
-                        />
+                                        </div>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            {new Date(item.timestamp).toLocaleString('vi-VN')}
+                                        </Text>
+                                    </div>
+                                </div>
+                            ))}
+                            {safeCharts.activity.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                        </div>
                     </Card>
                 </Col>
             </Row>

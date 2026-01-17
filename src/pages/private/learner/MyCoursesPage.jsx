@@ -427,7 +427,7 @@ function MyCoursesPage() {
                         <Statistic
                             title="Đang học"
                             value={statsLoading ? '-' : stats.inProgress || 0}
-                            valueStyle={{ color: '#1890ff' }}
+                            styles={{ content: { color: '#1890ff' } }}
                             prefix={<PlayCircleOutlined />}
                         />
                     </Card>
@@ -437,7 +437,7 @@ function MyCoursesPage() {
                         <Statistic
                             title="Hoàn thành"
                             value={statsLoading ? '-' : stats.completed || 0}
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
                             prefix={<CheckCircleOutlined />}
                         />
                     </Card>
@@ -447,7 +447,7 @@ function MyCoursesPage() {
                         <Statistic
                             title="Lộ trình"
                             value={userLearningPaths.length}
-                            valueStyle={{ color: '#eb2f96' }}
+                            styles={{ content: { color: '#eb2f96' } }}
                             prefix={<RocketOutlined />}
                         />
                     </Card>

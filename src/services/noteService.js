@@ -7,6 +7,10 @@ import { readItems, createItem, updateItem, deleteItem, readMe } from '@directus
 import { COLLECTIONS } from '../constants/collections';
 
 export const noteService = {
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy tất cả notes của user hiện tại
      * @param {Object} params - Filter params

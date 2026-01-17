@@ -109,7 +109,7 @@ function DocumentFormModal({ open, onCancel, onSubmit, initialValues, loading })
             cancelText="Hủy"
             confirmLoading={loading}
             width={600}
-            destroyOnClose
+            destroyOnHidden
         >
             <Form form={form} layout="vertical" initialValues={{ type: 'file' }}>
                 {/* Document Type */}

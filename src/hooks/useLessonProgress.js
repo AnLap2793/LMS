@@ -8,7 +8,7 @@ import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
 // ============================================
-// QUERY HOOKS
+// CLIENT / LEARNER HOOKS
 // ============================================
 
 /**
@@ -72,10 +72,6 @@ export function useEnrollmentTimeSpent(enrollmentId) {
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }
-
-// ============================================
-// MUTATION HOOKS
-// ============================================
 
 /**
  * Hook bắt đầu học bài học

@@ -74,7 +74,7 @@ function WeeklyActivitySection() {
             <Row gutter={[16, 16]}>
                 {/* Chart */}
                 <Col xs={24} md={16}>
-                    <Card bodyStyle={{ padding: '16px 16px 8px 0' }}>
+                    <Card styles={{ body: { padding: '16px 16px 8px 0' } }}>
                         <ResponsiveContainer width="100%" height={200}>
                             <BarChart data={weeklyData}>
                                 <XAxis dataKey="day" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
@@ -103,7 +103,7 @@ function WeeklyActivitySection() {
                                     title="Tổng phút học"
                                     value={totalMinutesThisWeek}
                                     suffix="phút"
-                                    valueStyle={{ color: '#ea4544' }}
+                                    styles={{ content: { color: '#ea4544' } }}
                                 />
                             </Col>
                             <Col span={12}>
@@ -111,7 +111,7 @@ function WeeklyActivitySection() {
                                     title="Bài học hoàn thành"
                                     value={totalLessonsThisWeek}
                                     suffix="bài"
-                                    valueStyle={{ color: '#52c41a' }}
+                                    styles={{ content: { color: '#52c41a' } }}
                                 />
                             </Col>
                             <Col span={24}>
@@ -166,7 +166,7 @@ function ContinueLearningCard({ enrollment }) {
                     </div>
                 </div>
             }
-            bodyStyle={{ padding: 16 }}
+            styles={{ body: { padding: 16 } }}
         >
             <Text strong ellipsis style={{ display: 'block', marginBottom: 8 }}>
                 {course?.title}
@@ -217,11 +217,11 @@ function CourseCard({ course }) {
                     </div>
                 </div>
             }
-            bodyStyle={{ padding: 16 }}
+            styles={{ body: { padding: 16 } }}
         >
-            <Text strong ellipsis={{ rows: 2 }} style={{ display: 'block', minHeight: 44 }}>
+            <Paragraph strong ellipsis={{ rows: 2 }} style={{ display: 'block', minHeight: 44, marginBottom: 0 }}>
                 {course?.title}
-            </Text>
+            </Paragraph>
             <div style={{ marginTop: 8 }}>
                 {tags.slice(0, 2).map(tag => (
                     <Tag key={tag.id} color={tag.color} style={{ marginBottom: 4 }}>
@@ -409,21 +409,21 @@ function HeroSection({ user, stats, loading }) {
                             <Statistic
                                 title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Tổng khóa học</span>}
                                 value={stats?.total || 0}
-                                valueStyle={{ color: '#fff', fontSize: 24 }}
+                                styles={{ content: { color: '#fff', fontSize: 24 } }}
                             />
                         </Col>
                         <Col xs={8}>
                             <Statistic
                                 title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Đang học</span>}
                                 value={stats?.inProgress || 0}
-                                valueStyle={{ color: '#fff', fontSize: 24 }}
+                                styles={{ content: { color: '#fff', fontSize: 24 } }}
                             />
                         </Col>
                         <Col xs={8}>
                             <Statistic
                                 title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Đã hoàn thành</span>}
                                 value={stats?.completed || 0}
-                                valueStyle={{ color: '#fff', fontSize: 24 }}
+                                styles={{ content: { color: '#fff', fontSize: 24 } }}
                             />
                         </Col>
                     </Row>

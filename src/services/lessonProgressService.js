@@ -8,13 +8,16 @@ import { COLLECTIONS } from '../constants/collections';
 
 export const lessonProgressService = {
     /**
-     * Lấy user ID hiện tại
-     * @returns {Promise<string>} User ID
+     * Lấy user ID hiện tại (Helper)
      */
     getCurrentUserId: async () => {
         const user = await directus.request(readMe({ fields: ['id'] }));
         return user.id;
     },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
 
     /**
      * Lấy tiến độ học của user hiện tại
@@ -218,11 +221,7 @@ export const lessonProgressService = {
         let totalLessons = 0;
         let completedLessons = 0;
         let inProgressLessons = 0;
-        let totalTimeSpent = 0; // Requires sum aggregation on total, or per group
-
-        // Getting total time spent requires separate aggregation if group by status
-        // Actually aggregate returns array of groups.
-        // Directus aggregate: { status: 'completed', count: '10', sum: { time_spent: '500' } }
+        let totalTimeSpent = 0;
 
         result.forEach(item => {
             const count = Number(item.count);

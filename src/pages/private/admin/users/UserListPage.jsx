@@ -289,7 +289,7 @@ function UserListPage() {
                         <Statistic
                             title="Đang hoạt động"
                             value={stats.active}
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
                             prefix={<CheckCircleOutlined />}
                         />
                     </Card>
@@ -299,7 +299,7 @@ function UserListPage() {
                         <Statistic
                             title="Đã khóa"
                             value={stats.inactive}
-                            valueStyle={{ color: '#999' }}
+                            styles={{ content: { color: '#999' } }}
                             prefix={<StopOutlined />}
                         />
                     </Card>
@@ -333,7 +333,7 @@ function UserListPage() {
                             value={departmentFilter}
                             onChange={setDepartmentFilter}
                             options={[
-                                { value: null, label: 'Tất cả phòng ban' },
+                                { value: '', label: 'Tất cả phòng ban' },
                                 ...departments.map(d => ({ value: d.id, label: d.ten_bo_phan })),
                             ]}
                             style={{ width: '100%' }}
@@ -346,7 +346,7 @@ function UserListPage() {
                             value={statusFilter}
                             onChange={setStatusFilter}
                             options={[
-                                { value: null, label: 'Tất cả trạng thái' },
+                                { value: '', label: 'Tất cả trạng thái' },
                                 { value: 'active', label: 'Hoạt động' },
                                 { value: 'inactive', label: 'Đã khóa' },
                             ]}

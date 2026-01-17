@@ -21,6 +21,10 @@ const transformDocument = doc => {
 };
 
 export const documentService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy tất cả documents với filter và pagination
      */
@@ -199,28 +203,6 @@ export const documentService = {
         return junctionRecords[0]?.count || 0;
     },
 
-    // ==================== Junction Table Methods ====================
-
-    /**
-     * Lấy documents của một lesson
-     */
-    getByLesson: async (lessonId, params = {}) => {
-        const junctionRecords = await directus.request(
-            readItems(COLLECTIONS.LESSONS_DOCUMENTS, {
-                fields: ['*', 'documents_id.*', 'documents_id.file.*'],
-                filter: { lessons_id: { _eq: lessonId } },
-                sort: ['sort'],
-                ...params,
-            })
-        );
-
-        return junctionRecords.map(record => ({
-            junctionId: record.id,
-            sort: record.sort,
-            ...transformDocument(record.documents_id),
-        }));
-    },
-
     /**
      * Thêm document vào lesson
      */
@@ -327,5 +309,29 @@ export const documentService = {
 
         // Cập nhật thứ tự
         await documentService.updateLessonDocumentsOrder(lessonId, documentIds);
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy documents của một lesson
+     */
+    getByLesson: async (lessonId, params = {}) => {
+        const junctionRecords = await directus.request(
+            readItems(COLLECTIONS.LESSONS_DOCUMENTS, {
+                fields: ['*', 'documents_id.*', 'documents_id.file.*'],
+                filter: { lessons_id: { _eq: lessonId } },
+                sort: ['sort'],
+                ...params,
+            })
+        );
+
+        return junctionRecords.map(record => ({
+            junctionId: record.id,
+            sort: record.sort,
+            ...transformDocument(record.documents_id),
+        }));
     },
 };

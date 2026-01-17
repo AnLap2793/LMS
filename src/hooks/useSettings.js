@@ -7,28 +7,9 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
-/**
- * Hook lấy app settings hiện tại
- * @returns {Object} Query result với data là settings object
- */
-export function useSettings() {
-    return useQuery({
-        queryKey: queryKeys.appSettings.current(),
-        queryFn: () => settingsService.get(),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook lấy giá trị một setting cụ thể
- * @param {string} key - Tên setting
- * @param {*} defaultValue - Giá trị mặc định
- * @returns {*} Giá trị setting hoặc defaultValue
- */
-export function useSettingValue(key, defaultValue = null) {
-    const { data: settings } = useSettings();
-    return settings?.[key] !== undefined ? settings[key] : defaultValue;
-}
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
 
 /**
  * Hook cập nhật settings
@@ -76,4 +57,31 @@ export function useResetSettings() {
             showSuccess('Đã khôi phục cài đặt mặc định!');
         },
     });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
+/**
+ * Hook lấy app settings hiện tại
+ * @returns {Object} Query result với data là settings object
+ */
+export function useSettings() {
+    return useQuery({
+        queryKey: queryKeys.appSettings.current(),
+        queryFn: () => settingsService.get(),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy giá trị một setting cụ thể
+ * @param {string} key - Tên setting
+ * @param {*} defaultValue - Giá trị mặc định
+ * @returns {*} Giá trị setting hoặc defaultValue
+ */
+export function useSettingValue(key, defaultValue = null) {
+    const { data: settings } = useSettings();
+    return settings?.[key] !== undefined ? settings[key] : defaultValue;
 }

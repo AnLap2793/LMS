@@ -8,6 +8,10 @@ import { COLLECTIONS } from '../constants/collections';
 import { COURSE_STATUS } from '../constants/lms';
 
 export const courseService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy tất cả khóa học (cho Admin)
      * @param {Object} params - Filter params
@@ -73,6 +77,77 @@ export const courseService = {
     },
 
     /**
+     * Lấy thông tin cơ bản khóa học (KHÔNG bao gồm modules/lessons)
+     * Dùng cho Admin CourseContentPage, CourseFormPage
+     * @param {string} courseId - ID khóa học
+     * @returns {Promise<Object>} Thông tin khóa học
+     */
+    getCourseInfo: async courseId => {
+        const course = await directus.request(
+            readItem(COLLECTIONS.COURSES, courseId, {
+                fields: [
+                    '*',
+                    'user_created.id',
+                    'user_created.first_name',
+                    'user_created.last_name',
+                    'tags.tags_id.id',
+                    'tags.tags_id.name',
+                    'tags.tags_id.color',
+                ],
+            })
+        );
+
+        if (!course) {
+            throw new Error('Course not found');
+        }
+
+        return {
+            ...course,
+            thumbnail: course.thumbnail,
+            duration_hours: course.duration ? Math.round(course.duration / 60) : 0,
+            instructor: course.user_created
+                ? {
+                      id: course.user_created.id,
+                      first_name: course.user_created.first_name,
+                      last_name: course.user_created.last_name,
+                      avatar: null,
+                      title: 'Instructor',
+                  }
+                : null,
+            tags: course.tags || [],
+        };
+    },
+
+    /**
+     * Tạo khóa học mới
+     * @param {Object} data
+     */
+    create: async data => {
+        return await directus.request(createItem(COLLECTIONS.COURSES, data));
+    },
+
+    /**
+     * Cập nhật khóa học
+     * @param {string} id
+     * @param {Object} data
+     */
+    update: async (id, data) => {
+        return await directus.request(updateItem(COLLECTIONS.COURSES, id, data));
+    },
+
+    /**
+     * Xóa khóa học
+     * @param {string} id
+     */
+    delete: async id => {
+        return await directus.request(deleteItem(COLLECTIONS.COURSES, id));
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
+    /**
      * Lấy danh sách khóa học published cho catalog
      * @param {Object} params - Filter params
      * @returns {Promise<Array>} Danh sách khóa học
@@ -136,31 +211,6 @@ export const courseService = {
     },
 
     /**
-     * Tạo khóa học mới
-     * @param {Object} data
-     */
-    create: async data => {
-        return await directus.request(createItem(COLLECTIONS.COURSES, data));
-    },
-
-    /**
-     * Cập nhật khóa học
-     * @param {string} id
-     * @param {Object} data
-     */
-    update: async (id, data) => {
-        return await directus.request(updateItem(COLLECTIONS.COURSES, id, data));
-    },
-
-    /**
-     * Xóa khóa học
-     * @param {string} id
-     */
-    delete: async id => {
-        return await directus.request(deleteItem(COLLECTIONS.COURSES, id));
-    },
-
-    /**
      * Đếm tổng số khóa học published (cho pagination)
      * @param {Object} params - Filter params
      * @returns {Promise<number>} Tổng số khóa học
@@ -199,9 +249,11 @@ export const courseService = {
     },
 
     /**
-     * Lấy chi tiết khóa học kèm modules và lessons
+     * Lấy chi tiết khóa học kèm modules và lessons (nested)
+     * Dùng cho Learner CourseDetailPage - cần overview nhanh
      * @param {string} courseId - ID khóa học
      * @returns {Promise<Object>} Chi tiết khóa học
+     * @deprecated Prefer getCourseInfo + useModulesByCourse for admin pages
      */
     getCourseDetail: async courseId => {
         // Fetch course with nested modules and lessons in ONE query

@@ -7,6 +7,10 @@ import { readItems, createItem, updateItem, deleteItem, aggregate } from '@direc
 import { COLLECTIONS } from '../constants/collections';
 
 export const tagService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy danh sách tất cả tags
      * @param {Object} params - Filter params
@@ -142,22 +146,6 @@ export const tagService = {
     },
 
     /**
-     * Lấy các tag phổ biến (dựa trên số khóa học sử dụng)
-     * @param {number} limit - Số lượng
-     * @returns {Promise<Array>} Danh sách tags
-     */
-    getPopular: async (limit = 10) => {
-        // Directus aggregate requires junction table aggregation which is complex
-        // Fallback: just return top tags for now
-        return await directus.request(
-            readItems(COLLECTIONS.TAGS, {
-                limit,
-                sort: ['name'], // Ideally sort by usage count if field exists
-            })
-        );
-    },
-
-    /**
      * Lấy thống kê tags
      * @returns {Promise<Object>} Thống kê
      */
@@ -178,5 +166,25 @@ export const tagService = {
                 return acc;
             }, {}),
         };
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy các tag phổ biến (dựa trên số khóa học sử dụng)
+     * @param {number} limit - Số lượng
+     * @returns {Promise<Array>} Danh sách tags
+     */
+    getPopular: async (limit = 10) => {
+        // Directus aggregate requires junction table aggregation which is complex
+        // Fallback: just return top tags for now
+        return await directus.request(
+            readItems(COLLECTIONS.TAGS, {
+                limit,
+                sort: ['name'], // Ideally sort by usage count if field exists
+            })
+        );
     },
 };

@@ -7,6 +7,10 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
 /**
  * Hook lấy tất cả notes của user hiện tại
  * @param {Object} params - Filter params

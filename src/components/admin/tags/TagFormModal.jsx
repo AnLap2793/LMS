@@ -50,7 +50,7 @@ function TagFormModal({ open, onCancel, onSubmit, initialValues, loading }) {
             width="90%"
             style={{ maxWidth: 520 }}
             centered
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}

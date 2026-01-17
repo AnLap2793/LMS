@@ -344,11 +344,7 @@ function CourseFormPage({ isEdit = false }) {
     ];
 
     if (fetching) {
-        return (
-            <div style={{ padding: 50, textAlign: 'center' }}>
-                <Spin size="large" tip="Đang tải dữ liệu..." />
-            </div>
-        );
+        return <Spin fullscreen tip="Đang tải dữ liệu..." />;
     }
 
     return (

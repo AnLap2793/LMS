@@ -7,17 +7,9 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
-/**
- * Hook lấy lịch sử làm bài của user hiện tại (Learner)
- * @param {Object} params - Filter params { search, passed, page, limit }
- */
-export function useMyQuizAttempts(params = {}) {
-    return useQuery({
-        queryKey: [...queryKeys.quizAttempts.mine(), params],
-        queryFn: () => quizAttemptService.getMyAttempts(params),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
 
 /**
  * Hook lấy tất cả attempts (Admin)
@@ -39,8 +31,48 @@ export function useQuizAttempts(params = {}) {
 export function useQuizAttemptsByQuiz(quizId, params = {}) {
     return useQuery({
         queryKey: [...queryKeys.quizAttempts.byQuiz(quizId), params],
-        queryFn: () => quizAttemptService.getByQuiz(quizId, params),
+        queryFn: () => quizAttemptService.getAll({ ...params, quizId }), // Use getAll with quizId filter
         enabled: !!quizId,
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy thống kê tổng quan (Admin)
+ */
+export function useQuizAttemptsStats() {
+    return useQuery({
+        queryKey: [...queryKeys.quizAttempts.all, 'stats'],
+        queryFn: () => quizAttemptService.getStats(),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy phân tích câu hỏi của một quiz
+ * @param {string} quizId - Quiz ID
+ */
+export function useQuizAnalysis(quizId) {
+    return useQuery({
+        queryKey: [...queryKeys.quizAttempts.byQuiz(quizId), 'analysis'],
+        queryFn: () => quizAttemptService.getQuizAnalysis(quizId),
+        enabled: !!quizId,
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
+/**
+ * Hook lấy lịch sử làm bài của user hiện tại (Learner)
+ * @param {Object} params - Filter params { search, passed, page, limit }
+ */
+export function useMyQuizAttempts(params = {}) {
+    return useQuery({
+        queryKey: [...queryKeys.quizAttempts.mine(), params],
+        queryFn: () => quizAttemptService.getMyAttempts(params),
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }
@@ -72,17 +104,6 @@ export function useMyAttemptCount(quizId) {
 }
 
 /**
- * Hook lấy thống kê tổng quan (Admin)
- */
-export function useQuizAttemptsStats() {
-    return useQuery({
-        queryKey: [...queryKeys.quizAttempts.all, 'stats'],
-        queryFn: () => quizAttemptService.getStats(),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
  * Hook lấy danh sách quizzes cho filter dropdown
  */
 export function useQuizzesForFilter() {
@@ -94,7 +115,7 @@ export function useQuizzesForFilter() {
 }
 
 /**
- * Hook tạo quiz attempt mới
+ * Hook tạo quiz attempt mới (Submit bài)
  */
 export function useCreateQuizAttempt() {
     const queryClient = useQueryClient();
@@ -106,18 +127,5 @@ export function useCreateQuizAttempt() {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizAttempts.mine() });
             showSuccess('Đã lưu kết quả bài kiểm tra!');
         },
-    });
-}
-
-/**
- * Hook lấy phân tích câu hỏi của một quiz
- * @param {string} quizId - Quiz ID
- */
-export function useQuizAnalysis(quizId) {
-    return useQuery({
-        queryKey: [...queryKeys.quizAttempts.byQuiz(quizId), 'analysis'],
-        queryFn: () => quizAttemptService.getQuizAnalysis(quizId),
-        enabled: !!quizId,
-        staleTime: CACHE_TIME.STALE_TIME,
     });
 }

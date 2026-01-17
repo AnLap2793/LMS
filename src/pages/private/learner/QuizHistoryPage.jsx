@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, List, Tag, Button, Space, Input, Select, Empty, Typography, Row, Col, Statistic, Spin } from 'antd';
+import { Card, Tag, Button, Space, Input, Select, Empty, Typography, Row, Col, Statistic, Spin, Pagination } from 'antd';
 import {
     HistoryOutlined,
     CheckCircleOutlined,
@@ -94,7 +94,7 @@ function QuizHistoryPage() {
                             title="Tổng bài đã làm"
                             value={stats.total}
                             prefix={<HistoryOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
+                            styles={{ content: { color: '#1890ff' } }}
                         />
                     </Card>
                 </Col>
@@ -104,7 +104,7 @@ function QuizHistoryPage() {
                             title="Bài đạt"
                             value={stats.passed}
                             prefix={<TrophyOutlined />}
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
                         />
                     </Card>
                 </Col>
@@ -115,7 +115,7 @@ function QuizHistoryPage() {
                             value={stats.avgScore}
                             suffix="điểm"
                             prefix={<CheckCircleOutlined />}
-                            valueStyle={{ color: '#722ed1' }}
+                            styles={{ content: { color: '#722ed1' } }}
                         />
                     </Card>
                 </Col>
@@ -148,22 +148,13 @@ function QuizHistoryPage() {
             {/* Attempts List */}
             <Spin spinning={isLoading}>
                 {attemptsData?.data?.length > 0 ? (
-                    <List
-                        dataSource={attemptsData.data}
-                        pagination={{
-                            current: filters.page,
-                            pageSize: filters.limit,
-                            total: attemptsData.total,
-                            onChange: handlePageChange,
-                            showSizeChanger: true,
-                            showTotal: total => `Tổng ${total} lượt làm bài`,
-                        }}
-                        renderItem={attempt => (
-                            <Card style={{ marginBottom: 16 }} hoverable onClick={() => handleViewDetail(attempt.id)}>
+                    <div className="attempts-list">
+                        {attemptsData.data.map(attempt => (
+                            <Card key={attempt.id} style={{ marginBottom: 16 }} hoverable onClick={() => handleViewDetail(attempt.id)}>
                                 <Row gutter={16} align="middle">
                                     {/* Quiz Info */}
                                     <Col xs={24} sm={12}>
-                                        <Space direction="vertical" size={4}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                             <Text strong style={{ fontSize: 16 }}>
                                                 {attempt.quiz?.title || 'Bài kiểm tra'}
                                             </Text>
@@ -176,7 +167,7 @@ function QuizHistoryPage() {
                                                     {dayjs(attempt.submitted_at).format('DD/MM/YYYY HH:mm')}
                                                 </Text>
                                             </Space>
-                                        </Space>
+                                        </div>
                                     </Col>
 
                                     {/* Score */}
@@ -228,8 +219,18 @@ function QuizHistoryPage() {
                                     </Col>
                                 </Row>
                             </Card>
-                        )}
-                    />
+                        ))}
+                        <div style={{ textAlign: 'center', marginTop: 16 }}>
+                            <Pagination
+                                current={filters.page}
+                                pageSize={filters.limit}
+                                total={attemptsData.total}
+                                onChange={handlePageChange}
+                                showSizeChanger
+                                showTotal={total => `Tổng ${total} lượt làm bài`}
+                            />
+                        </div>
+                    </div>
                 ) : (
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}

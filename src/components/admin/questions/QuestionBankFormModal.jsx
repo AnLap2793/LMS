@@ -114,7 +114,7 @@ function QuestionBankFormModal({ open, onCancel, onSubmit, initialValues, loadin
             okText={isEditing ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
             confirmLoading={loading}
-            destroyOnClose
+            destroyOnHidden
             width="90%"
             style={{ maxWidth: 800 }}
             centered
@@ -156,7 +156,7 @@ function QuestionBankFormModal({ open, onCancel, onSubmit, initialValues, loadin
                 {/* Options Editor for Single/Multiple Choice */}
                 {['single', 'multiple'].includes(questionType) && (
                     <>
-                        <Divider orientation="left">Các lựa chọn</Divider>
+                        <Divider orientation="left" plain>Các lựa chọn</Divider>
                         <Form.List name="optionsList">
                             {(fields, { add, remove }) => (
                                 <>

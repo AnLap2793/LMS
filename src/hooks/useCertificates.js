@@ -8,7 +8,7 @@ import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
 // ============================================
-// QUERY HOOKS
+// ADMIN HOOKS
 // ============================================
 
 /**
@@ -19,42 +19,6 @@ export function useCertificates(params = {}) {
     return useQuery({
         queryKey: [...queryKeys.certificates.all, 'list', params],
         queryFn: () => certificateService.getAll(params),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook đếm tổng số certificates
- * @param {Object} params - Filter params
- */
-export function useCertificatesCount(params = {}) {
-    return useQuery({
-        queryKey: [...queryKeys.certificates.all, 'count', params],
-        queryFn: () => certificateService.count(params),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook lấy certificates của user hiện tại
- */
-export function useMyCertificates() {
-    return useQuery({
-        queryKey: queryKeys.certificates.mine(),
-        queryFn: () => certificateService.getMyCertificates(),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook lấy chi tiết certificate
- * @param {string} certificateId - ID certificate
- */
-export function useCertificate(certificateId) {
-    return useQuery({
-        queryKey: queryKeys.certificates.detail(certificateId),
-        queryFn: () => certificateService.getById(certificateId),
-        enabled: !!certificateId,
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }
@@ -82,32 +46,6 @@ export function useCertificatesByCourse(courseId) {
         queryFn: () => certificateService.getByCourseId(courseId),
         enabled: !!courseId,
         staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook kiểm tra user có certificate cho course không
- * @param {string} courseId - ID khóa học
- */
-export function useCheckMyCertificate(courseId) {
-    return useQuery({
-        queryKey: [...queryKeys.certificates.mine(), 'course', courseId],
-        queryFn: () => certificateService.checkMyCertificate(courseId),
-        enabled: !!courseId,
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook xác thực certificate
- * @param {string} certificateNumber - Mã số certificate
- */
-export function useVerifyCertificate(certificateNumber) {
-    return useQuery({
-        queryKey: [...queryKeys.certificates.all, 'verify', certificateNumber],
-        queryFn: () => certificateService.verify(certificateNumber),
-        enabled: !!certificateNumber,
-        staleTime: 0, // Always fetch fresh
     });
 }
 
@@ -143,10 +81,6 @@ export function useCertificateStats() {
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }
-
-// ============================================
-// MUTATION HOOKS
-// ============================================
 
 /**
  * Hook cấp certificate
@@ -190,5 +124,71 @@ export function useSetActiveTemplate() {
             queryClient.invalidateQueries({ queryKey: [...queryKeys.certificates.all, 'templates'] });
             showSuccess('Cập nhật template thành công!');
         },
+    });
+}
+
+// ============================================
+// CLIENT / LEARNER HOOKS
+// ============================================
+
+/**
+ * Hook đếm tổng số certificates
+ * @param {Object} params - Filter params
+ */
+export function useCertificatesCount(params = {}) {
+    return useQuery({
+        queryKey: [...queryKeys.certificates.all, 'count', params],
+        queryFn: () => certificateService.count(params),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy certificates của user hiện tại
+ */
+export function useMyCertificates() {
+    return useQuery({
+        queryKey: queryKeys.certificates.mine(),
+        queryFn: () => certificateService.getMyCertificates(),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy chi tiết certificate
+ * @param {string} certificateId - ID certificate
+ */
+export function useCertificate(certificateId) {
+    return useQuery({
+        queryKey: queryKeys.certificates.detail(certificateId),
+        queryFn: () => certificateService.getById(certificateId),
+        enabled: !!certificateId,
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook kiểm tra user có certificate cho course không
+ * @param {string} courseId - ID khóa học
+ */
+export function useCheckMyCertificate(courseId) {
+    return useQuery({
+        queryKey: [...queryKeys.certificates.mine(), 'course', courseId],
+        queryFn: () => certificateService.checkMyCertificate(courseId),
+        enabled: !!courseId,
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook xác thực certificate
+ * @param {string} certificateNumber - Mã số certificate
+ */
+export function useVerifyCertificate(certificateNumber) {
+    return useQuery({
+        queryKey: [...queryKeys.certificates.all, 'verify', certificateNumber],
+        queryFn: () => certificateService.verify(certificateNumber),
+        enabled: !!certificateNumber,
+        staleTime: 0, // Always fetch fresh
     });
 }

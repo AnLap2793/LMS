@@ -7,6 +7,10 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
+
 /**
  * Hook lấy danh sách câu hỏi với filter và pagination
  * @param {Object} params - Filter params { category, difficulty, type, search, status, page, limit }
@@ -119,3 +123,8 @@ export function useCopyQuestionsToQuiz() {
         },
     });
 }
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+// (Question Bank is Admin only)

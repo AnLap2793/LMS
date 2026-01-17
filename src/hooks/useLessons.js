@@ -8,6 +8,24 @@ import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
 /**
+ * Helper to invalidate lesson-related queries
+ */
+const invalidateLessonQueries = (queryClient, moduleId, courseId) => {
+    if (moduleId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.lessons.byModule(moduleId) });
+        // Invalidate modules để cập nhật lesson count
+        queryClient.invalidateQueries({ queryKey: queryKeys.modules.all });
+    }
+    if (courseId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.modules.byCourse(courseId) });
+    }
+};
+
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
+
+/**
  * Hook lấy tất cả lessons
  * @param {Object} params - Filter params
  * @returns {Object} Query result
@@ -50,62 +68,18 @@ export function useLesson(id) {
 }
 
 /**
- * Hook lấy lesson kèm documents
- * @param {string} lessonId - ID lesson
- * @returns {Object} Query result
- */
-export function useLessonWithDocuments(lessonId) {
-    return useQuery({
-        queryKey: [...queryKeys.lessons.detail(lessonId), 'with-documents'],
-        queryFn: () => lessonService.getWithDocuments(lessonId),
-        enabled: !!lessonId,
-    });
-}
-
-/**
- * Hook lấy lesson tiếp theo
- * @param {string} currentLessonId - ID lesson hiện tại
- * @returns {Object} Query result
- */
-export function useNextLesson(currentLessonId) {
-    return useQuery({
-        queryKey: [...queryKeys.lessons.detail(currentLessonId), 'next'],
-        queryFn: () => lessonService.getNextLesson(currentLessonId),
-        enabled: !!currentLessonId,
-    });
-}
-
-/**
- * Hook lấy lesson trước đó
- * @param {string} currentLessonId - ID lesson hiện tại
- * @returns {Object} Query result
- */
-export function usePreviousLesson(currentLessonId) {
-    return useQuery({
-        queryKey: [...queryKeys.lessons.detail(currentLessonId), 'previous'],
-        queryFn: () => lessonService.getPreviousLesson(currentLessonId),
-        enabled: !!currentLessonId,
-    });
-}
-
-/**
  * Hook tạo lesson mới
+ * @param {string} courseId - ID khóa học (để invalidate module queries)
  * @returns {Object} Mutation object
  */
-export function useCreateLesson() {
+export function useCreateLesson(courseId) {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: lessonService.create,
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.lessons.all });
-            if (variables.module_id) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.lessons.byModule(variables.module_id),
-                });
-                // Cũng invalidate modules để cập nhật lesson count
-                queryClient.invalidateQueries({ queryKey: queryKeys.modules.all });
-            }
+            invalidateLessonQueries(queryClient, variables.module_id, courseId);
             showSuccess('Tạo bài học thành công!');
         },
     });
@@ -113,9 +87,10 @@ export function useCreateLesson() {
 
 /**
  * Hook cập nhật lesson
+ * @param {string} courseId - ID khóa học (để invalidate module queries)
  * @returns {Object} Mutation object
  */
-export function useUpdateLesson() {
+export function useUpdateLesson(courseId) {
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -125,11 +100,7 @@ export function useUpdateLesson() {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.lessons.detail(variables.id),
             });
-            if (data?.module_id) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.lessons.byModule(data.module_id),
-                });
-            }
+            invalidateLessonQueries(queryClient, data?.module_id, courseId);
             showSuccess('Cập nhật bài học thành công!');
         },
     });
@@ -137,16 +108,17 @@ export function useUpdateLesson() {
 
 /**
  * Hook xóa lesson
+ * @param {string} courseId - ID khóa học (để invalidate module queries)
  * @returns {Object} Mutation object
  */
-export function useDeleteLesson() {
+export function useDeleteLesson(courseId) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: lessonService.delete,
-        onSuccess: () => {
+        mutationFn: ({ lessonId, moduleId }) => lessonService.delete(lessonId),
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.lessons.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.modules.all });
+            invalidateLessonQueries(queryClient, variables.moduleId, courseId);
             showSuccess('Xóa bài học thành công!');
         },
     });
@@ -200,5 +172,48 @@ export function useArchiveLesson() {
             queryClient.invalidateQueries({ queryKey: queryKeys.lessons.detail(id) });
             showSuccess('Đã archive bài học!');
         },
+    });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
+/**
+ * Hook lấy lesson kèm documents
+ * @param {string} lessonId - ID lesson
+ * @returns {Object} Query result
+ */
+export function useLessonWithDocuments(lessonId) {
+    return useQuery({
+        queryKey: [...queryKeys.lessons.detail(lessonId), 'with-documents'],
+        queryFn: () => lessonService.getWithDocuments(lessonId),
+        enabled: !!lessonId,
+    });
+}
+
+/**
+ * Hook lấy lesson tiếp theo
+ * @param {string} currentLessonId - ID lesson hiện tại
+ * @returns {Object} Query result
+ */
+export function useNextLesson(currentLessonId) {
+    return useQuery({
+        queryKey: [...queryKeys.lessons.detail(currentLessonId), 'next'],
+        queryFn: () => lessonService.getNextLesson(currentLessonId),
+        enabled: !!currentLessonId,
+    });
+}
+
+/**
+ * Hook lấy lesson trước đó
+ * @param {string} currentLessonId - ID lesson hiện tại
+ * @returns {Object} Query result
+ */
+export function usePreviousLesson(currentLessonId) {
+    return useQuery({
+        queryKey: [...queryKeys.lessons.detail(currentLessonId), 'previous'],
+        queryFn: () => lessonService.getPreviousLesson(currentLessonId),
+        enabled: !!currentLessonId,
     });
 }

@@ -218,7 +218,7 @@ function QuestionBankPage() {
                             title="Tổng câu hỏi"
                             value={stats?.total || 0}
                             prefix={<DatabaseOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
+                            styles={{ content: { color: '#1890ff' } }}
                         />
                     </Card>
                 </Col>
@@ -228,7 +228,7 @@ function QuestionBankPage() {
                             title="Đang hoạt động"
                             value={stats?.active || 0}
                             prefix={<CheckCircleOutlined />}
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
                         />
                     </Card>
                 </Col>
@@ -238,7 +238,7 @@ function QuestionBankPage() {
                             title="Trắc nghiệm"
                             value={(stats?.byType?.single || 0) + (stats?.byType?.multiple || 0)}
                             prefix={<QuestionCircleOutlined />}
-                            valueStyle={{ color: '#722ed1' }}
+                            styles={{ content: { color: '#722ed1' } }}
                         />
                     </Card>
                 </Col>
@@ -248,7 +248,7 @@ function QuestionBankPage() {
                             title="Tự luận"
                             value={stats?.byType?.text || 0}
                             prefix={<EditOutlined />}
-                            valueStyle={{ color: '#fa8c16' }}
+                            styles={{ content: { color: '#fa8c16' } }}
                         />
                     </Card>
                 </Col>

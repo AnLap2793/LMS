@@ -8,11 +8,81 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
+
+/**
+ * Hook lấy tất cả comments (admin)
+ * @param {Object} params - Filter params
+ */
+export function useAllComments(params = {}) {
+    return useQuery({
+        queryKey: queryKeys.lessonComments.list(params),
+        queryFn: () => commentService.getAll(params),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook xóa comment
+ */
+export function useDeleteComment() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: commentService.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.lessonComments.all });
+            showSuccess('Đã xóa bình luận!');
+        },
+    });
+}
+
+/**
+ * Hook đánh dấu comment đã resolved
+ */
+export function useResolveComment() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: commentService.resolve,
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.lessonComments.all });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.lessonComments.detail(id),
+            });
+            showSuccess('Đã đánh dấu đã giải quyết!');
+        },
+    });
+}
+
+/**
+ * Hook đánh dấu comment chưa resolved
+ */
+export function useUnresolveComment() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: commentService.unresolve,
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.lessonComments.all });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.lessonComments.detail(id),
+            });
+            showSuccess('Đã bỏ đánh dấu giải quyết!');
+        },
+    });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
 /**
  * Hook lấy comments của một lesson
  * @param {string} lessonId - ID lesson
  * @param {Object} options - Query options
- * @returns {Object} Query result
  */
 export function useCommentsByLesson(lessonId, options = {}) {
     return useQuery({
@@ -27,7 +97,6 @@ export function useCommentsByLesson(lessonId, options = {}) {
 /**
  * Hook lấy comments kèm replies (nested tree)
  * @param {string} lessonId - ID lesson
- * @returns {Object} Query result với tree structure
  */
 export function useCommentsWithReplies(lessonId) {
     return useQuery({
@@ -41,7 +110,6 @@ export function useCommentsWithReplies(lessonId) {
 /**
  * Hook lấy replies của một comment
  * @param {string} parentId - ID comment cha
- * @returns {Object} Query result
  */
 export function useCommentReplies(parentId) {
     return useQuery({
@@ -54,7 +122,6 @@ export function useCommentReplies(parentId) {
 /**
  * Hook lấy chi tiết comment
  * @param {string} id - ID comment
- * @returns {Object} Query result
  */
 export function useComment(id) {
     return useQuery({
@@ -67,7 +134,6 @@ export function useComment(id) {
 /**
  * Hook đếm comments chưa resolved
  * @param {string} lessonId - ID lesson
- * @returns {Object} Query result
  */
 export function useUnresolvedCount(lessonId) {
     return useQuery({
@@ -78,8 +144,19 @@ export function useUnresolvedCount(lessonId) {
 }
 
 /**
+ * Hook lấy comments của user (my comments)
+ * @param {Object} params - Filter params
+ */
+export function useMyComments(params = {}) {
+    return useQuery({
+        queryKey: [...queryKeys.lessonComments.all, 'mine'],
+        queryFn: () => commentService.getMyComments(params),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
  * Hook tạo comment mới
- * @returns {Object} Mutation object
  */
 export function useCreateComment() {
     const queryClient = useQueryClient();
@@ -100,7 +177,6 @@ export function useCreateComment() {
 
 /**
  * Hook reply to comment
- * @returns {Object} Mutation object
  */
 export function useReplyComment() {
     const queryClient = useQueryClient();
@@ -119,7 +195,6 @@ export function useReplyComment() {
 
 /**
  * Hook cập nhật comment
- * @returns {Object} Mutation object
  */
 export function useUpdateComment() {
     const queryClient = useQueryClient();
@@ -133,85 +208,5 @@ export function useUpdateComment() {
             });
             showSuccess('Đã cập nhật bình luận!');
         },
-    });
-}
-
-/**
- * Hook đánh dấu comment đã resolved
- * @returns {Object} Mutation object
- */
-export function useResolveComment() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: commentService.resolve,
-        onSuccess: (_, id) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.lessonComments.all });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.lessonComments.detail(id),
-            });
-            showSuccess('Đã đánh dấu đã giải quyết!');
-        },
-    });
-}
-
-/**
- * Hook đánh dấu comment chưa resolved
- * @returns {Object} Mutation object
- */
-export function useUnresolveComment() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: commentService.unresolve,
-        onSuccess: (_, id) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.lessonComments.all });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.lessonComments.detail(id),
-            });
-            showSuccess('Đã bỏ đánh dấu giải quyết!');
-        },
-    });
-}
-
-/**
- * Hook xóa comment
- * @returns {Object} Mutation object
- */
-export function useDeleteComment() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: commentService.delete,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.lessonComments.all });
-            showSuccess('Đã xóa bình luận!');
-        },
-    });
-}
-
-/**
- * Hook lấy comments của user (my comments)
- * @param {Object} params - Filter params
- * @returns {Object} Query result
- */
-export function useMyComments(params = {}) {
-    return useQuery({
-        queryKey: [...queryKeys.lessonComments.all, 'mine'],
-        queryFn: () => commentService.getMyComments(params),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook lấy tất cả comments (admin)
- * @param {Object} params - Filter params
- * @returns {Object} Query result
- */
-export function useAllComments(params = {}) {
-    return useQuery({
-        queryKey: queryKeys.lessonComments.list(params),
-        queryFn: () => commentService.getAll(params),
-        staleTime: CACHE_TIME.STALE_TIME,
     });
 }

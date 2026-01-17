@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Popover, Badge, Button, List, Avatar, Typography, Space, Empty, Divider } from 'antd';
+import { Popover, Badge, Button, Avatar, Typography, Space, Empty, Divider } from 'antd';
 import {
     BellOutlined,
     BookOutlined,
@@ -115,52 +115,54 @@ function NotificationPopover() {
                 )}
             </div>
 
-            <List
-                itemLayout="horizontal"
-                dataSource={notifications}
-                renderItem={item => (
-                    <List.Item
-                        onClick={() => handleItemClick(item)}
-                        style={{
-                            padding: '12px 16px',
-                            cursor: 'pointer',
-                            background: item.read ? '#fff' : '#f9f9f9',
-                            transition: 'background 0.3s',
-                            borderBottom: '1px solid #f0f0f0',
-                        }}
-                        className="notification-item"
-                    >
-                        <List.Item.Meta
-                            avatar={<Avatar icon={getIcon(item.type)} style={{ backgroundColor: 'transparent' }} />}
-                            title={
+            {notifications.length > 0 ? (
+                <div>
+                    {notifications.map(item => (
+                        <div
+                            key={item.id}
+                            onClick={() => handleItemClick(item)}
+                            style={{
+                                padding: '12px 16px',
+                                cursor: 'pointer',
+                                background: item.read ? '#fff' : '#f9f9f9',
+                                transition: 'background 0.3s',
+                                borderBottom: '1px solid #f0f0f0',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 12, // Avatar spacing
+                            }}
+                            className="notification-item"
+                        >
+                            {/* Avatar */}
+                            <div style={{ flexShrink: 0, marginTop: 4 }}>
+                                <Avatar icon={getIcon(item.type)} style={{ backgroundColor: 'transparent' }} />
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                     <Text strong={!item.read} style={{ fontSize: 14 }}>
                                         {item.title}
                                     </Text>
                                     {!item.read && <Badge status="processing" />}
                                 </div>
-                            }
-                            description={
                                 <div style={{ fontSize: 13, color: '#666' }}>
                                     <div style={{ marginBottom: 4, lineHeight: '1.4' }}>{item.message}</div>
                                     <Text type="secondary" style={{ fontSize: 11 }}>
                                         {new Date(item.date).toLocaleDateString('vi-VN')}
                                     </Text>
                                 </div>
-                            }
-                        />
-                    </List.Item>
-                )}
-                locale={{
-                    emptyText: (
-                        <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description="Không có thông báo"
-                            style={{ margin: '20px 0' }}
-                        />
-                    ),
-                }}
-            />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="Không có thông báo"
+                    style={{ margin: '20px 0' }}
+                />
+            )}
 
             <div style={{ textAlign: 'center', padding: '12px 0' }}>
                 <Button
@@ -185,7 +187,7 @@ function NotificationPopover() {
             onOpenChange={setVisible}
             placement="bottomRight"
             arrow={false}
-            overlayInnerStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
         >
             <Badge count={unreadCount} size="small" offset={[-5, 5]}>
                 <Button

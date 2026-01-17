@@ -8,12 +8,44 @@ import { COLLECTIONS } from '../constants/collections';
 
 export const reviewService = {
     /**
-     * Lấy user ID hiện tại
+     * Lấy user ID hiện tại (Helper)
      */
     getCurrentUserId: async () => {
         const user = await directus.request(readMe({ fields: ['id'] }));
         return user.id;
     },
+
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy tất cả reviews (cho admin)
+     * @param {Object} params - Filter params
+     * @returns {Promise<Array>} Danh sách reviews
+     */
+    getAll: async (params = {}) => {
+        return await directus.request(
+            readItems(COLLECTIONS.COURSE_REVIEWS, {
+                sort: ['-date_created'],
+                fields: ['*', 'user_created.first_name', 'user_created.last_name', 'course_id.title'],
+                ...params,
+            })
+        );
+    },
+
+    /**
+     * Xóa review (Admin/Moderation)
+     * @param {string} id - ID review
+     * @returns {Promise<void>}
+     */
+    delete: async id => {
+        return await directus.request(deleteItem(COLLECTIONS.COURSE_REVIEWS, id));
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
 
     /**
      * Lấy reviews của một khóa học
@@ -75,7 +107,6 @@ export const reviewService = {
         const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
         const averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
 
-        // Calculate distribution
         const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         reviews.forEach(r => {
             if (r.rating >= 1 && r.rating <= 5) {
@@ -109,10 +140,8 @@ export const reviewService = {
      * @returns {Promise<Object>} Review đã tạo
      */
     create: async data => {
-        // Kiểm tra xem đã có review chưa
         const existing = await reviewService.getMyReview(data.course_id);
         if (existing) {
-            // Update existing review thay vì tạo mới
             return await reviewService.update(existing.id, {
                 rating: data.rating,
                 comment: data.comment,
@@ -123,22 +152,13 @@ export const reviewService = {
     },
 
     /**
-     * Cập nhật review
+     * Cập nhật review (User update own review)
      * @param {string} id - ID review
      * @param {Object} data - Dữ liệu cập nhật { rating?, comment? }
      * @returns {Promise<Object>} Review đã cập nhật
      */
     update: async (id, data) => {
         return await directus.request(updateItem(COLLECTIONS.COURSE_REVIEWS, id, data));
-    },
-
-    /**
-     * Xóa review
-     * @param {string} id - ID review
-     * @returns {Promise<void>}
-     */
-    delete: async id => {
-        return await directus.request(deleteItem(COLLECTIONS.COURSE_REVIEWS, id));
     },
 
     /**
@@ -151,21 +171,6 @@ export const reviewService = {
         if (myReview) {
             await reviewService.delete(myReview.id);
         }
-    },
-
-    /**
-     * Lấy tất cả reviews (cho admin)
-     * @param {Object} params - Filter params
-     * @returns {Promise<Array>} Danh sách reviews
-     */
-    getAll: async (params = {}) => {
-        return await directus.request(
-            readItems(COLLECTIONS.COURSE_REVIEWS, {
-                sort: ['-date_created'],
-                fields: ['*', 'user_created.first_name', 'user_created.last_name', 'course_id.title'],
-                ...params,
-            })
-        );
     },
 
     /**
@@ -210,7 +215,6 @@ export const reviewService = {
      * @returns {Promise<Array>} Courses với rating cao nhất
      */
     getTopRatedCourses: async (limit = 10) => {
-        // Fetch aggregated data
         const result = await directus.request(
             aggregate(COLLECTIONS.COURSE_REVIEWS, {
                 aggregate: { avg: 'rating', count: '*' },
@@ -218,9 +222,6 @@ export const reviewService = {
                 limit,
             })
         );
-
-        // Result structure: [{ course_id: X, avg: { rating: 4.5 }, count: { '*': 10 } }]
-        // We'd need to fetch course titles separately or use fields if supported in aggregate (usually not)
 
         const topCourses = result
             .map(r => ({

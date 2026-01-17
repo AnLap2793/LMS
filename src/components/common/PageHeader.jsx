@@ -24,6 +24,7 @@ function PageHeader({ title, subtitle, breadcrumbs, actions, style }) {
                                     <HomeOutlined />
                                 </Link>
                             ),
+                            key: 'home',
                         },
                         ...breadcrumbs.map((item, index) => ({
                             title: item.path ? <Link to={item.path}>{item.title}</Link> : item.title,

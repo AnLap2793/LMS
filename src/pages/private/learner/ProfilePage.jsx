@@ -15,7 +15,7 @@ import {
     message,
     Tabs,
     Upload,
-    List,
+    Empty,
     Progress,
     Tag,
     Spin,
@@ -308,7 +308,7 @@ function ProfilePage() {
 
                         <Divider />
 
-                        <Space direction="vertical" size={4} style={{ width: '100%', textAlign: 'left' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', textAlign: 'left' }}>
                             <Text type="secondary">
                                 <MailOutlined style={{ marginRight: 8 }} />
                                 {user.email}
@@ -317,7 +317,7 @@ function ProfilePage() {
                                 <PhoneOutlined style={{ marginRight: 8 }} />
                                 {user.phone || 'Chưa cập nhật'}
                             </Text> */}
-                        </Space>
+                        </div>
                     </Card>
 
                     {/* Skills Radar Chart */}
@@ -375,36 +375,44 @@ function ProfilePage() {
                         }
                         style={{ marginTop: 24 }}
                     >
-                        <List
-                            dataSource={learningPaths}
-                            locale={{ emptyText: 'Chưa tham gia lộ trình nào' }}
-                            renderItem={path => (
-                                <List.Item>
-                                    <div style={{ width: '100%' }}>
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                marginBottom: 8,
-                                            }}
-                                        >
-                                            <Link to={`/learning-paths/${path.pathId}`}>
-                                                <Text strong style={{ fontSize: 16 }}>
-                                                    {path.title}
-                                                </Text>
-                                            </Link>
-                                            <Tag color={path.status === 'completed' ? 'success' : 'processing'}>
-                                                {path.status === 'completed' ? 'Hoàn thành' : 'Đang học'}
-                                            </Tag>
+                        {learningPaths.length > 0 ? (
+                            <div className="learning-path-list">
+                                {learningPaths.map((path, index) => (
+                                    <div
+                                        key={index}
+                                        style={{
+                                            padding: '12px 0',
+                                            borderBottom: index < learningPaths.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                        }}
+                                    >
+                                        <div style={{ width: '100%' }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    marginBottom: 8,
+                                                }}
+                                            >
+                                                <Link to={`/learning-paths/${path.pathId}`}>
+                                                    <Text strong style={{ fontSize: 16 }}>
+                                                        {path.title}
+                                                    </Text>
+                                                </Link>
+                                                <Tag color={path.status === 'completed' ? 'success' : 'processing'}>
+                                                    {path.status === 'completed' ? 'Hoàn thành' : 'Đang học'}
+                                                </Tag>
+                                            </div>
+                                            <Progress
+                                                percent={path.progress}
+                                                strokeColor={path.status === 'completed' ? '#52c41a' : '#1890ff'}
+                                            />
                                         </div>
-                                        <Progress
-                                            percent={path.progress}
-                                            strokeColor={path.status === 'completed' ? '#52c41a' : '#1890ff'}
-                                        />
                                     </div>
-                                </List.Item>
-                            )}
-                        />
+                                ))}
+                            </div>
+                        ) : (
+                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa tham gia lộ trình nào" />
+                        )}
                     </Card>
                 </Col>
             </Row>

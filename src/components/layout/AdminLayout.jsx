@@ -321,9 +321,9 @@ function AdminLayout() {
                 placement="left"
                 onClose={() => setMobileDrawerOpen(false)}
                 open={mobileDrawerOpen}
-                width={280}
                 className="mobile-drawer"
                 styles={{
+                    wrapper: { width: 280 },
                     body: { padding: 0 },
                     header: { borderBottom: '1px solid #f0f0f0' },
                 }}

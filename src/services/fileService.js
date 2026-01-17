@@ -5,6 +5,10 @@ import { directus } from './directus';
 import { uploadFiles } from '@directus/sdk';
 
 export const fileService = {
+    // ==========================================
+    // SHARED ENDPOINTS
+    // ==========================================
+
     /**
      * Upload một file lên Directus
      * @param {File} file - File object từ input

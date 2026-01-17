@@ -22,20 +22,9 @@ const DEFAULT_SETTINGS = {
 };
 
 export const settingsService = {
-    /**
-     * Lấy settings hiện tại (singleton - chỉ có 1 record)
-     * @returns {Promise<Object>} App settings
-     */
-    get: async () => {
-        const results = await directus.request(
-            readItems(COLLECTIONS.APP_SETTINGS, {
-                limit: 1,
-            })
-        );
-
-        // Trả về record đầu tiên hoặc default settings
-        return results[0] || DEFAULT_SETTINGS;
-    },
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
 
     /**
      * Cập nhật settings
@@ -60,17 +49,6 @@ export const settingsService = {
     },
 
     /**
-     * Lấy giá trị của một setting cụ thể
-     * @param {string} key - Tên setting
-     * @param {*} defaultValue - Giá trị mặc định nếu không tìm thấy
-     * @returns {Promise<*>} Giá trị setting
-     */
-    getValue: async (key, defaultValue = null) => {
-        const settings = await settingsService.get();
-        return settings[key] !== undefined ? settings[key] : defaultValue;
-    },
-
-    /**
      * Cập nhật một setting cụ thể
      * @param {string} key - Tên setting
      * @param {*} value - Giá trị mới
@@ -86,5 +64,35 @@ export const settingsService = {
      */
     reset: async () => {
         return await settingsService.update(DEFAULT_SETTINGS);
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy settings hiện tại (singleton - chỉ có 1 record)
+     * @returns {Promise<Object>} App settings
+     */
+    get: async () => {
+        const results = await directus.request(
+            readItems(COLLECTIONS.APP_SETTINGS, {
+                limit: 1,
+            })
+        );
+
+        // Trả về record đầu tiên hoặc default settings
+        return results[0] || DEFAULT_SETTINGS;
+    },
+
+    /**
+     * Lấy giá trị của một setting cụ thể
+     * @param {string} key - Tên setting
+     * @param {*} defaultValue - Giá trị mặc định nếu không tìm thấy
+     * @returns {Promise<*>} Giá trị setting
+     */
+    getValue: async (key, defaultValue = null) => {
+        const settings = await settingsService.get();
+        return settings[key] !== undefined ? settings[key] : defaultValue;
     },
 };

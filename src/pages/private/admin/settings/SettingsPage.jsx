@@ -73,7 +73,13 @@ function SettingsPage() {
                                 label="Điểm đạt mặc định (%)"
                                 extra="Điểm tối thiểu để vượt qua bài kiểm tra"
                             >
-                                <InputNumber min={0} max={100} addonAfter="%" style={{ width: 150 }} />
+                                <InputNumber
+                                    min={0}
+                                    max={100}
+                                    formatter={value => `${value}%`}
+                                    parser={value => value.replace('%', '')}
+                                    style={{ width: 150 }}
+                                />
                             </Form.Item>
 
                             <Form.Item
@@ -89,7 +95,12 @@ function SettingsPage() {
                                 label="Thời gian làm bài mặc định"
                                 extra="Để trống = không giới hạn"
                             >
-                                <InputNumber min={0} addonAfter="phút" style={{ width: 150 }} />
+                                <InputNumber
+                                    min={0}
+                                    formatter={value => `${value} phút`}
+                                    parser={value => value.replace(' phút', '')}
+                                    style={{ width: 150 }}
+                                />
                             </Form.Item>
 
                             <Form.Item name="randomizeQuestions" label="Trộn câu hỏi" valuePropName="checked">
@@ -131,7 +142,12 @@ function SettingsPage() {
                                 label="Deadline mặc định"
                                 extra="Số ngày để hoàn thành khóa học"
                             >
-                                <InputNumber min={1} addonAfter="ngày" style={{ width: 150 }} />
+                                <InputNumber
+                                    min={1}
+                                    formatter={value => `${value} ngày`}
+                                    parser={value => value.replace(' ngày', '')}
+                                    style={{ width: 150 }}
+                                />
                             </Form.Item>
 
                             <Divider />
@@ -145,7 +161,13 @@ function SettingsPage() {
                             </Form.Item>
 
                             <Form.Item name="reminderDaysBefore" label="Nhắc trước deadline">
-                                <InputNumber min={1} max={14} addonAfter="ngày" style={{ width: 150 }} />
+                                <InputNumber
+                                    min={1}
+                                    max={14}
+                                    formatter={value => `${value} ngày`}
+                                    parser={value => value.replace(' ngày', '')}
+                                    style={{ width: 150 }}
+                                />
                             </Form.Item>
                         </Card>
 

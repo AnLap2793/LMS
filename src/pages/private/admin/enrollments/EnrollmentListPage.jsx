@@ -58,7 +58,7 @@ function EnrollmentListPage() {
 
     // Fetch Enrollments
     const { data: enrollments = [], isLoading: loading } = useQuery({
-        queryKey: queryKeys.enrollments.list({ search: searchText, status: statusFilter, course: courseFilter }),
+        queryKey: [...queryKeys.enrollments.all, 'list', { search: searchText, status: statusFilter, course: courseFilter }],
         queryFn: () =>
             enrollmentService.getAll({
                 search: searchText,
@@ -69,7 +69,7 @@ function EnrollmentListPage() {
 
     // Fetch Courses (for filter)
     const { data: courses = [] } = useQuery({
-        queryKey: queryKeys.courses.list({ fields: ['id', 'title'] }),
+        queryKey: queryKeys.courses.adminList({ fields: ['id', 'title'] }),
         queryFn: () => courseService.getAll({ limit: -1, fields: ['id', 'title'] }),
     });
 
@@ -425,7 +425,7 @@ function EnrollmentListPage() {
                         <Statistic
                             title="Hoàn thành"
                             value={stats.completed}
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
                             prefix={<CheckCircleOutlined />}
                         />
                     </Card>
@@ -435,14 +435,14 @@ function EnrollmentListPage() {
                         <Statistic
                             title="Đang học"
                             value={stats.inProgress}
-                            valueStyle={{ color: '#1890ff' }}
+                            styles={{ content: { color: '#1890ff' } }}
                             prefix={<ClockCircleOutlined />}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} sm={6} lg={4}>
                     <Card size="small">
-                        <Statistic title="Chờ bắt đầu" value={stats.assigned} valueStyle={{ color: '#722ed1' }} />
+                        <Statistic title="Chờ bắt đầu" value={stats.assigned} styles={{ content: { color: '#722ed1' } }} />
                     </Card>
                 </Col>
                 <Col xs={12} sm={6} lg={4}>
@@ -450,7 +450,7 @@ function EnrollmentListPage() {
                         <Statistic
                             title="Quá hạn"
                             value={stats.expired}
-                            valueStyle={{ color: '#ff4d4f' }}
+                            styles={{ content: { color: '#ff4d4f' } }}
                             prefix={<ExclamationCircleOutlined />}
                         />
                     </Card>
@@ -461,7 +461,7 @@ function EnrollmentListPage() {
                             title="Tỷ lệ hoàn thành"
                             value={stats.completionRate}
                             suffix="%"
-                            valueStyle={{ color: stats.completionRate >= 70 ? '#52c41a' : '#faad14' }}
+                            styles={{ content: { color: stats.completionRate >= 70 ? '#52c41a' : '#faad14' } }}
                         />
                     </Card>
                 </Col>
@@ -485,7 +485,7 @@ function EnrollmentListPage() {
                             value={courseFilter}
                             onChange={setCourseFilter}
                             options={[
-                                { value: null, label: 'Tất cả khóa học' },
+                                { value: '', label: 'Tất cả khóa học' },
                                 ...courses.map(c => ({ value: c.id, label: c.title })),
                             ]}
                             style={{ width: '100%' }}
@@ -497,7 +497,7 @@ function EnrollmentListPage() {
                             placeholder="Trạng thái"
                             value={statusFilter}
                             onChange={setStatusFilter}
-                            options={[{ value: null, label: 'Tất cả trạng thái' }, ...ENROLLMENT_STATUS_OPTIONS]}
+                            options={[{ value: '', label: 'Tất cả trạng thái' }, ...ENROLLMENT_STATUS_OPTIONS]}
                             style={{ width: '100%' }}
                             allowClear
                         />

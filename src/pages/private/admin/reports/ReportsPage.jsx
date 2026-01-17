@@ -209,7 +209,7 @@ function ReportsPage() {
                 </Col>
                 <Col xs={24} lg={12}>
                     <Card title="Khóa học có chứng chỉ nhiều nhất">
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Space>
                                     <TrophyOutlined style={{ color: '#faad14', fontSize: 24 }} />
@@ -225,7 +225,7 @@ function ReportsPage() {
                                     size={60}
                                 />
                             </div>
-                        </Space>
+                        </div>
                     </Card>
                 </Col>
             </Row>

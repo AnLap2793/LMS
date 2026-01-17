@@ -7,6 +7,10 @@ import { readItems, createItem, updateItem, deleteItem } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const lessonService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy tất cả lessons với filter và pagination
      * @param {Object} params - Filter params
@@ -46,21 +50,6 @@ export const lessonService = {
     },
 
     /**
-     * Lấy lessons published của một module (cho learner)
-     * @param {string} moduleId - ID module
-     * @returns {Promise<Array>} Danh sách lessons published
-     */
-    getPublishedByModule: async moduleId => {
-        return await lessonService.getAll({
-            filter: {
-                module_id: { _eq: moduleId },
-                status: { _eq: 'published' },
-            },
-            sort: ['sort'],
-        });
-    },
-
-    /**
      * Lấy chi tiết lesson theo ID
      * @param {string} id - ID lesson
      * @param {Object} params - Filter params
@@ -85,49 +74,6 @@ export const lessonService = {
             })
         );
         return result[0] || null;
-    },
-
-    /**
-     * Lấy lesson kèm documents
-     * @param {string} lessonId - ID lesson
-     * @returns {Promise<Object|null>} Lesson kèm documents
-     */
-    getWithDocuments: async lessonId => {
-        const result = await directus.request(
-            readItems(COLLECTIONS.LESSONS, {
-                fields: [
-                    '*',
-                    'module_id.id',
-                    'module_id.title',
-                    'module_id.course_id.id',
-                    'module_id.course_id.title',
-                    'documents.id',
-                    'documents.documents_id.*',
-                    'documents.documents_id.file.*',
-                    'documents.sort',
-                ],
-                filter: { id: { _eq: lessonId } },
-                limit: 1,
-                deep: {
-                    documents: {
-                        _sort: ['sort'],
-                    },
-                },
-            })
-        );
-
-        if (!result[0]) return null;
-
-        // Transform documents
-        const lesson = result[0];
-        return {
-            ...lesson,
-            documents: (lesson.documents || []).map(d => ({
-                junctionId: d.id,
-                sort: d.sort,
-                ...d.documents_id,
-            })),
-        };
     },
 
     /**
@@ -203,6 +149,68 @@ export const lessonService = {
      */
     archive: async id => {
         return await lessonService.updateStatus(id, 'archived');
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy lessons published của một module (cho learner)
+     * @param {string} moduleId - ID module
+     * @returns {Promise<Array>} Danh sách lessons published
+     */
+    getPublishedByModule: async moduleId => {
+        return await lessonService.getAll({
+            filter: {
+                module_id: { _eq: moduleId },
+                status: { _eq: 'published' },
+            },
+            sort: ['sort'],
+        });
+    },
+
+    /**
+     * Lấy lesson kèm documents
+     * @param {string} lessonId - ID lesson
+     * @returns {Promise<Object|null>} Lesson kèm documents
+     */
+    getWithDocuments: async lessonId => {
+        const result = await directus.request(
+            readItems(COLLECTIONS.LESSONS, {
+                fields: [
+                    '*',
+                    'module_id.id',
+                    'module_id.title',
+                    'module_id.course_id.id',
+                    'module_id.course_id.title',
+                    'documents.id',
+                    'documents.documents_id.*',
+                    'documents.documents_id.file.*',
+                    'documents.sort',
+                ],
+                filter: { id: { _eq: lessonId } },
+                limit: 1,
+                deep: {
+                    documents: {
+                        _sort: ['sort'],
+                    },
+                },
+            })
+        );
+
+        if (!result[0]) return null;
+
+        // Transform documents
+        const lesson = result[0];
+        return {
+            ...lesson,
+            documents: (lesson.documents || []).map(d => ({
+                junctionId: d.id,
+                sort: d.sort,
+                ...d.documents_id,
+            })),
+        };
     },
 
     /**

@@ -8,7 +8,9 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
-// ==================== Query Hooks ====================
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
 
 /**
  * Lấy tất cả documents với filter
@@ -56,17 +58,6 @@ export function useSearchDocuments(query, params = {}) {
 }
 
 /**
- * Lấy documents của một lesson
- */
-export function useLessonDocuments(lessonId) {
-    return useQuery({
-        queryKey: queryKeys.documents.byLesson(lessonId),
-        queryFn: () => documentService.getByLesson(lessonId),
-        enabled: !!lessonId,
-    });
-}
-
-/**
  * Lấy danh sách bài học đang sử dụng document
  */
 export function useDocumentUsage(documentId) {
@@ -77,11 +68,8 @@ export function useDocumentUsage(documentId) {
     });
 }
 
-// ==================== Mutation Hooks ====================
+// --- Mutations ---
 
-/**
- * Tạo document mới (data object)
- */
 export function useCreateDocument() {
     const queryClient = useQueryClient();
 
@@ -94,9 +82,6 @@ export function useCreateDocument() {
     });
 }
 
-/**
- * Upload file và tạo document
- */
 export function useUploadDocument() {
     const queryClient = useQueryClient();
 
@@ -109,9 +94,6 @@ export function useUploadDocument() {
     });
 }
 
-/**
- * Tạo document dạng URL
- */
 export function useCreateUrlDocument() {
     const queryClient = useQueryClient();
 
@@ -124,9 +106,6 @@ export function useCreateUrlDocument() {
     });
 }
 
-/**
- * Cập nhật document
- */
 export function useUpdateDocument() {
     const queryClient = useQueryClient();
 
@@ -140,9 +119,6 @@ export function useUpdateDocument() {
     });
 }
 
-/**
- * Archive document (soft delete)
- */
 export function useArchiveDocument() {
     const queryClient = useQueryClient();
 
@@ -155,9 +131,6 @@ export function useArchiveDocument() {
     });
 }
 
-/**
- * Archive nhiều documents
- */
 export function useArchiveDocuments() {
     const queryClient = useQueryClient();
 
@@ -170,9 +143,6 @@ export function useArchiveDocuments() {
     });
 }
 
-/**
- * Restore document từ archived
- */
 export function useRestoreDocument() {
     const queryClient = useQueryClient();
 
@@ -185,9 +155,6 @@ export function useRestoreDocument() {
     });
 }
 
-/**
- * Xóa document vĩnh viễn
- */
 export function useDeleteDocument() {
     const queryClient = useQueryClient();
 
@@ -200,11 +167,8 @@ export function useDeleteDocument() {
     });
 }
 
-// ==================== Lesson-Document Junction Mutations ====================
+// --- Junction Mutations ---
 
-/**
- * Thêm document vào lesson
- */
 export function useAddDocumentToLesson() {
     const queryClient = useQueryClient();
 
@@ -218,9 +182,6 @@ export function useAddDocumentToLesson() {
     });
 }
 
-/**
- * Xóa document khỏi lesson
- */
 export function useRemoveDocumentFromLesson() {
     const queryClient = useQueryClient();
 
@@ -234,9 +195,6 @@ export function useRemoveDocumentFromLesson() {
     });
 }
 
-/**
- * Đồng bộ danh sách documents cho lesson
- */
 export function useSyncLessonDocuments() {
     const queryClient = useQueryClient();
 
@@ -249,9 +207,6 @@ export function useSyncLessonDocuments() {
     });
 }
 
-/**
- * Cập nhật thứ tự documents trong lesson
- */
 export function useUpdateLessonDocumentsOrder() {
     const queryClient = useQueryClient();
 
@@ -261,5 +216,20 @@ export function useUpdateLessonDocumentsOrder() {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.documents.byLesson(variables.lessonId) });
         },
+    });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
+/**
+ * Lấy documents của một lesson
+ */
+export function useLessonDocuments(lessonId) {
+    return useQuery({
+        queryKey: queryKeys.documents.byLesson(lessonId),
+        queryFn: () => documentService.getByLesson(lessonId),
+        enabled: !!lessonId,
     });
 }

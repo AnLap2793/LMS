@@ -181,7 +181,7 @@ function CourseCatalogPage() {
                             </Text>
                         }
                         description={
-                            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                                 {viewMode === 'list' && (
                                     <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ margin: 0 }}>
                                         {course.description}
@@ -196,7 +196,7 @@ function CourseCatalogPage() {
                                     ))}
                                 </Space>
 
-                                <Space split={<span style={{ color: '#d9d9d9' }}>•</span>}>
+                                <Space separator={<span style={{ color: '#d9d9d9' }}>•</span>}>
                                     {course.duration_hours && (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
                                             <ClockCircleOutlined /> {formatDuration(course.duration_hours)}
@@ -208,7 +208,7 @@ function CourseCatalogPage() {
                                         </Tag>
                                     )}
                                 </Space>
-                            </Space>
+                            </div>
                         }
                     />
                 </Card>
@@ -262,7 +262,7 @@ function CourseCatalogPage() {
                 </Col>
                 <Col xs={12} sm={8}>
                     <Card size="small">
-                        <Statistic title="Kết quả tìm kiếm" value={courses.length} valueStyle={{ color: '#faad14' }} />
+                        <Statistic title="Kết quả tìm kiếm" value={courses.length} styles={{ content: { color: '#faad14' } }} />
                     </Card>
                 </Col>
             </Row>
@@ -297,7 +297,7 @@ function CourseCatalogPage() {
                             value={selectedDifficulty}
                             onChange={handleDifficultyChange}
                             options={[
-                                { value: null, label: 'Tất cả độ khó' },
+                                { value: '', label: 'Tất cả độ khó' },
                                 ...COURSE_DIFFICULTY_OPTIONS.map(d => ({
                                     value: d.value,
                                     label: d.label,
@@ -312,7 +312,7 @@ function CourseCatalogPage() {
                             {(searchText || selectedTags.length > 0 || selectedDifficulty) && (
                                 <Button onClick={handleClearFilters}>Xóa bộ lọc</Button>
                             )}
-                            <Button.Group>
+                            <Space.Compact>
                                 <Button
                                     type={viewMode === 'grid' ? 'primary' : 'default'}
                                     icon={<AppstoreOutlined />}
@@ -323,7 +323,7 @@ function CourseCatalogPage() {
                                     icon={<UnorderedListOutlined />}
                                     onClick={() => setViewMode('list')}
                                 />
-                            </Button.Group>
+                            </Space.Compact>
                         </Space>
                     </Col>
                 </Row>

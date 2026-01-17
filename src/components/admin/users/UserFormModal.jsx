@@ -70,7 +70,7 @@ function UserFormModal({ open, onCancel, onSave, initialValues, loading }) {
             width="90%"
             style={{ maxWidth: 600 }}
             centered
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}

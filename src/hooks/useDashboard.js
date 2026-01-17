@@ -5,6 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboardService';
 import { CACHE_TIME } from '../constants/api';
 
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
+
 /**
  * Hook lấy thống kê tổng quan Admin
  */
@@ -36,6 +40,10 @@ export function useDashboardCharts() {
     });
 }
 
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
 /**
  * Hook lấy hoạt động tuần này của learner
  */
@@ -54,6 +62,17 @@ export function useLearnerStreak() {
     return useQuery({
         queryKey: ['learner', 'streak'],
         queryFn: () => dashboardService.getLearnerStreak(),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy kỹ năng của learner
+ */
+export function useLearnerSkills() {
+    return useQuery({
+        queryKey: ['learner', 'skills'],
+        queryFn: () => dashboardService.getLearnerSkills(),
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }

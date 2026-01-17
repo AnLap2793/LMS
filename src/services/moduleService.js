@@ -84,19 +84,55 @@ export const moduleService = {
     },
 
     /**
-     * Lấy modules với lessons (nested)
+     * Lấy modules kèm số lượng lessons (không fetch full lesson data)
+     * Tối ưu cho Admin CourseContentPage - chỉ cần hiển thị số bài học
+     * @param {string} courseId - ID khóa học
+     * @returns {Promise<Array>} Modules với lesson_count
+     */
+    getByCourseWithLessonCount: async courseId => {
+        const modules = await directus.request(
+            readItems(COLLECTIONS.MODULES, {
+                fields: [
+                    '*',
+                    'course_id.id',
+                    'course_id.title',
+                    // Chỉ lấy id của lessons để đếm
+                    'lessons.id',
+                ],
+                filter: { course_id: { _eq: courseId } },
+                sort: ['sort'],
+            })
+        );
+
+        // Transform: thêm lesson_count, không trả về full lessons array
+        return modules.map(m => ({
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            sort: m.sort,
+            status: m.status,
+            course_id: m.course_id,
+            date_created: m.date_created,
+            date_updated: m.date_updated,
+            lesson_count: (m.lessons || []).length,
+        }));
+    },
+
+    /**
+     * Lấy modules kèm lessons đầy đủ
+     * Dùng cho CourseContentPage để hiển thị cây thư mục đầy đủ
      * @param {string} courseId - ID khóa học
      * @returns {Promise<Array>} Modules kèm lessons
      */
     getWithLessons: async courseId => {
-        return await directus.request(
+        const items = await directus.request(
             readItems(COLLECTIONS.MODULES, {
                 fields: [
                     '*',
                     'lessons.id',
                     'lessons.title',
                     'lessons.type',
-                    'lessons.duration_minutes',
+                    'lessons.duration', // Đảm bảo field này đúng với schema (duration hoặc duration_minutes)
                     'lessons.sort',
                     'lessons.status',
                     'lessons.is_preview',
@@ -110,6 +146,16 @@ export const moduleService = {
                 },
             })
         );
+
+        // Transform data để đảm bảo cấu trúc
+        return items.map(m => ({
+            ...m,
+            lessons: (m.lessons || []).map(l => ({
+                ...l,
+                // Đảm bảo duration có giá trị hiển thị
+                duration: l.duration || 0,
+            })),
+        }));
     },
 
     /**

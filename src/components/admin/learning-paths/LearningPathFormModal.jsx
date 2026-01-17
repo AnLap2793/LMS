@@ -123,7 +123,7 @@ function LearningPathFormModal({ open, onCancel, onSave, initialValues, loading 
             width="90%"
             style={{ maxWidth: 700 }}
             centered
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}

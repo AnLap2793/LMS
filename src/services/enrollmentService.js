@@ -8,6 +8,68 @@ import { COLLECTIONS } from '../constants/collections';
 import { ENROLLMENT_STATUS } from '../constants/lms';
 
 export const enrollmentService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
+    /**
+     * Admin: Lấy danh sách tất cả enrollments
+     * @param {Object} params - Filter params
+     */
+    getAll: async (params = {}) => {
+        const { search, status, courseId, userId, page = 1, limit = 10 } = params;
+
+        const filter = {};
+
+        if (status) filter.status = { _eq: status };
+        if (courseId) filter.course_id = { _eq: courseId };
+        if (userId) filter.user_id = { _eq: userId };
+
+        // Note: Deep search in Directus needs configuration or specific fields
+        if (search) {
+            // Simplified search (might need adjustment based on requirements)
+            // Searching across related collections (user.email, course.title) requires permission and specific filter structure
+            // Or just search by ID if search is simple string
+        }
+
+        return await directus.request(
+            readItems(COLLECTIONS.ENROLLMENTS, {
+                filter,
+                fields: ['*', 'user.first_name', 'user.last_name', 'user.email', 'course.title'],
+                sort: ['-date_created'],
+                page,
+                limit,
+            })
+        );
+    },
+
+    /**
+     * Admin: Assign course to user
+     */
+    assignCourse: async data => {
+        // data: { user_id, course_id, due_date, ... }
+        return await directus.request(
+            createItem(COLLECTIONS.ENROLLMENTS, {
+                ...data,
+                status: ENROLLMENT_STATUS.IN_PROGRESS, // or 'assigned' if supported
+                progress_percentage: 0,
+                assigned_by: (await directus.request(readMe())).id, // Current admin ID
+                assignment_type: 'assigned',
+            })
+        );
+    },
+
+    /**
+     * Admin: Delete enrollment
+     */
+    delete: async id => {
+        return await directus.request(deleteItem(COLLECTIONS.ENROLLMENTS, id));
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy danh sách enrollments của user hiện tại
      * @param {Object} params - Filter params
@@ -80,14 +142,14 @@ export const enrollmentService = {
                 acc.total += Number(item.count);
                 return acc;
             },
-            { total: 0, [ENROLLMENT_STATUS.IN_PROGRESS]: 0, [ENROLLMENT_STATUS.COMPLETED]: 0, assigned: 0 } // 'assigned' might be pending or another status? Assuming 'assigned' isn't a direct status in DB based on code, but typically it is.
+            { total: 0, [ENROLLMENT_STATUS.IN_PROGRESS]: 0, [ENROLLMENT_STATUS.COMPLETED]: 0, assigned: 0 }
         );
 
         return {
             total: stats.total,
             inProgress: stats[ENROLLMENT_STATUS.IN_PROGRESS] || 0,
             completed: stats[ENROLLMENT_STATUS.COMPLETED] || 0,
-            assigned: stats.assigned || 0, // Adjust key if 'assigned' is different in DB
+            assigned: stats.assigned || 0,
         };
     },
 
@@ -222,59 +284,5 @@ export const enrollmentService = {
         }
 
         return await directus.request(updateItem(COLLECTIONS.ENROLLMENTS, enrollmentId, updates));
-    },
-
-    /**
-     * Admin: Lấy danh sách tất cả enrollments
-     * @param {Object} params - Filter params
-     */
-    getAll: async (params = {}) => {
-        const { search, status, courseId, userId, page = 1, limit = 10 } = params;
-
-        const filter = {};
-
-        if (status) filter.status = { _eq: status };
-        if (courseId) filter.course_id = { _eq: courseId };
-        if (userId) filter.user_id = { _eq: userId };
-
-        // Note: Deep search in Directus needs configuration or specific fields
-        if (search) {
-            // Simplified search (might need adjustment based on requirements)
-            // Searching across related collections (user.email, course.title) requires permission and specific filter structure
-            // Or just search by ID if search is simple string
-        }
-
-        return await directus.request(
-            readItems(COLLECTIONS.ENROLLMENTS, {
-                filter,
-                fields: ['*', 'user.first_name', 'user.last_name', 'user.email', 'course.title'],
-                sort: ['-date_created'],
-                page,
-                limit,
-            })
-        );
-    },
-
-    /**
-     * Admin: Assign course to user
-     */
-    assignCourse: async data => {
-        // data: { user_id, course_id, due_date, ... }
-        return await directus.request(
-            createItem(COLLECTIONS.ENROLLMENTS, {
-                ...data,
-                status: ENROLLMENT_STATUS.IN_PROGRESS, // or 'assigned' if supported
-                progress_percentage: 0,
-                assigned_by: (await directus.request(readMe())).id, // Current admin ID
-                assignment_type: 'assigned',
-            })
-        );
-    },
-
-    /**
-     * Admin: Delete enrollment
-     */
-    delete: async id => {
-        return await directus.request(deleteItem(COLLECTIONS.ENROLLMENTS, id));
     },
 };

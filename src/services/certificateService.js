@@ -7,6 +7,10 @@ import { readItems, createItem, updateItem, deleteItem, readMe, aggregate } from
 import { COLLECTIONS } from '../constants/collections';
 
 export const certificateService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy danh sách tất cả certificates (Admin)
      * @param {Object} params - Filter params
@@ -20,7 +24,6 @@ export const certificateService = {
         if (course_id) filter.course_id = { _eq: course_id };
         if (user_id) filter.user_id = { _eq: user_id };
 
-        // Search logic might need adjustment based on Directus configuration for relational search
         if (search) {
             filter.certificate_number = { _icontains: search };
         }
@@ -43,6 +46,117 @@ export const certificateService = {
             })
         );
     },
+
+    /**
+     * Cấp certificate mới
+     * @param {Object} data - Dữ liệu { user_id, course_id }
+     */
+    issue: async data => {
+        // Check existing
+        const existing = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATES, {
+                filter: {
+                    user_id: { _eq: data.user_id },
+                    course_id: { _eq: data.course_id },
+                },
+                limit: 1,
+            })
+        );
+
+        if (existing.length > 0) {
+            throw new Error('Certificate already issued for this course');
+        }
+
+        // Get active template
+        const templates = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
+                filter: { is_active: { _eq: true } },
+                limit: 1,
+            })
+        );
+        const template = templates[0];
+
+        // Generate number (simple timestamp based for now, ideally backend logic)
+        const certNumber = `CERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        return await directus.request(
+            createItem(COLLECTIONS.CERTIFICATES, {
+                user_id: data.user_id,
+                course_id: data.course_id,
+                certificate_number: certNumber,
+                template_id: template?.id,
+                issued_at: new Date().toISOString(),
+            })
+        );
+    },
+
+    /**
+     * Thu hồi certificate
+     */
+    revoke: async certificateId => {
+        return await directus.request(deleteItem(COLLECTIONS.CERTIFICATES, certificateId));
+    },
+
+    // --- Template Management (Admin) ---
+
+    /**
+     * Lấy danh sách certificate templates
+     */
+    getTemplates: async () => {
+        return await directus.request(
+            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
+                sort: ['-date_created'],
+            })
+        );
+    },
+
+    /**
+     * Tạo template mới
+     */
+    createTemplate: async data => {
+        return await directus.request(createItem(COLLECTIONS.CERTIFICATE_TEMPLATES, data));
+    },
+
+    /**
+     * Cập nhật template
+     */
+    updateTemplate: async (id, data) => {
+        return await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, id, data));
+    },
+
+    /**
+     * Xóa template
+     */
+    deleteTemplate: async id => {
+        return await directus.request(deleteItem(COLLECTIONS.CERTIFICATE_TEMPLATES, id));
+    },
+
+    /**
+     * Cập nhật template active
+     */
+    setActiveTemplate: async templateId => {
+        // 1. Get all active templates
+        const activeTemplates = await directus.request(
+            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
+                filter: { is_active: { _eq: true } },
+                fields: ['id'],
+            })
+        );
+
+        // 2. Deactivate them
+        for (const t of activeTemplates) {
+            if (t.id !== templateId) {
+                await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, t.id, { is_active: false }));
+            }
+        }
+
+        // 3. Activate target
+        return await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, templateId, { is_active: true }));
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
 
     /**
      * Đếm tổng số certificates
@@ -111,56 +225,6 @@ export const certificateService = {
     },
 
     /**
-     * Cấp certificate mới
-     * @param {Object} data - Dữ liệu { user_id, course_id }
-     */
-    issue: async data => {
-        // Check existing
-        const existing = await directus.request(
-            readItems(COLLECTIONS.CERTIFICATES, {
-                filter: {
-                    user_id: { _eq: data.user_id },
-                    course_id: { _eq: data.course_id },
-                },
-                limit: 1,
-            })
-        );
-
-        if (existing.length > 0) {
-            throw new Error('Certificate already issued for this course');
-        }
-
-        // Get active template
-        const templates = await directus.request(
-            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
-                filter: { is_active: { _eq: true } },
-                limit: 1,
-            })
-        );
-        const template = templates[0];
-
-        // Generate number (simple timestamp based for now, ideally backend logic)
-        const certNumber = `CERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-        return await directus.request(
-            createItem(COLLECTIONS.CERTIFICATES, {
-                user_id: data.user_id,
-                course_id: data.course_id,
-                certificate_number: certNumber,
-                template_id: template?.id,
-                issued_at: new Date().toISOString(),
-            })
-        );
-    },
-
-    /**
-     * Thu hồi certificate
-     */
-    revoke: async certificateId => {
-        return await directus.request(deleteItem(COLLECTIONS.CERTIFICATES, certificateId));
-    },
-
-    /**
      * Xác thực certificate
      */
     verify: async certificateNumber => {
@@ -178,68 +242,5 @@ export const certificateService = {
             message: 'Chứng chỉ hợp lệ',
             certificate: cert,
         };
-    },
-
-    // ============================================
-    // CERTIFICATE TEMPLATES
-    // ============================================
-
-    /**
-     * Lấy danh sách certificate templates
-     */
-    getTemplates: async () => {
-        return await directus.request(
-            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
-                sort: ['-date_created'],
-            })
-        );
-    },
-
-    /**
-     * Tạo template mới
-     */
-    createTemplate: async data => {
-        return await directus.request(createItem(COLLECTIONS.CERTIFICATE_TEMPLATES, data));
-    },
-
-    /**
-     * Cập nhật template
-     */
-    updateTemplate: async (id, data) => {
-        return await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, id, data));
-    },
-
-    /**
-     * Xóa template
-     */
-    deleteTemplate: async id => {
-        return await directus.request(deleteItem(COLLECTIONS.CERTIFICATE_TEMPLATES, id));
-    },
-
-    /**
-     * Cập nhật template active
-     */
-    setActiveTemplate: async templateId => {
-        // This logic is tricky. Need to unset others.
-        // Directus doesn't support batch update with different values easily in one go for this "radio" logic without a custom endpoint or flow.
-        // For client-side simulation:
-
-        // 1. Get all active templates
-        const activeTemplates = await directus.request(
-            readItems(COLLECTIONS.CERTIFICATE_TEMPLATES, {
-                filter: { is_active: { _eq: true } },
-                fields: ['id'],
-            })
-        );
-
-        // 2. Deactivate them
-        for (const t of activeTemplates) {
-            if (t.id !== templateId) {
-                await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, t.id, { is_active: false }));
-            }
-        }
-
-        // 3. Activate target
-        return await directus.request(updateItem(COLLECTIONS.CERTIFICATE_TEMPLATES, templateId, { is_active: true }));
     },
 };

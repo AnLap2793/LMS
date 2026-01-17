@@ -21,7 +21,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
 
     // Fetch available courses (published only)
     const { data: availableCourses = [] } = useQuery({
-        queryKey: queryKeys.courses.list({ status: 'published' }),
+        queryKey: queryKeys.courses.adminList({ status: 'published' }),
         queryFn: () =>
             courseService.getAll({
                 filter: { status: { _eq: 'published' } },
@@ -165,7 +165,7 @@ function EnrollmentFormModal({ open, onCancel, onSave, initialValues, loading })
             width="90%"
             style={{ maxWidth: 600 }}
             centered
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}

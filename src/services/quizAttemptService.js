@@ -9,61 +9,16 @@ import { COLLECTIONS } from '../constants/collections';
 
 export const quizAttemptService = {
     /**
-     * Lấy user ID hiện tại
+     * Lấy user ID hiện tại (Helper)
      */
     getCurrentUserId: async () => {
         const user = await directus.request(readMe({ fields: ['id'] }));
         return user.id;
     },
 
-    /**
-     * Lấy lịch sử làm bài của user hiện tại (Learner)
-     * @param {Object} params - Filter params { search, passed, page, limit }
-     * @returns {Promise<Object>} { data, total, page, limit }
-     */
-    getMyAttempts: async (params = {}) => {
-        const { search, passed, page = 1, limit = 10 } = params;
-        const userId = await quizAttemptService.getCurrentUserId();
-
-        const filter = {
-            user_id: { _eq: userId },
-        };
-
-        if (passed !== undefined && passed !== null && passed !== '') {
-            filter.is_passed = { _eq: passed === 'true' || passed === true };
-        }
-
-        if (search) {
-            filter.quiz_id = {
-                title: { _icontains: search },
-            };
-        }
-
-        const items = await directus.request(
-            readItems(COLLECTIONS.QUIZ_ATTEMPTS, {
-                filter,
-                limit,
-                page,
-                sort: ['-submitted_at'],
-                fields: ['*', 'quiz_id.id', 'quiz_id.title', 'quiz_id.passing_score', 'quiz_id.total_score'],
-            })
-        );
-
-        const totalResult = await directus.request(
-            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
-                aggregate: { count: '*' },
-                query: { filter },
-            })
-        );
-
-        return {
-            data: items,
-            total: Number(totalResult[0]?.count) || 0,
-            page,
-            limit,
-            totalPages: Math.ceil((Number(totalResult[0]?.count) || 0) / limit),
-        };
-    },
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
 
     /**
      * Lấy tất cả attempts (Admin)
@@ -117,75 +72,6 @@ export const quizAttemptService = {
     },
 
     /**
-     * Lấy chi tiết attempt theo ID
-     * @param {string} attemptId - Attempt ID
-     * @returns {Promise<Object>} Attempt với đầy đủ thông tin
-     */
-    getById: async attemptId => {
-        const attempt = await directus.request(
-            readItem(COLLECTIONS.QUIZ_ATTEMPTS, attemptId, {
-                fields: ['*', 'user_id.first_name', 'user_id.last_name', 'quiz_id.*'],
-            })
-        );
-
-        if (!attempt) throw new Error('Attempt not found');
-
-        // Fetch questions for this quiz to map answers
-        const questions = await directus.request(
-            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
-                filter: { quiz_id: { _eq: attempt.quiz_id.id } },
-                sort: ['sort'],
-            })
-        );
-
-        return {
-            ...attempt,
-            quiz: attempt.quiz_id,
-            questions,
-        };
-    },
-
-    /**
-     * Tạo attempt mới (khi user submit quiz)
-     * @param {Object} data - Attempt data
-     * @returns {Promise<Object>} Created attempt
-     */
-    create: async data => {
-        const userId = await quizAttemptService.getCurrentUserId();
-
-        return await directus.request(
-            createItem(COLLECTIONS.QUIZ_ATTEMPTS, {
-                ...data,
-                user_id: userId,
-                submitted_at: new Date().toISOString(),
-            })
-        );
-    },
-
-    /**
-     * Đếm số lượt đã làm của user hiện tại cho một quiz
-     * @param {string} quizId - Quiz ID
-     * @returns {Promise<number>} Số lượt đã làm
-     */
-    countMyAttempts: async quizId => {
-        const userId = await quizAttemptService.getCurrentUserId();
-
-        const result = await directus.request(
-            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
-                aggregate: { count: '*' },
-                query: {
-                    filter: {
-                        user_id: { _eq: userId },
-                        quiz_id: { _eq: quizId },
-                    },
-                },
-            })
-        );
-
-        return Number(result[0]?.count) || 0;
-    },
-
-    /**
      * Lấy thống kê tổng quan (Admin)
      * @returns {Promise<Object>} Statistics
      */
@@ -219,19 +105,7 @@ export const quizAttemptService = {
     },
 
     /**
-     * Lấy danh sách quizzes cho filter dropdown
-     */
-    getQuizzesForFilter: async () => {
-        return await directus.request(
-            readItems(COLLECTIONS.QUIZZES, {
-                fields: ['id', 'title'],
-                sort: ['title'],
-            })
-        );
-    },
-
-    /**
-     * Lấy phân tích chi tiết câu hỏi
+     * Lấy phân tích chi tiết câu hỏi (Admin/Instructor view)
      */
     getQuizAnalysis: async quizId => {
         // 1. Get questions
@@ -327,5 +201,139 @@ export const quizAttemptService = {
         });
 
         return { summary, questions: questionAnalysis };
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy lịch sử làm bài của user hiện tại (Learner)
+     * @param {Object} params - Filter params { search, passed, page, limit }
+     * @returns {Promise<Object>} { data, total, page, limit }
+     */
+    getMyAttempts: async (params = {}) => {
+        const { search, passed, page = 1, limit = 10 } = params;
+        const userId = await quizAttemptService.getCurrentUserId();
+
+        const filter = {
+            user_id: { _eq: userId },
+        };
+
+        if (passed !== undefined && passed !== null && passed !== '') {
+            filter.is_passed = { _eq: passed === 'true' || passed === true };
+        }
+
+        if (search) {
+            filter.quiz_id = {
+                title: { _icontains: search },
+            };
+        }
+
+        const items = await directus.request(
+            readItems(COLLECTIONS.QUIZ_ATTEMPTS, {
+                filter,
+                limit,
+                page,
+                sort: ['-submitted_at'],
+                fields: ['*', 'quiz_id.id', 'quiz_id.title', 'quiz_id.passing_score', 'quiz_id.total_score'],
+            })
+        );
+
+        const totalResult = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
+                aggregate: { count: '*' },
+                query: { filter },
+            })
+        );
+
+        return {
+            data: items,
+            total: Number(totalResult[0]?.count) || 0,
+            page,
+            limit,
+            totalPages: Math.ceil((Number(totalResult[0]?.count) || 0) / limit),
+        };
+    },
+
+    /**
+     * Lấy chi tiết attempt theo ID
+     * @param {string} attemptId - Attempt ID
+     * @returns {Promise<Object>} Attempt với đầy đủ thông tin
+     */
+    getById: async attemptId => {
+        const attempt = await directus.request(
+            readItem(COLLECTIONS.QUIZ_ATTEMPTS, attemptId, {
+                fields: ['*', 'user_id.first_name', 'user_id.last_name', 'quiz_id.*'],
+            })
+        );
+
+        if (!attempt) throw new Error('Attempt not found');
+
+        // Fetch questions for this quiz to map answers
+        const questions = await directus.request(
+            readItems(COLLECTIONS.QUIZ_QUESTIONS, {
+                filter: { quiz_id: { _eq: attempt.quiz_id.id } },
+                sort: ['sort'],
+            })
+        );
+
+        return {
+            ...attempt,
+            quiz: attempt.quiz_id,
+            questions,
+        };
+    },
+
+    /**
+     * Tạo attempt mới (khi user submit quiz)
+     * @param {Object} data - Attempt data
+     * @returns {Promise<Object>} Created attempt
+     */
+    create: async data => {
+        const userId = await quizAttemptService.getCurrentUserId();
+
+        return await directus.request(
+            createItem(COLLECTIONS.QUIZ_ATTEMPTS, {
+                ...data,
+                user_id: userId,
+                submitted_at: new Date().toISOString(),
+            })
+        );
+    },
+
+    /**
+     * Đếm số lượt đã làm của user hiện tại cho một quiz
+     * @param {string} quizId - Quiz ID
+     * @returns {Promise<number>} Số lượt đã làm
+     */
+    countMyAttempts: async quizId => {
+        const userId = await quizAttemptService.getCurrentUserId();
+
+        const result = await directus.request(
+            aggregate(COLLECTIONS.QUIZ_ATTEMPTS, {
+                aggregate: { count: '*' },
+                query: {
+                    filter: {
+                        user_id: { _eq: userId },
+                        quiz_id: { _eq: quizId },
+                    },
+                },
+            })
+        );
+
+        return Number(result[0]?.count) || 0;
+    },
+
+    /**
+     * Lấy danh sách quizzes cho filter dropdown
+     */
+    getQuizzesForFilter: async () => {
+        return await directus.request(
+            readItems(COLLECTIONS.QUIZZES, {
+                fields: ['id', 'title'],
+                sort: ['title'],
+            })
+        );
     },
 };

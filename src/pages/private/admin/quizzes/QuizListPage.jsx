@@ -41,7 +41,7 @@ function QuizListPage() {
     });
 
     const { data: courses = [] } = useQuery({
-        queryKey: queryKeys.courses.list({ fields: ['id', 'title'] }),
+        queryKey: queryKeys.courses.adminList({ fields: ['id', 'title'] }),
         queryFn: () => courseService.getAll({ limit: -1, fields: ['id', 'title'] }),
     });
 

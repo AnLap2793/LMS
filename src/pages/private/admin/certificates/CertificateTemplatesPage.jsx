@@ -214,7 +214,7 @@ function CertificateTemplatesPage() {
                         <Statistic
                             title="Đang sử dụng"
                             value={templates.filter(t => t.is_active).length}
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
                             prefix={<CheckCircleOutlined />}
                         />
                     </Card>

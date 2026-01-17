@@ -8,13 +8,20 @@ import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
 /**
- * Helper to invalidate course detail
+ * Helper to invalidate all module-related queries for a course
  */
-const invalidateCourseDetail = (queryClient, courseId) => {
+const invalidateModuleQueries = (queryClient, courseId) => {
     if (courseId) {
+        // Invalidate modules list
+        queryClient.invalidateQueries({ queryKey: queryKeys.modules.byCourse(courseId) });
+        // Invalidate course info (để cập nhật module count nếu có)
         queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
     }
 };
+
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
 
 /**
  * Hook lấy tất cả modules
@@ -30,15 +37,16 @@ export function useModules(params = {}) {
 }
 
 /**
- * Hook lấy modules của một khóa học
+ * Hook lấy modules với số lượng lessons (không fetch full lesson data)
+ * Tối ưu cho Admin CourseContentPage - lazy loading
  * @param {string} courseId - ID khóa học
  * @param {Object} options - Query options
  * @returns {Object} Query result
  */
-export function useModulesByCourse(courseId, options = {}) {
+export function useModulesWithLessonCount(courseId, options = {}) {
     return useQuery({
-        queryKey: queryKeys.modules.byCourse(courseId),
-        queryFn: () => moduleService.getByCourse(courseId),
+        queryKey: [...queryKeys.modules.byCourse(courseId), 'with-count'],
+        queryFn: () => moduleService.getByCourseWithLessonCount(courseId),
         enabled: !!courseId,
         staleTime: CACHE_TIME.STALE_TIME,
         ...options,
@@ -46,7 +54,8 @@ export function useModulesByCourse(courseId, options = {}) {
 }
 
 /**
- * Hook lấy modules kèm lessons
+ * Hook lấy modules kèm lessons (nested)
+ * Dùng cho CourseContentPage để hiển thị toàn bộ nội dung
  * @param {string} courseId - ID khóa học
  * @returns {Object} Query result
  */
@@ -83,12 +92,7 @@ export function useCreateModule() {
         mutationFn: moduleService.create,
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.modules.all });
-            if (variables.course_id) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.modules.byCourse(variables.course_id),
-                });
-                invalidateCourseDetail(queryClient, variables.course_id);
-            }
+            invalidateModuleQueries(queryClient, variables.course_id);
             showSuccess('Tạo module thành công!');
         },
     });
@@ -108,13 +112,8 @@ export function useUpdateModule() {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.modules.detail(variables.id),
             });
-            // Invalidate course modules nếu có course_id
-            if (data?.course_id) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.modules.byCourse(data.course_id),
-                });
-                invalidateCourseDetail(queryClient, data.course_id);
-            }
+            // Invalidate course modules
+            invalidateModuleQueries(queryClient, data?.course_id);
             showSuccess('Cập nhật module thành công!');
         },
     });
@@ -122,15 +121,17 @@ export function useUpdateModule() {
 
 /**
  * Hook xóa module
+ * @param {string} courseId - ID khóa học (để invalidate queries sau khi xóa)
  * @returns {Object} Mutation object
  */
-export function useDeleteModule() {
+export function useDeleteModule(courseId) {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: moduleService.delete,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.modules.all });
+            invalidateModuleQueries(queryClient, courseId);
             showSuccess('Xóa module thành công!');
         },
     });
@@ -146,10 +147,7 @@ export function useUpdateModuleOrder() {
     return useMutation({
         mutationFn: ({ courseId, orderedIds }) => moduleService.updateOrder(courseId, orderedIds),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.modules.byCourse(variables.courseId),
-            });
-            invalidateCourseDetail(queryClient, variables.courseId);
+            invalidateModuleQueries(queryClient, variables.courseId);
         },
     });
 }
@@ -185,5 +183,25 @@ export function useArchiveModule() {
             queryClient.invalidateQueries({ queryKey: queryKeys.modules.detail(id) });
             showSuccess('Đã archive module!');
         },
+    });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
+/**
+ * Hook lấy modules của một khóa học
+ * @param {string} courseId - ID khóa học
+ * @param {Object} options - Query options
+ * @returns {Object} Query result
+ */
+export function useModulesByCourse(courseId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.modules.byCourse(courseId),
+        queryFn: () => moduleService.getByCourse(courseId),
+        enabled: !!courseId,
+        staleTime: CACHE_TIME.STALE_TIME,
+        ...options,
     });
 }

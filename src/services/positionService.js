@@ -7,6 +7,10 @@ import { readItems } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const positionService = {
+    // ==========================================
+    // SHARED ENDPOINTS
+    // ==========================================
+
     getAll: async () => {
         return await directus.request(
             readItems(COLLECTIONS.POSITIONS, {

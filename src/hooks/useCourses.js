@@ -1,11 +1,15 @@
 /**
- * React Query Hooks cho Courses (Learner features)
+ * React Query Hooks cho Courses
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { courseService } from '../services/courseService';
 import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
+
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
 
 /**
  * Hook lấy tất cả khóa học (Admin)
@@ -14,6 +18,20 @@ export function useAllCourses(params = {}) {
     return useQuery({
         queryKey: queryKeys.courses.adminList(params),
         queryFn: () => courseService.getAllCourses(params),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook lấy thông tin cơ bản khóa học (KHÔNG bao gồm modules/lessons)
+ * Dùng cho Admin CourseContentPage, CourseFormPage
+ * @param {string} courseId - ID khóa học
+ */
+export function useCourseInfo(courseId) {
+    return useQuery({
+        queryKey: [...queryKeys.courses.detail(courseId), 'info'],
+        queryFn: () => courseService.getCourseInfo(courseId),
+        enabled: !!courseId,
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }
@@ -61,6 +79,10 @@ export function useDeleteCourse() {
     });
 }
 
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
 /**
  * Hook lấy danh sách khóa học published cho catalog
  * @param {Object} params - Filter params { search, tags, difficulty, page, limit }
@@ -86,8 +108,10 @@ export function useCoursesCount(params = {}) {
 }
 
 /**
- * Hook lấy chi tiết khóa học
+ * Hook lấy chi tiết khóa học (bao gồm modules và lessons nested)
+ * Dùng cho Learner CourseDetailPage - cần overview nhanh
  * @param {string} courseId - ID khóa học
+ * @deprecated Prefer useCourseInfo + useModulesByCourse for admin pages
  */
 export function useCourseDetail(courseId) {
     return useQuery({

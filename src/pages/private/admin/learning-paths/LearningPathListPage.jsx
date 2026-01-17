@@ -313,7 +313,7 @@ function LearningPathListPage() {
                             <Statistic
                                 title="Đã xuất bản"
                                 value={stats.published}
-                                valueStyle={{ color: '#52c41a' }}
+                                styles={{ content: { color: '#52c41a' } }}
                                 prefix={<CheckCircleOutlined />}
                             />
                         )}
@@ -324,7 +324,7 @@ function LearningPathListPage() {
                         {statsLoading ? (
                             <Spin />
                         ) : (
-                            <Statistic title="Bắt buộc" value={stats.mandatory} valueStyle={{ color: '#ea4544' }} />
+                            <Statistic title="Bắt buộc" value={stats.mandatory} styles={{ content: { color: '#ea4544' } }} />
                         )}
                     </Card>
                 </Col>

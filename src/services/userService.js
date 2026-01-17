@@ -1,12 +1,15 @@
 /**
- * VÍ DỤ: User Service - Service layer pattern
- * Xem TEMPLATE_GUIDE.md để biết hướng dẫn chi tiết
+ * User Service - Service layer pattern
  */
 import { directus } from './directus';
 import { readItems, createItem, updateItem, deleteItem, updateMe } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const userService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     getAll: async (params = {}) => {
         return await directus.request(readItems(COLLECTIONS.USERS, params));
     },
@@ -33,6 +36,10 @@ export const userService = {
     delete: async id => {
         return await directus.request(deleteItem(COLLECTIONS.USERS, id));
     },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
 
     updateMe: async data => {
         return await directus.request(updateMe(data));

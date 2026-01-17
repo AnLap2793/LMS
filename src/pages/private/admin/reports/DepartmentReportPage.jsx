@@ -380,8 +380,10 @@ function DepartmentReportPage() {
                                         title="Tỷ lệ hoàn thành"
                                         value={departmentData.stats.completionRate}
                                         suffix="%"
-                                        valueStyle={{
-                                            color: departmentData.stats.completionRate >= 70 ? '#52c41a' : '#faad14',
+                                        styles={{
+                                            content: {
+                                                color: departmentData.stats.completionRate >= 70 ? '#52c41a' : '#faad14',
+                                            },
                                         }}
                                         prefix={<RiseOutlined />}
                                     />
@@ -414,7 +416,7 @@ function DepartmentReportPage() {
                                     <Statistic
                                         title="Hoàn thành"
                                         value={departmentData.stats.completed}
-                                        valueStyle={{ color: '#52c41a' }}
+                                        styles={{ content: { color: '#52c41a' } }}
                                         prefix={<CheckCircleOutlined />}
                                     />
                                 </Card>
@@ -424,7 +426,7 @@ function DepartmentReportPage() {
                                     <Statistic
                                         title="Quá hạn"
                                         value={departmentData.stats.expired}
-                                        valueStyle={{ color: departmentData.stats.expired > 0 ? '#ff4d4f' : undefined }}
+                                        styles={{ content: { color: departmentData.stats.expired > 0 ? '#ff4d4f' : undefined } }}
                                         prefix={<WarningOutlined />}
                                     />
                                 </Card>

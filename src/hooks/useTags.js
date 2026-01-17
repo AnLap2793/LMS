@@ -8,28 +8,17 @@ import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
 // ============================================
-// QUERY HOOKS
+// ADMIN HOOKS
 // ============================================
 
 /**
- * Hook lấy danh sách tags
+ * Hook lấy danh sách tags (Manage)
  * @param {Object} params - Filter params { search, page, limit }
  */
 export function useTagsList(params = {}) {
     return useQuery({
         queryKey: queryKeys.tags.list(params),
         queryFn: () => tagService.getAll(params),
-        staleTime: CACHE_TIME.STALE_TIME * 2, // Tags ít thay đổi
-    });
-}
-
-/**
- * Hook lấy tất cả tags (không phân trang - cho select/filter)
- */
-export function useAllTags() {
-    return useQuery({
-        queryKey: queryKeys.tags.all,
-        queryFn: () => tagService.getAll({ limit: 1000 }),
         staleTime: CACHE_TIME.STALE_TIME * 2,
     });
 }
@@ -60,18 +49,6 @@ export function useTag(tagId) {
 }
 
 /**
- * Hook lấy tags phổ biến
- * @param {number} limit - Số lượng
- */
-export function usePopularTags(limit = 10) {
-    return useQuery({
-        queryKey: [...queryKeys.tags.all, 'popular', { limit }],
-        queryFn: () => tagService.getPopular(limit),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
  * Hook lấy thống kê tags
  */
 export function useTagsStats() {
@@ -81,10 +58,6 @@ export function useTagsStats() {
         staleTime: CACHE_TIME.STALE_TIME,
     });
 }
-
-// ============================================
-// MUTATION HOOKS
-// ============================================
 
 /**
  * Hook tạo tag mới
@@ -144,5 +117,32 @@ export function useDeleteManyTags() {
             queryClient.invalidateQueries({ queryKey: queryKeys.tags.all });
             showSuccess('Xóa các tag thành công!');
         },
+    });
+}
+
+// ============================================
+// CLIENT / LEARNER HOOKS
+// ============================================
+
+/**
+ * Hook lấy tất cả tags (không phân trang - cho select/filter)
+ */
+export function useAllTags() {
+    return useQuery({
+        queryKey: queryKeys.tags.all,
+        queryFn: () => tagService.getAll({ limit: 1000 }),
+        staleTime: CACHE_TIME.STALE_TIME * 2,
+    });
+}
+
+/**
+ * Hook lấy tags phổ biến
+ * @param {number} limit - Số lượng
+ */
+export function usePopularTags(limit = 10) {
+    return useQuery({
+        queryKey: [...queryKeys.tags.all, 'popular', { limit }],
+        queryFn: () => tagService.getPopular(limit),
+        staleTime: CACHE_TIME.STALE_TIME,
     });
 }

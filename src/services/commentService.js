@@ -8,6 +8,78 @@ import { readItems, createItem, updateItem, deleteItem } from '@directus/sdk';
 import { COLLECTIONS } from '../constants/collections';
 
 export const commentService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
+    /**
+     * Lấy tất cả comments (cho admin)
+     * @param {Object} params - Filter params
+     * @returns {Promise<Array>} Danh sách comments
+     */
+    getAll: async (params = {}) => {
+        return await directus.request(
+            readItems(COLLECTIONS.LESSON_COMMENTS, {
+                fields: [
+                    '*',
+                    'user_created.id',
+                    'user_created.first_name',
+                    'user_created.last_name',
+                    'lesson_id.id',
+                    'lesson_id.title',
+                    'lesson_id.module_id.course_id.title',
+                ],
+                sort: ['-date_created'],
+                ...params,
+            })
+        );
+    },
+
+    /**
+     * Đánh dấu comment đã resolved
+     * @param {string} id - ID comment
+     * @returns {Promise<Object>} Comment đã resolved
+     */
+    resolve: async id => {
+        return await commentService.update(id, {
+            is_resolved: true,
+            resolved_at: new Date().toISOString(),
+        });
+    },
+
+    /**
+     * Đánh dấu comment chưa resolved
+     * @param {string} id - ID comment
+     * @returns {Promise<Object>} Comment đã unresolve
+     */
+    unresolve: async id => {
+        return await commentService.update(id, {
+            is_resolved: false,
+            resolved_at: null,
+            resolved_by: null,
+        });
+    },
+
+    /**
+     * Xóa comment (và tất cả replies) - Admin/Moderation
+     * @param {string} id - ID comment
+     * @returns {Promise<void>}
+     */
+    delete: async id => {
+        // Xóa tất cả replies trước
+        const replies = await commentService.getReplies(id);
+        for (const reply of replies) {
+            await directus.request(deleteItem(COLLECTIONS.LESSON_COMMENTS, reply.id));
+        }
+
+        // Xóa comment chính
+        return await directus.request(deleteItem(COLLECTIONS.LESSON_COMMENTS, id));
+    },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy comments của một lesson (top-level comments)
      * @param {string} lessonId - ID lesson
@@ -168,54 +240,13 @@ export const commentService = {
     },
 
     /**
-     * Cập nhật comment
+     * Cập nhật comment (User update own comment)
      * @param {string} id - ID comment
      * @param {Object} data - Dữ liệu cập nhật
      * @returns {Promise<Object>} Comment đã cập nhật
      */
     update: async (id, data) => {
         return await directus.request(updateItem(COLLECTIONS.LESSON_COMMENTS, id, data));
-    },
-
-    /**
-     * Đánh dấu comment đã resolved
-     * @param {string} id - ID comment
-     * @returns {Promise<Object>} Comment đã resolved
-     */
-    resolve: async id => {
-        return await commentService.update(id, {
-            is_resolved: true,
-            resolved_at: new Date().toISOString(),
-        });
-    },
-
-    /**
-     * Đánh dấu comment chưa resolved
-     * @param {string} id - ID comment
-     * @returns {Promise<Object>} Comment đã unresolve
-     */
-    unresolve: async id => {
-        return await commentService.update(id, {
-            is_resolved: false,
-            resolved_at: null,
-            resolved_by: null,
-        });
-    },
-
-    /**
-     * Xóa comment (và tất cả replies)
-     * @param {string} id - ID comment
-     * @returns {Promise<void>}
-     */
-    delete: async id => {
-        // Xóa tất cả replies trước
-        const replies = await commentService.getReplies(id);
-        for (const reply of replies) {
-            await directus.request(deleteItem(COLLECTIONS.LESSON_COMMENTS, reply.id));
-        }
-
-        // Xóa comment chính
-        return await directus.request(deleteItem(COLLECTIONS.LESSON_COMMENTS, id));
     },
 
     /**
@@ -250,29 +281,6 @@ export const commentService = {
                     'lesson_id.id',
                     'lesson_id.title',
                     'lesson_id.module_id.title',
-                    'lesson_id.module_id.course_id.title',
-                ],
-                sort: ['-date_created'],
-                ...params,
-            })
-        );
-    },
-
-    /**
-     * Lấy tất cả comments (cho admin)
-     * @param {Object} params - Filter params
-     * @returns {Promise<Array>} Danh sách comments
-     */
-    getAll: async (params = {}) => {
-        return await directus.request(
-            readItems(COLLECTIONS.LESSON_COMMENTS, {
-                fields: [
-                    '*',
-                    'user_created.id',
-                    'user_created.first_name',
-                    'user_created.last_name',
-                    'lesson_id.id',
-                    'lesson_id.title',
                     'lesson_id.module_id.course_id.title',
                 ],
                 sort: ['-date_created'],

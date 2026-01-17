@@ -41,7 +41,7 @@ function ModuleFormModal({ open, onCancel, onSubmit, initialValues }) {
             onCancel={onCancel}
             okText={isEditing ? 'Cập nhật' : 'Tạo mới'}
             cancelText="Hủy"
-            destroyOnClose
+            destroyOnHidden
             width="90%"
             style={{ maxWidth: 600 }}
             centered

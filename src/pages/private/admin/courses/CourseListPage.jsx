@@ -81,7 +81,7 @@ function CourseListPage() {
                         shape="square"
                         size={48}
                         icon={<BookOutlined />}
-                        src={record.thumbnail}
+                        src={record.thumbnail || null}
                         style={{ backgroundColor: '#ea4544' }}
                     />
                     <div>

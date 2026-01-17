@@ -8,6 +8,10 @@ import { readItems, createItem, updateItem, deleteItem, aggregate, readItem } fr
 import { COLLECTIONS } from '../constants/collections';
 
 export const questionBankService = {
+    // ==========================================
+    // ADMIN ENDPOINTS
+    // ==========================================
+
     /**
      * Lấy danh sách câu hỏi với filter và pagination
      * @param {Object} params - Filter params { category, difficulty, type, search, status, page, limit }
@@ -207,4 +211,9 @@ export const questionBankService = {
 
         return await Promise.all(createPromises);
     },
+
+    // ==========================================
+    // CLIENT / LEARNER ENDPOINTS
+    // ==========================================
+    // (Question Bank is Admin only)
 };

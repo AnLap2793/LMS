@@ -498,7 +498,7 @@ function DocumentLibraryPage() {
                     setUsageDrawerOpen(false);
                     setSelectedDocForUsage(null);
                 }}
-                width={500}
+                styles={{ wrapper: { width: 500 } }}
             >
                 {selectedDocForUsage && (
                     <>

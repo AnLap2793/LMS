@@ -1,11 +1,15 @@
 /**
- * React Query Hooks cho Enrollments (Learner features)
+ * React Query Hooks cho Enrollments
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { enrollmentService } from '../services/enrollmentService';
 import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
 
 /**
  * Hook lấy danh sách enrollments của user hiện tại

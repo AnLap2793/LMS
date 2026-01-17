@@ -7,11 +7,45 @@ import { CACHE_TIME } from '../constants/api';
 import { queryKeys } from '../constants/queryKeys';
 import { showSuccess } from '../utils/errorHandler';
 
+// ==========================================
+// ADMIN HOOKS
+// ==========================================
+
+/**
+ * Hook lấy tất cả reviews (admin)
+ * @param {Object} params - Filter params
+ */
+export function useAllReviews(params = {}) {
+    return useQuery({
+        queryKey: queryKeys.courseReviews.list(params),
+        queryFn: () => reviewService.getAll(params),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
+ * Hook xóa review
+ */
+export function useDeleteReview() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: reviewService.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.courseReviews.all });
+            showSuccess('Đã xóa đánh giá!');
+        },
+    });
+}
+
+// ==========================================
+// CLIENT / LEARNER HOOKS
+// ==========================================
+
 /**
  * Hook lấy reviews của một khóa học
  * @param {string} courseId - ID khóa học
  * @param {Object} options - Query options
- * @returns {Object} Query result
  */
 export function useReviewsByCourse(courseId, options = {}) {
     return useQuery({
@@ -26,7 +60,6 @@ export function useReviewsByCourse(courseId, options = {}) {
 /**
  * Hook lấy review của user cho khóa học
  * @param {string} courseId - ID khóa học
- * @returns {Object} Query result
  */
 export function useMyReview(courseId) {
     return useQuery({
@@ -39,7 +72,6 @@ export function useMyReview(courseId) {
 /**
  * Hook lấy thống kê rating của khóa học
  * @param {string} courseId - ID khóa học
- * @returns {Object} Query result với { averageRating, totalReviews, ratingDistribution }
  */
 export function useCourseRatingStats(courseId) {
     return useQuery({
@@ -53,7 +85,6 @@ export function useCourseRatingStats(courseId) {
 /**
  * Hook lấy chi tiết review
  * @param {string} id - ID review
- * @returns {Object} Query result
  */
 export function useReview(id) {
     return useQuery({
@@ -65,7 +96,6 @@ export function useReview(id) {
 
 /**
  * Hook lấy tất cả reviews của user
- * @returns {Object} Query result
  */
 export function useMyReviews() {
     return useQuery({
@@ -76,9 +106,8 @@ export function useMyReviews() {
 }
 
 /**
- * Hook lấy reviews gần đây (admin dashboard)
+ * Hook lấy reviews gần đây (dashboard)
  * @param {number} limit - Số lượng
- * @returns {Object} Query result
  */
 export function useRecentReviews(limit = 10) {
     return useQuery({
@@ -89,8 +118,19 @@ export function useRecentReviews(limit = 10) {
 }
 
 /**
+ * Hook lấy top rated courses
+ * @param {number} limit - Số lượng
+ */
+export function useTopRatedCourses(limit = 10) {
+    return useQuery({
+        queryKey: [...queryKeys.courseReviews.all, 'top-rated', limit],
+        queryFn: () => reviewService.getTopRatedCourses(limit),
+        staleTime: CACHE_TIME.STALE_TIME,
+    });
+}
+
+/**
  * Hook tạo review mới (hoặc update nếu đã có)
- * @returns {Object} Mutation object
  */
 export function useCreateReview() {
     const queryClient = useQueryClient();
@@ -115,7 +155,6 @@ export function useCreateReview() {
 
 /**
  * Hook cập nhật review
- * @returns {Object} Mutation object
  */
 export function useUpdateReview() {
     const queryClient = useQueryClient();
@@ -130,24 +169,7 @@ export function useUpdateReview() {
 }
 
 /**
- * Hook xóa review
- * @returns {Object} Mutation object
- */
-export function useDeleteReview() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: reviewService.delete,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.courseReviews.all });
-            showSuccess('Đã xóa đánh giá!');
-        },
-    });
-}
-
-/**
  * Hook xóa review của user cho khóa học
- * @returns {Object} Mutation object
  */
 export function useDeleteMyReview() {
     const queryClient = useQueryClient();
@@ -166,31 +188,5 @@ export function useDeleteMyReview() {
             });
             showSuccess('Đã xóa đánh giá của bạn!');
         },
-    });
-}
-
-/**
- * Hook lấy tất cả reviews (admin)
- * @param {Object} params - Filter params
- * @returns {Object} Query result
- */
-export function useAllReviews(params = {}) {
-    return useQuery({
-        queryKey: queryKeys.courseReviews.list(params),
-        queryFn: () => reviewService.getAll(params),
-        staleTime: CACHE_TIME.STALE_TIME,
-    });
-}
-
-/**
- * Hook lấy top rated courses
- * @param {number} limit - Số lượng
- * @returns {Object} Query result
- */
-export function useTopRatedCourses(limit = 10) {
-    return useQuery({
-        queryKey: [...queryKeys.courseReviews.all, 'top-rated', limit],
-        queryFn: () => reviewService.getTopRatedCourses(limit),
-        staleTime: CACHE_TIME.STALE_TIME,
     });
 }
