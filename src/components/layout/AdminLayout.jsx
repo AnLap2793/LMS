@@ -16,7 +16,7 @@ import {
     FormOutlined,
     ScheduleOutlined,
     MenuOutlined,
-    CloseOutlined,
+
     DatabaseOutlined,
     HistoryOutlined,
     FolderOutlined,
@@ -314,7 +314,15 @@ function AdminLayout() {
             {/* Mobile Drawer */}
             <Drawer
                 title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            gap: 12,
+                        }}
+                    >
                         <img src={logoNgang} alt="LMS Logo" style={{ height: 32 }} />
                     </div>
                 }
@@ -327,7 +335,7 @@ function AdminLayout() {
                     body: { padding: 0 },
                     header: { borderBottom: '1px solid #f0f0f0' },
                 }}
-                closeIcon={<CloseOutlined />}
+                closable={false}
             >
                 {renderMenu()}
             </Drawer>

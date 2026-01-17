@@ -125,36 +125,39 @@ export const moduleService = {
      * @returns {Promise<Array>} Modules kèm lessons
      */
     getWithLessons: async courseId => {
-        const items = await directus.request(
-            readItems(COLLECTIONS.MODULES, {
-                fields: [
-                    '*',
-                    'lessons.id',
-                    'lessons.title',
-                    'lessons.type',
-                    'lessons.duration', // Đảm bảo field này đúng với schema (duration hoặc duration_minutes)
-                    'lessons.sort',
-                    'lessons.status',
-                    'lessons.is_preview',
-                ],
-                filter: { course_id: { _eq: courseId } },
-                sort: ['sort'],
-                deep: {
-                    lessons: {
-                        _sort: ['sort'],
+        const [modules, lessons] = await Promise.all([
+            // 1. Fetch Modules
+            directus.request(
+                readItems(COLLECTIONS.MODULES, {
+                    fields: ['*'],
+                    filter: { course_id: { _eq: courseId } },
+                    sort: ['sort'],
+                })
+            ),
+            // 2. Fetch all Lessons for this course
+            directus.request(
+                readItems(COLLECTIONS.LESSONS, {
+                    fields: ['*'],
+                    filter: {
+                        module_id: {
+                            course_id: { _eq: courseId }
+                        }
                     },
-                },
-            })
-        );
+                    sort: ['sort'],
+                })
+            ),
+        ]);
 
-        // Transform data để đảm bảo cấu trúc
-        return items.map(m => ({
+        // 3. Manual Join
+        return modules.map(m => ({
             ...m,
-            lessons: (m.lessons || []).map(l => ({
-                ...l,
-                // Đảm bảo duration có giá trị hiển thị
-                duration: l.duration || 0,
-            })),
+            lessons: (lessons || [])
+                .filter(l => l.module_id === m.id || l.module_id?.id === m.id)
+                .sort((a, b) => (a.sort || 0) - (b.sort || 0))
+                .map(l => ({
+                    ...l,
+                    duration: l.duration || l.duration_minutes || 0,
+                })),
         }));
     },
 

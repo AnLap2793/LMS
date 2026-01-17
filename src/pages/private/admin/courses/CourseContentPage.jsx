@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Space, Typography, Collapse, Tag, Tooltip, Popconfirm, Empty, Spin } from 'antd';
 import {
@@ -153,7 +153,12 @@ function SortableModuleItem({
                 styles={{
                     header: {
                         background: isExpanded ? '#fff1f0' : '#fafafa',
-                        borderBottom: isExpanded ? '1px solid #ffccc7' : '1px solid #f0f0f0',
+                        borderBottom: isExpanded ? '1px solid #ffccc7' : 'none',
+                        borderBottomLeftRadius: isExpanded ? 0 : 8,
+                        borderBottomRightRadius: isExpanded ? 0 : 8,
+                    },
+                    body: {
+                        display: isExpanded ? 'block' : 'none',
                     },
                 }}
                 title={
@@ -179,6 +184,14 @@ function SortableModuleItem({
                 }
                 extra={
                     <Space onClick={e => e.stopPropagation()}>
+                        <Tooltip title="Thêm bài học">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<PlusOutlined />}
+                                onClick={() => onAddLesson(module.id)}
+                            />
+                        </Tooltip>
                         <Tooltip title="Chỉnh sửa module">
                             <Button type="text" size="small" icon={<EditOutlined />} onClick={() => onEdit(module)} />
                         </Tooltip>
@@ -205,15 +218,7 @@ function SortableModuleItem({
                             </Text>
                         )}
 
-                        <Button
-                            type="dashed"
-                            icon={<PlusOutlined />}
-                            onClick={() => onAddLesson(module.id)}
-                            style={{ marginBottom: 16 }}
-                            block
-                        >
-                            Thêm bài học
-                        </Button>
+
 
                         {lessons.length > 0 ? (
                             <DndContext
@@ -305,6 +310,13 @@ function CourseContentPage() {
         });
     }, []);
 
+    // Sync local state when server data updates
+    useEffect(() => {
+        if (modules.length > 0) {
+            setLocalModules([]);
+        }
+    }, [modules]);
+
     // Handle module drag end
     const handleModuleDragEnd = event => {
         const { active, over } = event;
@@ -323,9 +335,6 @@ function CourseContentPage() {
             updateModuleOrder.mutate(
                 { courseId, orderedIds },
                 {
-                    onSuccess: () => {
-                        setLocalModules([]);
-                    },
                     onError: () => {
                         setLocalModules(previousModules);
                         showError('Không thể cập nhật thứ tự module. Vui lòng thử lại.');
@@ -367,11 +376,8 @@ function CourseContentPage() {
             // Call API
             const orderedIds = newLessons.map(l => l.id);
             updateLessonOrder.mutate(
-                { moduleId, orderedIds },
+                { moduleId, orderedIds, courseId },
                 {
-                    onSuccess: () => {
-                        setLocalModules([]);
-                    },
                     onError: () => {
                         // Rollback logic could be implemented here, fetching clean data is easiest
                         setLocalModules([]);
@@ -395,7 +401,6 @@ function CourseContentPage() {
 
     const handleDeleteModule = async moduleId => {
         await deleteModule.mutateAsync(moduleId);
-        setLocalModules([]);
         // Remove from expanded set
         setExpandedModules(prev => {
             const next = new Set(prev);
@@ -416,7 +421,6 @@ function CourseContentPage() {
         }
         setModuleModalOpen(false);
         setEditingModule(null);
-        setLocalModules([]);
     };
 
     // Handle lesson operations
@@ -433,7 +437,6 @@ function CourseContentPage() {
 
     const handleDeleteLesson = async (lessonId, moduleId) => {
         await deleteLesson.mutateAsync({ lessonId, moduleId });
-        setLocalModules([]); // Clear local state to force refresh
     };
 
     const handleLessonSubmit = async values => {
@@ -448,7 +451,6 @@ function CourseContentPage() {
         setLessonModalOpen(false);
         setEditingLesson(null);
         setSelectedModuleId(null);
-        setLocalModules([]);
     };
 
     const isLoading = courseLoading || modulesLoading;

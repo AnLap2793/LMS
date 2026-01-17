@@ -14,8 +14,8 @@ export const departmentService = {
     getAll: async () => {
         return await directus.request(
             readItems(COLLECTIONS.DEPARTMENTS, {
-                fields: ['id', 'ten_bo_phan', 'ma_bo_phan'],
-                sort: ['ten_bo_phan'],
+                fields: ['id', 'ten_phong_ban', 'ma_phong_ban'],
+                sort: ['ten_phong_ban'],
                 limit: -1,
             })
         );

@@ -137,6 +137,11 @@ export function useUpdateLessonOrder() {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.lessons.byModule(variables.moduleId),
             });
+            if (variables.courseId) {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.modules.byCourse(variables.courseId),
+                });
+            }
         },
     });
 }

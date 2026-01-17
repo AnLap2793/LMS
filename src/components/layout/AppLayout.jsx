@@ -10,7 +10,7 @@ import {
     AppstoreOutlined,
     DashboardOutlined,
     MenuOutlined,
-    CloseOutlined,
+
     HomeOutlined,
     HistoryOutlined,
     RocketOutlined,
@@ -231,7 +231,14 @@ function AppLayout({ children }) {
             <Drawer
                 title={
                     <div
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            gap: 12,
+                            cursor: 'pointer',
+                        }}
                         onClick={() => {
                             navigate('/');
                             setMobileDrawerOpen(false);
@@ -248,7 +255,7 @@ function AppLayout({ children }) {
                     header: { borderBottom: '1px solid #f0f0f0' },
                     wrapper: { width: 280 },
                 }}
-                closeIcon={<CloseOutlined />}
+                closable={false}
             >
                 {renderMenu()}
             </Drawer>
